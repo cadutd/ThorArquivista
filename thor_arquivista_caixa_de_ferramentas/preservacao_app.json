@@ -1,0 +1,7 @@
+{
+  "scripts_dir": "./scripts",
+  "logs_dir": "./logs",
+  "premis_log": "./logs/premis_events.jsonl",
+  "premis_agent": "Gerenciador de Arquivos — Orquestração",
+  "jobstore_path": "./jobs_db.json"
+}

@@ -1,0 +1,11 @@
+# config.example.yaml — Exemplo de configuração compartilhada
+organismo: "Arquivo Público do Estado de São Paulo (APESP)"
+agente_padrao: "Sistema de Preservação Digital"
+armazenamentos:
+  - "/mnt/storage1"
+  - "/mnt/storage2"
+identificacao_formato:
+  preferir_siegfried: true
+hash:
+  algoritmo: "sha256"
+  chunk_size: 1048576  # 1 MiB
