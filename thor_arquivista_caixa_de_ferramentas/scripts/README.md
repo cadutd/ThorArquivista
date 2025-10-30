@@ -1,69 +1,215 @@
-# Scripts base para um Sistema de Preservação Digital (OAIS-like)
+# Scripts de Preservação Digital — Thor Arquivista
 
-Conjunto inicial de scripts CLI em Python, parametrizados via `argparse`, pensados para compor um pipeline **OAIS** simplificado: geração de fixidez, verificação, empacotamento (BagIt/SIP), identificação de formatos, replicação e registro de eventos **PREMIS** mínimos.
+Este diretório contém os **scripts autônomos** utilizados pelo sistema *Thor Arquivista – Orquestrador de Preservação Digital*.  
+Cada script pode ser executado de forma independente pela linha de comando, ou controlado pelo *Worker* interno da aplicação.
 
-> Requisitos: Python 3.9+, opcionalmente `tqdm` (barra de progresso), `PyYAML` (para ler YAML) e **Siegfried** (`sf`) para identificação de formatos.
+---
 
-## Instalação rápida
-```bash
-python -m venv .venv && . .venv/bin/activate  # (Linux/macOS)
-pip install tqdm pyyaml
-# (Opcional) Instale o Siegfried (sf) conforme a documentação oficial do projeto.
+## Sumário
+- [hash_files.py — Geração de Manifesto BagIt](#hash_filespy--geração-de-manifesto-bagit)
+- [verify_fixity.py — Verificação de Fixidez](#verify_fixitypy--verificação-de-fixidez)
+- [build_bag.py — Empacotamento BagIt (em desenvolvimento)](#build_bagpy--empacotamento-bagit-em-desenvolvimento)
+- [build_sip.py — Geração de SIP (em desenvolvimento)](#build_sippy--geração-de-sip-em-desenvolvimento)
+- [format_identify.py — Identificação de Formatos (em desenvolvimento)](#format_identifypy--identificação-de-formatos-em-desenvolvimento)
+- [replicate.py — Replicação de Diretórios (em desenvolvimento)](#replicatepy--replicação-de-diretórios-em-desenvolvimento)
+- [Boas práticas de execução](#boas-práticas-de-execução)
+
+---
+
+## `hash_files.py` — Geração de Manifesto BagIt
+
+Script responsável por gerar manifestos **BagIt** no formato:
+```
+<hash>␠␠<caminho/relativo>
 ```
 
-## Arquivos
-- `pd_common.py` — Helpers (hash, leitura de config, JSONL, etc.).
-- `hash_files.py` — Varre uma pasta e cria `manifest.tsv` com SHA-256.
-- `verify_fixity.py` — Recalcula e compara com `manifest.tsv`.
-- `build_bag.py` — Cria pacote **BagIt** mínimo (0.97) com `manifest-sha256.txt`.
-- `build_sip.py` — Monta um **SIP** simples (`objects/`, `metadata/`, `manifest-sha256.txt`) e opcionalmente compacta.
-- `premis_log.py` — Registra eventos **PREMIS** mínimos (JSONL).
-- `format_identify.py` — Identifica formatos via **Siegfried** (`sf`) quando disponível; caso contrário, usa `mimetypes`.
-- `replicate_storage.py` — Replica dados para múltiplos destinos, com verificação opcional por hash.
-- `config.example.yaml` — Exemplo de configuração compartilhada.
-
-## Exemplos de uso
-
-### 1) Manifesto de fixidez
+### Uso
 ```bash
-python hash_files.py --raiz /dados/origem --saida /pacote/manifest.tsv
+python scripts/hash_files.py --raiz <pasta> --saida <manifesto> [--algo sha256] [--ignore-hidden] [--progress]
 ```
 
-### 2) Verificação de fixidez
+### Principais parâmetros
+| Parâmetro | Descrição |
+|------------|------------|
+| `--raiz` | Caminho da pasta onde estão os arquivos a serem processados |
+| `--saida` | Caminho do manifesto de saída (ex.: manifest-sha256.txt) |
+| `--algo` | Algoritmo de hash (`sha256`, `sha512`, `md5`, `sha1`, `blake2b`, `blake2s`) |
+| `--ignore-hidden` | Ignora arquivos/pastas iniciados por ponto |
+| `--progress` | Exibe progresso no stderr |
+| `--include-ext` / `--exclude-ext` | Filtra extensões específicas |
+| `--pattern` | Glob relativo (ex.: `**/*.pdf`) |
+| `--workers` | Número de threads de hashing |
+
+### Exemplo prático
 ```bash
-python verify_fixity.py --raiz /dados/origem --manifesto /pacote/manifest.tsv
+python scripts/hash_files.py   --raiz "D:/acervo"   --saida "D:/acervo/manifest-sha256.txt"   --algo sha256   --ignore-hidden   --progress
 ```
 
-### 3) Criar BagIt mínimo
-```bash
-python build_bag.py --fonte /dados/origem --destino /bags --bag-name 2025-10-27_projeto --org APESP
+### Entrada
+```
+D:/acervo/
+├─ carta1.pdf
+├─ carta2.pdf
+└─ subpasta/
+   └─ imagem1.jpg
 ```
 
-### 4) Construir SIP
-```bash
-python build_sip.py --fonte /dados/origem --saida /sips --sip-id SIP_0001 --zip
+### Saída (`manifest-sha256.txt`)
+```
+d2c7c963f83b2f92e4f18f46c92a89f0  carta1.pdf
+7ad0c4583a61e894bc1c1ccdc22cf34b  carta2.pdf
+fb7ffb8f67bba7b5a612aab524e667a9  subpasta/imagem1.jpg
 ```
 
-### 5) Registrar evento PREMIS
+---
+
+## `verify_fixity.py` — Verificação de Fixidez
+
+Compara os hashes do manifesto BagIt com os arquivos existentes.
+
+### Uso
 ```bash
-python premis_log.py --arquivo-log /logs/premis.jsonl \
-  --tipo "fixity check" --obj-id "SIP_0001/objects/doc.pdf" \
-  --detalhe "Verificação de manifesto" --resultado success --agente "Gerenciador"
+python scripts/verify_fixity.py --raiz <pasta> --manifesto <arquivo> [--report-extras] [--progress]
 ```
 
-### 6) Identificar formatos
+### Parâmetros principais
+| Parâmetro | Descrição |
+|------------|------------|
+| `--raiz` | Pasta onde estão os arquivos originais |
+| `--manifesto` | Caminho do manifesto a validar |
+| `--algo` | (opcional) Força o algoritmo |
+| `--report-extras` | Mostra arquivos em disco não listados |
+| `--progress` | Exibe progresso durante a execução |
+
+### Exemplo prático
 ```bash
-python format_identify.py --raiz /dados/origem --saida formatos.jsonl
+python scripts/verify_fixity.py   --raiz "D:/acervo"   --manifesto "D:/acervo/manifest-sha256.txt"   --report-extras   --progress
 ```
 
-### 7) Replicar para múltiplos destinos
-```bash
-python replicate_storage.py --fonte /sips/SIP_0001 --destino /replicaA --destino /replicaB --verificar-hash
+### Entrada
+```
+D:/acervo/
+├─ carta1.pdf
+├─ carta2.pdf
+├─ subpasta/
+│  └─ imagem1.jpg
+└─ manifest-sha256.txt
 ```
 
-## Observações
-- Os scripts são modulares e podem ser encadeados por um orquestrador.
-- Logs operacionais e de eventos podem ser centralizados em arquivos JSONL e correlacionados por IDs.
-- **BagIt** aqui é mínimo; para uso em produção considerar validação externa e tags adicionais.
-- **PREMIS** reduzido: ajuste os campos conforme suas políticas institucionais.
-- **Siegfried** é recomendado para identificação robusta de formatos.
+### Saída esperada
+```
+=== Verificação de fixidez ===
+Manifesto : D:/acervo/manifest-sha256.txt
+Raiz      : D:/acervo
+Algoritmo : sha256
+Total     : 3
+OK        : 3
+Faltando  : 0
+Divergências: 0
+Extras    : 0
+```
+
+Se um arquivo estiver faltando:
+```
+=== Verificação de fixidez ===
+OK        : 2
+Faltando  : 1
+Divergências: 0
+
+-- Faltando --
+subpasta/imagem1.jpg
+```
+
+---
+
+## `build_bag.py` — Empacotamento BagIt (em desenvolvimento)
+
+Prevê a criação de pacotes completos **BagIt**, contendo:
+```
+bagit.txt
+manifest-sha256.txt
+data/
+  carta1.pdf
+  carta2.pdf
+```
+
+### Uso (planejado)
+```bash
+python scripts/build_bag.py --fonte <pasta> --destino <pasta> [--algo sha256]
+```
+
+---
+
+## `build_sip.py` — Geração de SIP (em desenvolvimento)
+
+Cria **Submission Information Packages (SIP)**, com metadados e estrutura definida.
+
+### Uso (planejado)
+```bash
+python scripts/build_sip.py --fonte <pasta> --saida <pasta> [--id <identificador>]
+```
+
+---
+
+## `format_identify.py` — Identificação de Formatos (em desenvolvimento)
+
+Identifica formatos de arquivo, gera CSV com MIME type e extensão detectada.
+
+### Uso (planejado)
+```bash
+python scripts/format_identify.py --raiz <pasta> --saida <relatorio.csv>
+```
+
+---
+
+## `replicate.py` — Replicação de Diretórios (em desenvolvimento)
+
+Copia uma árvore de diretórios para múltiplos destinos, podendo validar hash após a cópia.
+
+### Uso (planejado)
+```bash
+python scripts/replicate.py --fonte <pasta> --destino <dest1> --destino <dest2> [--verificar-hash]
+```
+
+### Exemplo (planejado)
+```bash
+python scripts/replicate.py --fonte "./dados" --destino "./backup1" --destino "./backup2" --verificar-hash
+```
+
+---
+
+## Boas práticas de execução
+
+- Prefira **caminhos relativos** e formato POSIX (`/`).
+- Gere manifestos separados por algoritmo (`manifest-sha256.txt`, etc.).
+- Use `--ignore-hidden` para evitar arquivos de sistema.
+- Utilize `--progress` em coleções grandes.
+- Mantenha manifesto e dados juntos.
+
+---
+
+## Exemplo de fluxo completo
+
+1. **Gerar manifesto:**
+   ```bash
+   python scripts/hash_files.py --raiz "./colecao" --saida "./colecao/manifest-sha256.txt"
+   ```
+
+2. **Transferir** ou replicar o conjunto.
+
+3. **Validar integridade:**
+   ```bash
+   python scripts/verify_fixity.py --raiz "./colecao" --manifesto "./colecao/manifest-sha256.txt"
+   ```
+
+4. **Saída esperada:**
+   ```
+   OK        : 100%
+   Faltando  : 0
+   Divergências: 0
+   ```
+
+---
+
+**Thor Arquivista – APESP © 2025**  
+Desenvolvido pelo Arquivo Público do Estado de São Paulo.
