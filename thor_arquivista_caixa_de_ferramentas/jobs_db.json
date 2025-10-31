@@ -148,6 +148,50 @@
       "created_at": "2025-10-30T01:15:18.294977Z",
       "updated_at": "2025-10-30T01:15:18.958591Z",
       "error_msg": null
+    },
+    {
+      "_id": "3a8e8207-7a74-484e-8744-1fec777df24b",
+      "job_type": "HASH_MANIFEST",
+      "status": "done",
+      "params": {
+        "raiz": "C:\\Users\\cadut\\Desktop\\LISTAS",
+        "saida": "C:\\Users\\cadut\\Desktop\\LISTAS\\manifest-sha256.txt",
+        "algo": "sha256",
+        "progress": false,
+        "ignore_hidden": true
+      },
+      "created_at": "2025-10-31T00:29:29.483805Z",
+      "updated_at": "2025-10-31T00:29:31.401085Z",
+      "error_msg": null
+    },
+    {
+      "_id": "bc62f832-706f-46a8-8dce-65e9998f648b",
+      "job_type": "HASH_MANIFEST",
+      "status": "done",
+      "params": {
+        "raiz": "C:\\Users\\cadut\\Desktop\\LISTAS",
+        "saida": "C:\\Users\\cadut\\Desktop\\manifest-sha256.txt",
+        "algo": "sha256",
+        "progress": false,
+        "ignore_hidden": true
+      },
+      "created_at": "2025-10-31T00:29:51.504545Z",
+      "updated_at": "2025-10-31T00:29:52.043465Z",
+      "error_msg": null
+    },
+    {
+      "_id": "07b118a4-8cda-48ea-a08e-183df4850a95",
+      "job_type": "VERIFY_FIXITY",
+      "status": "done",
+      "params": {
+        "raiz": "C:/Users/cadut/Desktop/LISTAS",
+        "manifesto": "C:/Users/cadut/Desktop/LISTAS/manifest-sha256.txt",
+        "report_extras": false,
+        "progress": false
+      },
+      "created_at": "2025-10-31T00:31:14.386100Z",
+      "updated_at": "2025-10-31T00:31:15.320117Z",
+      "error_msg": null
     }
   ],
   "logs": {
@@ -369,6 +413,62 @@
       },
       {
         "ts": "2025-10-30T01:15:18.957204Z",
+        "level": "INFO",
+        "msg": "Concluído com sucesso"
+      }
+    ],
+    "3a8e8207-7a74-484e-8744-1fec777df24b": [
+      {
+        "ts": "2025-10-31T00:29:29.485409Z",
+        "level": "INFO",
+        "msg": "Enfileirado HASH_MANIFEST"
+      },
+      {
+        "ts": "2025-10-31T00:29:29.566207Z",
+        "level": "INFO",
+        "msg": "Iniciando job HASH_MANIFEST"
+      },
+      {
+        "ts": "2025-10-31T00:29:31.399462Z",
+        "level": "INFO",
+        "msg": "Concluído com sucesso"
+      }
+    ],
+    "bc62f832-706f-46a8-8dce-65e9998f648b": [
+      {
+        "ts": "2025-10-31T00:29:51.506204Z",
+        "level": "INFO",
+        "msg": "Enfileirado HASH_MANIFEST"
+      },
+      {
+        "ts": "2025-10-31T00:29:51.847543Z",
+        "level": "INFO",
+        "msg": "Iniciando job HASH_MANIFEST"
+      },
+      {
+        "ts": "2025-10-31T00:29:52.041826Z",
+        "level": "INFO",
+        "msg": "Concluído com sucesso"
+      }
+    ],
+    "07b118a4-8cda-48ea-a08e-183df4850a95": [
+      {
+        "ts": "2025-10-31T00:31:14.387652Z",
+        "level": "INFO",
+        "msg": "Enfileirado VERIFY_FIXITY"
+      },
+      {
+        "ts": "2025-10-31T00:31:14.851738Z",
+        "level": "INFO",
+        "msg": "Iniciando job VERIFY_FIXITY"
+      },
+      {
+        "ts": "2025-10-31T00:31:15.316247Z",
+        "level": "INFO",
+        "msg": "=== Verificação de fixidez ===\nManifesto : C:\\Users\\cadut\\Desktop\\LISTAS\\manifest-sha256.txt\nRaiz      : C:\\Users\\cadut\\Desktop\\LISTAS\nAlgoritmo : sha256\nTotal     : 148\nOK        : 148\nFaltando  : 0\nDivergências: 0\n"
+      },
+      {
+        "ts": "2025-10-31T00:31:15.318608Z",
         "level": "INFO",
         "msg": "Concluído com sucesso"
       }

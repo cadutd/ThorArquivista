@@ -4,7 +4,7 @@ from pathlib import Path
 import re
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
-from tkinter import StringVar, IntVar, filedialog
+from tkinter import StringVar, IntVar, filedialog, messagebox
 from tkinter import X
 
 ALGOS = ["sha256", "sha512", "md5", "sha1", "blake2b", "blake2s"]
@@ -62,6 +62,14 @@ def create_panel(app, enqueue_cb):
             "progress": bool(show_progress.get()),
             "ignore_hidden": bool(ignore_hidden.get()),
         })
+
+        # feedback modal ao usuário
+        parent = page.winfo_toplevel() if hasattr(page, "winfo_toplevel") else page
+        messagebox.showinfo(
+            "Execução iniciada",
+            "O script foi enviado para a fila de execução e será processado em segundo plano.",
+            parent=parent,
+        )
 
     ttk.Button(page, text="Executar", bootstyle=PRIMARY, command=_exec).pack(pady=10)
     return page

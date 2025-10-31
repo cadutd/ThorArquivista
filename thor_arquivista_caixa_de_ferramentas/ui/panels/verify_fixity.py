@@ -2,7 +2,7 @@
 from __future__ import annotations
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
-from tkinter import StringVar, IntVar, filedialog
+from tkinter import StringVar, IntVar, filedialog, messagebox
 from tkinter import X
 
 def create_panel(app, enqueue_cb):
@@ -39,6 +39,16 @@ def create_panel(app, enqueue_cb):
             "report_extras": bool(report_extras.get()),
             "progress": bool(show_progress.get()),
         })
+
+        # feedback modal ao usuário
+        parent = page.winfo_toplevel() if hasattr(page, "winfo_toplevel") else page
+        messagebox.showinfo(
+            "Execução iniciada",
+            "O script foi enviado para a fila de execução e será processado em segundo plano.",
+            parent=parent,
+        )
+
+
 
     ttk.Button(page, text="Executar", bootstyle=PRIMARY, command=_exec).pack(pady=10)
     return page

@@ -1,0 +1,181 @@
+{
+    "ordered": [
+        {
+            "tipoPacote":{
+                "filedRequired": true,
+                "defaultValue": "SIP",
+                "valueList": ["SIP","AIP", "DIP"]
+            }
+        },
+        { 
+            "nomeProdutor" : {
+                "fieldRequired": true
+            }
+        },
+        {
+            "enderecoProdutor" : {
+                "fieldRequired": true
+            }
+        },
+        {
+            "nomeContatoProdutor" : {
+                "fieldRequired": true
+            }
+        },
+        {
+            "emailContatoProdutor" : {
+                "fieldRequired": true
+            }
+        },
+        {
+            "descricaoPacote" : {
+                "fieldRequired": true
+            }
+        },
+        {
+            "dataCriacaoPacote" : {
+                "fieldRequired": true
+            }
+        },
+        {
+            "identificadorPacoteNoProdutor" : {
+                "fieldRequired": false
+            }
+        },
+        {
+            "identificadorGrupoPacote" : {
+                "fieldRequired": false
+            }
+        },
+        {
+            "contadorPacote" : {
+                "fieldRequired": false,
+                "defaultValue": "1 de 1"
+            }
+        },
+        {
+            "generoDocumental" : {
+            "fieldRequired": true,
+            "defaultValue" : "Textual",
+                "valueList" :["Iconografico","Textual","Cartografico", "Varia"]
+            }
+        },
+        {
+            "naturezaDigital" : {
+                "fieldRequired" : true,
+                "defaultValue" : "Original",
+                "valueList" : ["Original","Digitalizado"]
+            }
+        },
+        {
+            "unidadeProdutora":{
+                "fieldRequired" : true
+            }
+        },
+        {
+            "enderecoUnidadeProdutora" :{
+                "fieldRequired" : true
+            }
+        },
+        {
+            "responsavelCADA" :{
+                "fieldRequired" : true
+            }
+        },
+        {
+            "codigoTDD" :{
+                "fieldRequired" : true
+            }
+
+        },
+        {
+            "descricaoTDD" :{
+                "fieldRequired" : false
+            }
+
+        },     
+        {
+            "identificadorFundo" : {
+                "fieldRequired" : true             
+            }
+        },
+        {
+            "nomeFundo" : {
+                "fieldRequired" : true             
+            }
+        },
+        {
+            "identificadorSecao" : {
+                "fieldRequired" : false              
+            }
+        },
+        {
+            "nomeSecao" : {
+                "fieldRequired" : false              
+            }
+        },
+        {
+            "identificadorSerie" : {
+                "fieldRequired" : false           
+            }
+        },
+        {
+            "nomeSerie" : {
+                "fieldRequired" : false           
+            }
+        },
+        {
+            "identificadorDossie" : {
+                "fieldRequired" : false           
+            }
+        },
+        {
+            "nomeDossie" : {
+                "fieldRequired" : false           
+            }
+        },
+        {
+            "classificacaoSigilo": {
+                "filedRequired": true,
+                "defaultValue": "Ostensivo",
+                "valueList": ["Ostensivo","Reservado","Secreto","Ultrassecreto"]
+            }
+        },
+        {
+            "possuiDadosPessoais" : {
+                "filedRequired": true,
+                "defaultValue": "False",
+                "valueList": ["True","False"]
+            }
+        },
+        {
+            "suporteEnvio": {
+                "filedRequired": true,  
+                "defaultValue": "SSD Externo",              
+                "valueList": [
+                        "CD",
+                        "DVD",
+                        "Blu-Ray",
+                        "HDD/Hard-Drive",
+                        "HDD/Hard-Drive Externo",
+                        "SSD",
+                        "SSD Externo",
+                        "USB: Flash/Thumb-Drive",
+                        "Zip Disk",
+                        "Tape/Disk",
+                        "Memory Card (SD/HC/XC/UHS/MS PRO/PRO Duo/Compact Flash/etc.)",
+                        "Magneto-Optical Disc (1990s)",
+                        "Mobile Device (Phone/Tablet/etc.)",
+                        "Network Storage (NAS/SAN/FTP/SFTP)",
+                        "Cloud Storage",
+                        "Outro (Descreva em Observações)"
+                        ]
+            }
+        },
+        {
+            "observacoes":{
+                "filedRequired": false                      
+            }
+        }    
+    ]
+}
