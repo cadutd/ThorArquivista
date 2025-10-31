@@ -122,21 +122,106 @@ subpasta/imagem1.jpg
 
 ---
 
-## `build_bag.py` — Empacotamento BagIt (em desenvolvimento)
+## `build_bag.py` — Empacotamento BagIt
 
-Prevê a criação de pacotes completos **BagIt**, contendo:
-```
-bagit.txt
-manifest-sha256.txt
-data/
-  carta1.pdf
-  carta2.pdf
-```
+Cria pacotes completos no padrao BagIt 0.97, com `bagit.txt`, `bag-info.txt`, `data/`, `manifest-ALGO.txt` e opcionalmente `tagmanifest-ALGO.txt`. Suporta preenchimento de `bag-info.txt` a partir de **profiles** em `profiles/*-profileBagit.json`.
 
-### Uso (planejado)
+### Uso
 ```bash
-python scripts/build_bag.py --fonte <pasta> --destino <pasta> [--algo sha256]
+python scripts/build_bag.py SRC DST
+  [--algo ALGO]
+  [--mode {copy,link,move}]
+  [--pattern GLOB]
+  [--include-hidden]
+  [--follow-symlinks]
+  [--tagmanifest]
+  [--organization ORG]
+  [--source-organization SRCORG]
+  [--contact-name NAME]
+  [--contact-email EMAIL]
+  [--description TEXT]
+  [--profile NAME_OR_JSON_PATH]
+  [--profile-param KEY=VALUE]    # pode repetir
 ```
+
+### Principais parametros
+| Parametro | Descricao |
+|---|---|
+| `SRC` | Pasta fonte do payload a ser empacotado em `data/` |
+| `DST` | Pasta destino do pacote BagIt. Deve estar vazia ou nao existir |
+| `--algo` | Algoritmo do manifesto. Padrao: `sha256` |
+| `--mode` | Transferencia para `data/`: `copy` (padrao), `link` (hardlink, com fallback para copia), `move` |
+| `--pattern` | Glob para selecionar arquivos da origem. Ex.: `*.pdf`, `**/*.tif` |
+| `--include-hidden` | Inclui arquivos ocultos (nomes iniciando com ponto) |
+| `--follow-symlinks` | Segue symlinks ao varrer a origem |
+| `--tagmanifest` | Gera tagmanifest para `bagit.txt`, `bag-info.txt` e `manifest-ALGO.txt` |
+| `--organization` | Valor que pode alimentar o profile (`Organization`) |
+| `--source-organization` | Valor que pode alimentar o profile (`Source-Organization`) |
+| `--contact-name` | Valor que pode alimentar o profile (`Contact-Name`) |
+| `--contact-email` | Valor que pode alimentar o profile (`Contact-Email`) |
+| `--description` | Valor que pode alimentar o profile (`External-Description`) |
+| `--profile` | Nome logico do profile em `profiles/[NAME]-profileBagit.json` ou caminho para um JSON de profile |
+| `--profile-param KEY=VALUE` | Parametros extras para preencher placeholders do profile. Pode repetir a opcao |
+
+### Exemplo pratico
+```bash
+python scripts/build_bag.py "./fonte" "./bag_apesp"   --organization APESP   --source-organization "Secretaria X"   --contact-name "Carlos Eduardo"   --contact-email "carlos@example.org"   --description "Transferencia 2025-10-30 - Serie Y"   --profile apesp   --profile-param transfer_id=TRF-2025-001   --profile-param transfer_desc="Recolhimento serie Y, unidade Z"   --tagmanifest
+```
+
+### Entrada
+```
+./fonte/
+├─ carta1.pdf
+├─ carta2.pdf
+└─ subpasta/
+   └─ imagem1.jpg
+```
+
+### Saida
+```
+./bag_apesp/
+├─ bagit.txt
+├─ bag-info.txt
+├─ manifest-sha256.txt
+├─ data/
+│  ├─ carta1.pdf
+│  ├─ carta2.pdf
+│  └─ subpasta/
+│     └─ imagem1.jpg
+└─ tagmanifest-sha256.txt    # se --tagmanifest for usado
+```
+
+### Sobre profiles BagIt
+- Local de busca por nome logico: `profiles/[NAME]-profileBagit.json`.
+- Estrutura minima do profile:
+  ```json
+  {
+    "bag_info": {
+      "Source-Organization": "{source_organization}",
+      "Organization": "{organization}",
+      "Contact-Name": "{contact_name}",
+      "Contact-Email": "{contact_email}",
+      "External-Description": "{external_description}",
+      "Internal-Sender-Identifier": "{transfer_id}",
+      "Internal-Sender-Description": "{transfer_desc}"
+    },
+    "required_tags": ["Source-Organization", "Contact-Email"]
+  }
+  ```
+- Placeholders resolvidos automaticamente:
+  - Calculados: `bagging_date`, `payload_oxum`, `algo`, `total_bytes`, `file_count`, `src`, `dst`, `bag_software_agent`
+  - Via flags: `organization`, `source_organization`, `contact_name`, `contact_email`, `external_description`
+  - Via `--profile-param`: quaisquer chaves adicionais, por exemplo `transfer_id`, `serie`, `produtor`
+- Observacao: `Bagging-Date`, `Payload-Oxum` e `Bag-Software-Agent` sao sempre escritos com valores calculados pelo script.
+
+### Codigos de retorno
+- `0`: sucesso
+- `2`: erro de execucao ou parametros invalidos
+
+### Observacoes
+- Caminhos no manifesto usam separador `/` e fim de linha LF.
+- Se `--mode link` nao for suportado pelo filesystem, o script faz fallback para copia.
+- Para usar via interface, o painel `build_bag` enfileira um job `BUILD_BAG` que e mapeado por `core/scripts_map.py` para este script com os argumentos correspondentes.
 
 ---
 
