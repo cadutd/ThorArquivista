@@ -85,7 +85,7 @@ class MainApp(ttk.Window):
         # Menus → painéis
         menu_tarefas.add_command(label="Gerar Manifesto (Hash)", command=lambda: _open("Gerar Manifesto", panel_hash))
         menu_tarefas.add_command(label="Verificar Fixidez", command=lambda: _open("Verificar Fixidez", panel_fixity))
-        menu_tarefas.add_command(label="BagIt", command=lambda: _open("BagIt", panel_bag))
+        menu_tarefas.add_command(label="Gerar Pacote BagIt", command=lambda: _open("Gerar Pacote BagIt", panel_bag))
         menu_tarefas.add_command(label="SIP", command=lambda: _open("SIP", panel_sip))
         menu_tarefas.add_command(label="Identificar Formatos", command=lambda: _open("Identificar Formatos", panel_fmt))
         menu_tarefas.add_command(label="Replicar", command=lambda: _open("Replicar", panel_rep))

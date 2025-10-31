@@ -1,0 +1,15 @@
+{
+  "bag_info": {
+    "Source-Organization": "{source_organization}",
+    "Organization": "{organization}",
+    "Contact-Name": "{contact_name}",
+    "Contact-Email": "{contact_email}",
+    "External-Description": "{external_description}",
+    "Internal-Sender-Identifier": "{transfer_id}",
+    "Internal-Sender-Description": "{transfer_desc}"
+  },
+  "required_tags": [
+    "Source-Organization",
+    "Contact-Email"
+  ]
+}

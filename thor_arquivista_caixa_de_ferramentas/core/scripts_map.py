@@ -9,6 +9,67 @@ ArgsBuilder = Callable[[Dict[str, Any], AppConfig], list[str]]
 # Tipo do mapa: job_type -> (script_name, args_builder)
 ScriptsMap = Dict[str, Tuple[str, ArgsBuilder]]
 
+def _args_build_bag(p: Dict[str, Any], cfg: AppConfig) -> list[str]:
+    """
+    Constrói argv para scripts/build_bag.py a partir do payload do painel.
+
+    Payload esperado (novo padrão):
+      - src (obrigatório), dst (obrigatório)
+      - algo, mode, pattern
+      - include_hidden, follow_symlinks, tagmanifest (bool)
+      - organization, source_organization, contact_name, contact_email, external_description
+      - profile (nome lógico OU caminho)
+      - profile_param (lista de 'K=V')
+
+    Compatibilidade retro:
+      - fonte -> src
+      - destino -> dst
+      - org -> organization
+    """
+    # Back-compat com chaves antigas
+    src = p.get("src") or p.get("fonte")
+    dst = p.get("dst") or p.get("destino")
+    if not src or not dst:
+        raise ValueError("BUILD_BAG: campos obrigatórios 'src'/'dst' ausentes (ou 'fonte'/'destino').")
+
+    args: list[str] = [
+        str(src),
+        str(dst),
+        "--algo", str(p.get("algo", "sha256")),
+        "--mode", str(p.get("mode", "copy")),
+        "--pattern", str(p.get("pattern", "*")),
+    ]
+
+    if p.get("include_hidden"):
+        args.append("--include-hidden")
+    if p.get("follow_symlinks"):
+        args.append("--follow-symlinks")
+    if p.get("tagmanifest"):
+        args.append("--tagmanifest")
+
+    # Metadados padrão
+    organization = p.get("organization") or p.get("org")  # retrocompatibilidade
+    if organization:
+        args += ["--organization", str(organization)]
+    if p.get("source_organization"):
+        args += ["--source-organization", str(p["source_organization"])]
+    if p.get("contact_name"):
+        args += ["--contact-name", str(p["contact_name"])]
+    if p.get("contact_email"):
+        args += ["--contact-email", str(p["contact_email"])]
+    if p.get("external_description"):
+        args += ["--description", str(p["external_description"])]
+
+    # Profile + múltiplos --profile-param
+    if p.get("profile"):
+        args += ["--profile", str(p["profile"])]
+    for kv in (p.get("profile_param") or []):
+        if isinstance(kv, str) and kv:
+            args += ["--profile-param", kv]
+
+    return args
+
+
 def get_scripts_map() -> ScriptsMap:
     """
     Retorna o mapeamento de jobs para scripts e seus builders de argumentos.
@@ -33,14 +94,10 @@ def get_scripts_map() -> ScriptsMap:
                 *(["--report-extras"] if p.get("report_extras") else []),
                 *(["--progress"] if p.get("progress") else []),
             ]
-        ),        "BUILD_BAG": (
+        ),                
+        "BUILD_BAG": (
             "build_bag.py",
-            lambda p, cfg: [
-                "--fonte", p["fonte"],
-                "--destino", p["destino"],
-                "--bag-name", p["bag_name"],
-                "--org", p.get("org", "APESP"),
-            ],
+            _args_build_bag,
         ),
         "BUILD_SIP": (
             "build_sip.py",

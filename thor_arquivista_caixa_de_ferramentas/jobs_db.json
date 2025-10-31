@@ -192,6 +192,34 @@
       "created_at": "2025-10-31T00:31:14.386100Z",
       "updated_at": "2025-10-31T00:31:15.320117Z",
       "error_msg": null
+    },
+    {
+      "_id": "5776a061-4a0d-4972-80c9-c1f7302af26e",
+      "job_type": "BUILD_BAG",
+      "status": "error",
+      "params": {
+        "src": "C:/Users/cadut/Desktop/LISTAS",
+        "dst": "C:/Users/cadut/Desktop/TestesBag",
+        "algo": "sha256",
+        "mode": "copy",
+        "pattern": "*",
+        "include_hidden": false,
+        "follow_symlinks": false,
+        "tagmanifest": false,
+        "organization": "Teste",
+        "source_organization": "tetse",
+        "contact_name": "tetse",
+        "contact_email": "testse",
+        "external_description": "setessrt",
+        "profile": "C:\\workfolder\\ThorArquivista\\thor_arquivista_caixa_de_ferramentas\\profiles\\apesp-profileBagit.json",
+        "profile_param": [
+          "transfer_desc=tesrte",
+          "transfer_id=erteste"
+        ]
+      },
+      "created_at": "2025-10-31T01:30:08.129728Z",
+      "updated_at": "2025-10-31T01:30:09.533106Z",
+      "error_msg": "ERRO: 'charmap' codec can't encode character '\\u2714' in position 6: character maps to <undefined>\n"
     }
   ],
   "logs": {
@@ -471,6 +499,33 @@
         "ts": "2025-10-31T00:31:15.318608Z",
         "level": "INFO",
         "msg": "Concluído com sucesso"
+      }
+    ],
+    "5776a061-4a0d-4972-80c9-c1f7302af26e": [
+      {
+        "ts": "2025-10-31T01:30:08.131268Z",
+        "level": "INFO",
+        "msg": "Enfileirado BUILD_BAG"
+      },
+      {
+        "ts": "2025-10-31T01:30:08.633513Z",
+        "level": "INFO",
+        "msg": "Iniciando job BUILD_BAG"
+      },
+      {
+        "ts": "2025-10-31T01:30:09.527558Z",
+        "level": "INFO",
+        "msg": "[1/6] Transferindo 149 arquivo(s) (mode=copy)…\n  - 50/149\n  - 100/149\n  - 149/149\n[2/6] Gerando manifest do payload…\n  - 149/149\n[3/6] Escrevendo bagit.txt…\n[4/6] Escrevendo bag-info.txt…\n"
+      },
+      {
+        "ts": "2025-10-31T01:30:09.529290Z",
+        "level": "ERROR",
+        "msg": "ERRO: 'charmap' codec can't encode character '\\u2714' in position 6: character maps to <undefined>\n"
+      },
+      {
+        "ts": "2025-10-31T01:30:09.531625Z",
+        "level": "ERROR",
+        "msg": "Erro (rc=2)"
       }
     ]
   }
