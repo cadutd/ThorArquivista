@@ -220,6 +220,92 @@
       "created_at": "2025-10-31T01:30:08.129728Z",
       "updated_at": "2025-10-31T01:30:09.533106Z",
       "error_msg": "ERRO: 'charmap' codec can't encode character '\\u2714' in position 6: character maps to <undefined>\n"
+    },
+    {
+      "_id": "6b971854-dbca-4d5e-820d-273e2b76d10f",
+      "job_type": "DUPLICATE_FINDER",
+      "status": "error",
+      "params": {
+        "modo": "inventario",
+        "raiz": "C:/Users/cadut/Desktop/LISTAS",
+        "inventario": "C:/Users/cadut/Desktop/inventario..csv",
+        "mostrar_progresso": true
+      },
+      "created_at": "2025-11-01T18:17:40.454150Z",
+      "updated_at": "2025-11-01T18:17:40.684097Z",
+      "error_msg": "'duplicatas'"
+    },
+    {
+      "_id": "2825dd63-fae2-4293-a8cf-80a9accefe7d",
+      "job_type": "DUPLICATE_FINDER",
+      "status": "done",
+      "params": {
+        "modo": "inventario",
+        "raiz": "C:/Users/cadut/Desktop/LISTAS",
+        "inventario": "C:/Users/cadut/Desktop/inventario.csv",
+        "mostrar_progresso": true
+      },
+      "created_at": "2025-11-01T18:27:56.283972Z",
+      "updated_at": "2025-11-01T18:28:08.267081Z",
+      "error_msg": null
+    },
+    {
+      "_id": "575a0afc-5b50-42e9-9438-68474f4f9bad",
+      "job_type": "DUPLICATE_FINDER",
+      "status": "done",
+      "params": {
+        "modo": "duplicatas",
+        "inventario": "C:/Users/cadut/Desktop/inventario.csv",
+        "duplicatas": "C:/Users/cadut/Desktop/duplicatas.csv"
+      },
+      "created_at": "2025-11-01T18:28:52.246977Z",
+      "updated_at": "2025-11-01T18:28:52.958200Z",
+      "error_msg": null
+    },
+    {
+      "_id": "10ae6fb4-9e0a-498d-bc8a-752674927a8a",
+      "job_type": "DUPLICATE_FINDER",
+      "status": "done",
+      "params": {
+        "modo": "modelo_decisoes",
+        "duplicatas": "C:/Users/cadut/Desktop/duplicatas.csv",
+        "decisoes": "C:/Users/cadut/Desktop/decisao.csv"
+      },
+      "created_at": "2025-11-01T18:29:15.330270Z",
+      "updated_at": "2025-11-01T18:29:16.058754Z",
+      "error_msg": null
+    },
+    {
+      "_id": "b413a461-ea6e-4eaf-b860-6fac900e9e40",
+      "job_type": "DUPLICATE_FINDER",
+      "status": "done",
+      "params": {
+        "modo": "script_tratamento",
+        "decisoes": "C:/Users/cadut/Desktop/decisao.csv",
+        "gerar_script_remocao": "C:/Users/cadut/Desktop/elimina.cmd",
+        "sistema": "windows",
+        "acao": "quarentena",
+        "prefixo_quarentena": "quarentena",
+        "script_log_nome": "log_elimina"
+      },
+      "created_at": "2025-11-01T21:31:32.159888Z",
+      "updated_at": "2025-11-01T21:31:33.034589Z",
+      "error_msg": null
+    },
+    {
+      "_id": "7ce73424-d592-4f0e-9559-efbb00547f08",
+      "job_type": "DUPLICATE_FINDER",
+      "status": "done",
+      "params": {
+        "modo": "dashboard_duplicatas",
+        "inventario": "C:/Users/cadut/Desktop/inventario.csv",
+        "duplicatas": "C:/Users/cadut/Desktop/duplicatas.csv",
+        "dashboard_duplicatas_csv": "C:/Users/cadut/Desktop/potencial.csv",
+        "dashboard_duplicatas_xlsx": "C:/Users/cadut/Desktop/pootencial..xlsx"
+      },
+      "created_at": "2025-11-01T21:33:23.901858Z",
+      "updated_at": "2025-11-01T21:33:24.619301Z",
+      "error_msg": null
     }
   ],
   "logs": {
@@ -526,6 +612,133 @@
         "ts": "2025-10-31T01:30:09.531625Z",
         "level": "ERROR",
         "msg": "Erro (rc=2)"
+      }
+    ],
+    "6b971854-dbca-4d5e-820d-273e2b76d10f": [
+      {
+        "ts": "2025-11-01T18:17:40.455934Z",
+        "level": "INFO",
+        "msg": "Enfileirado DUPLICATE_FINDER"
+      },
+      {
+        "ts": "2025-11-01T18:17:40.676719Z",
+        "level": "INFO",
+        "msg": "Iniciando job DUPLICATE_FINDER"
+      },
+      {
+        "ts": "2025-11-01T18:17:40.682359Z",
+        "level": "ERROR",
+        "msg": "Falha inesperada: 'duplicatas'"
+      }
+    ],
+    "2825dd63-fae2-4293-a8cf-80a9accefe7d": [
+      {
+        "ts": "2025-11-01T18:27:56.285957Z",
+        "level": "INFO",
+        "msg": "Enfileirado DUPLICATE_FINDER"
+      },
+      {
+        "ts": "2025-11-01T18:27:56.663687Z",
+        "level": "INFO",
+        "msg": "Iniciando job DUPLICATE_FINDER"
+      },
+      {
+        "ts": "2025-11-01T18:28:08.261880Z",
+        "level": "INFO",
+        "msg": "[OK] Inventário gerado: C:/Users/cadut/Desktop/inventario.csv (arquivos: 168)\n"
+      },
+      {
+        "ts": "2025-11-01T18:28:08.264991Z",
+        "level": "INFO",
+        "msg": "Concluído com sucesso"
+      }
+    ],
+    "575a0afc-5b50-42e9-9438-68474f4f9bad": [
+      {
+        "ts": "2025-11-01T18:28:52.248697Z",
+        "level": "INFO",
+        "msg": "Enfileirado DUPLICATE_FINDER"
+      },
+      {
+        "ts": "2025-11-01T18:28:52.448237Z",
+        "level": "INFO",
+        "msg": "Iniciando job DUPLICATE_FINDER"
+      },
+      {
+        "ts": "2025-11-01T18:28:52.954191Z",
+        "level": "INFO",
+        "msg": "[OK] Duplicatas detectadas: 22 grupos -> C:/Users/cadut/Desktop/duplicatas.csv\n"
+      },
+      {
+        "ts": "2025-11-01T18:28:52.956581Z",
+        "level": "INFO",
+        "msg": "Concluído com sucesso"
+      }
+    ],
+    "10ae6fb4-9e0a-498d-bc8a-752674927a8a": [
+      {
+        "ts": "2025-11-01T18:29:15.332112Z",
+        "level": "INFO",
+        "msg": "Enfileirado DUPLICATE_FINDER"
+      },
+      {
+        "ts": "2025-11-01T18:29:15.552492Z",
+        "level": "INFO",
+        "msg": "Iniciando job DUPLICATE_FINDER"
+      },
+      {
+        "ts": "2025-11-01T18:29:16.054739Z",
+        "level": "INFO",
+        "msg": "[OK] Modelo de decisões gerado: C:/Users/cadut/Desktop/decisao.csv (22 linhas)\n"
+      },
+      {
+        "ts": "2025-11-01T18:29:16.057122Z",
+        "level": "INFO",
+        "msg": "Concluído com sucesso"
+      }
+    ],
+    "b413a461-ea6e-4eaf-b860-6fac900e9e40": [
+      {
+        "ts": "2025-11-01T21:31:32.161682Z",
+        "level": "INFO",
+        "msg": "Enfileirado DUPLICATE_FINDER"
+      },
+      {
+        "ts": "2025-11-01T21:31:32.238960Z",
+        "level": "INFO",
+        "msg": "Iniciando job DUPLICATE_FINDER"
+      },
+      {
+        "ts": "2025-11-01T21:31:33.030222Z",
+        "level": "INFO",
+        "msg": "[OK] Script de quarentena (windows) gerado: C:/Users/cadut/Desktop/elimina.cmd\n"
+      },
+      {
+        "ts": "2025-11-01T21:31:33.032983Z",
+        "level": "INFO",
+        "msg": "Concluído com sucesso"
+      }
+    ],
+    "7ce73424-d592-4f0e-9559-efbb00547f08": [
+      {
+        "ts": "2025-11-01T21:33:23.903719Z",
+        "level": "INFO",
+        "msg": "Enfileirado DUPLICATE_FINDER"
+      },
+      {
+        "ts": "2025-11-01T21:33:23.983787Z",
+        "level": "INFO",
+        "msg": "Iniciando job DUPLICATE_FINDER"
+      },
+      {
+        "ts": "2025-11-01T21:33:24.615499Z",
+        "level": "INFO",
+        "msg": "[OK] Dashboard (duplicatas) CSV: C:/Users/cadut/Desktop/potencial.csv | Potencial: 6.20 MB\n"
+      },
+      {
+        "ts": "2025-11-01T21:33:24.617772Z",
+        "level": "INFO",
+        "msg": "Concluído com sucesso"
       }
     ]
   }

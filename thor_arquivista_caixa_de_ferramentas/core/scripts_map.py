@@ -69,6 +69,88 @@ def _args_build_bag(p: Dict[str, Any], cfg: AppConfig) -> list[str]:
 
     return args
 
+def _args_duplicate_finder(p: Dict[str, Any], cfg: AppConfig) -> list[str]:
+    modo = p.get("modo")
+    if modo not in {
+        "inventario", "duplicatas", "modelo_decisoes",
+        "script_tratamento", "dashboard_duplicatas", "dashboard_decisoes"
+    }:
+        raise ValueError(f"DUPLICATE_FINDER: 'modo' inválido: {modo!r}")
+
+    if modo == "inventario":
+        # requer: raiz, inventario
+        if not p.get("raiz") or not p.get("inventario"):
+            raise ValueError("DUPLICATE_FINDER[inventario]: campos obrigatórios 'raiz' e 'inventario'.")
+        args = [
+            "--raiz", p["raiz"],
+            "--inventario", p["inventario"],
+        ]
+        if p.get("mostrar_progresso"):
+            args.append("--mostrar-progresso")
+        return args
+
+    if modo == "duplicatas":
+        # requer: inventario, duplicatas
+        if not p.get("inventario") or not p.get("duplicatas"):
+            raise ValueError("DUPLICATE_FINDER[duplicatas]: campos obrigatórios 'inventario' e 'duplicatas'.")
+        return [
+            "--inventario", p["inventario"],
+            "--duplicatas", p["duplicatas"],
+        ]
+
+    if modo == "modelo_decisoes":
+        # requer: duplicatas, decisoes
+        if not p.get("duplicatas") or not p.get("decisoes"):
+            raise ValueError("DUPLICATE_FINDER[modelo_decisoes]: campos obrigatórios 'duplicatas' e 'decisoes'.")
+        return [
+            "--from-duplicatas", p["duplicatas"],
+            "--decisoes", p["decisoes"],
+        ]
+
+    if modo == "script_tratamento":
+        # requer: decisoes, gerar_script_remocao; opcionais: sistema, acao, prefixo_quarentena, script_log_nome
+        if not p.get("decisoes") or not p.get("gerar_script_remocao"):
+            raise ValueError("DUPLICATE_FINDER[script_tratamento]: 'decisoes' e 'gerar_script_remocao' são obrigatórios.")
+        args = [
+            "--decisoes", p["decisoes"],
+            "--gerar-script-remocao", p["gerar_script_remocao"],
+            "--sistema", p.get("sistema", "linux"),
+            "--acao", p.get("acao", "quarentena"),
+            "--prefixo-quarentena", p.get("prefixo_quarentena", "quarentena"),
+        ]
+        if p.get("script_log_nome"):
+            args += ["--script-log-nome", p["script_log_nome"]]
+        return args
+
+    if modo == "dashboard_duplicatas":
+        # requer: inventario, duplicatas, dashboard_duplicatas_csv; opcional: dashboard_duplicatas_xlsx
+        if not p.get("inventario") or not p.get("duplicatas") or not p.get("dashboard_duplicatas_csv"):
+            raise ValueError("DUPLICATE_FINDER[dashboard_duplicatas]: 'inventario', 'duplicatas' e 'dashboard_duplicatas_csv' são obrigatórios.")
+        args = [
+            "--inventario", p["inventario"],
+            "--duplicatas", p["duplicatas"],
+            "--dashboard-duplicatas-csv", p["dashboard_duplicatas_csv"],
+        ]
+        if p.get("dashboard_duplicatas_xlsx"):
+            args += ["--dashboard-duplicatas-xlsx", p["dashboard_duplicatas_xlsx"]]
+        return args
+
+    if modo == "dashboard_decisoes":
+        # requer: inventario, decisoes, dashboard_decisoes_csv; opcional: dashboard_decisoes_xlsx
+        if not p.get("inventario") or not p.get("decisoes") or not p.get("dashboard_decisoes_csv"):
+            raise ValueError("DUPLICATE_FINDER[dashboard_decisoes]: 'inventario', 'decisoes' e 'dashboard_decisoes_csv' são obrigatórios.")
+        args = [
+            "--inventario", p["inventario"],
+            "--decisoes", p["decisoes"],
+            "--dashboard-decisoes-csv", p["dashboard_decisoes_csv"],
+        ]
+        if p.get("dashboard_decisoes_xlsx"):
+            args += ["--dashboard-decisoes-xlsx", p["dashboard_decisoes_xlsx"]]
+        return args
+
+    # fallback defensivo
+    raise ValueError(f"DUPLICATE_FINDER: modo não tratado: {modo!r}")
+
 
 def get_scripts_map() -> ScriptsMap:
     """
@@ -131,63 +213,6 @@ def get_scripts_map() -> ScriptsMap:
         ),
         "DUPLICATE_FINDER": (
             "duplicate_finder.py",
-            lambda p, cfg: (
-                # O modo de execução é determinado pelo campo "acao"
-                # suportando as mesmas operações do CLI do script.
-                #
-                # Campos esperados:
-                #   modo: inventario | duplicatas | modelo_decisoes |
-                #         script_tratamento | dashboard_duplicatas | dashboard_decisoes
-                #   raiz, inventario, duplicatas, decisoes, etc.
-                #
-                # Exemplo de payloads:
-                #   {"modo": "inventario", "raiz": "/dados", "inventario": "inventario.csv"}
-                #   {"modo": "duplicatas", "inventario": "inventario.csv", "duplicatas": "duplicatas.csv"}
-                #   {"modo": "script_tratamento", "decisoes": "decisoes.csv", "gerar_script_remocao": "tratar.sh", "sistema": "linux", "acao": "quarentena"}
-                {
-                    "inventario": [
-                        "--raiz", p["raiz"],
-                        "--inventario", p["inventario"],
-                    ] + (["--mostrar-progresso"] if p.get("mostrar_progresso") else []),
-
-                    "duplicatas": [
-                        "--inventario", p["inventario"],
-                        "--duplicatas", p["duplicatas"],
-                    ],
-
-                    "modelo_decisoes": [
-                        "--from-duplicatas", p["duplicatas"],
-                        "--decisoes", p["decisoes"],
-                    ],
-
-                    "script_tratamento": [
-                        "--decisoes", p["decisoes"],
-                        "--gerar-script-remocao", p["gerar_script_remocao"],
-                        "--sistema", p.get("sistema", "linux"),
-                        "--acao", p.get("acao", "quarentena"),
-                        "--prefixo-quarentena", p.get("prefixo_quarentena", "quarentena"),
-                    ] + (
-                        ["--script-log-nome", p["script_log_nome"]] if p.get("script_log_nome") else []
-                    ),
-
-                    "dashboard_duplicatas": [
-                        "--inventario", p["inventario"],
-                        "--duplicatas", p["duplicatas"],
-                        "--dashboard-duplicatas-csv", p["dashboard_duplicatas_csv"],
-                    ] + (
-                        ["--dashboard-duplicatas-xlsx", p["dashboard_duplicatas_xlsx"]]
-                        if p.get("dashboard_duplicatas_xlsx") else []
-                    ),
-
-                    "dashboard_decisoes": [
-                        "--inventario", p["inventario"],
-                        "--decisoes", p["decisoes"],
-                        "--dashboard-decisoes-csv", p["dashboard_decisoes_csv"],
-                    ] + (
-                        ["--dashboard-decisoes-xlsx", p["dashboard_decisoes_xlsx"]]
-                        if p.get("dashboard_decisoes_xlsx") else []
-                    ),
-                }[p["modo"]]  # seleciona o conjunto de argumentos conforme o modo
-            ),
+            _args_duplicate_finder,
         ),
     }
