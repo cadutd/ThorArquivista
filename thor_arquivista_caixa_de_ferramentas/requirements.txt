@@ -4,4 +4,6 @@ pymongo>=4.10.1
 tqdm>=4.66.4
 PyYAML>=6.0.2
 python-dotenv>=1.0.1
+XlsxWriter>=3.0.0
+pandascd ..
 Pillow

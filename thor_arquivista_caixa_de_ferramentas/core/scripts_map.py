@@ -129,4 +129,65 @@ def get_scripts_map() -> ScriptsMap:
                 "--agente", p.get("agente", cfg.premis_agent or "Gerenciador"),
             ],
         ),
+        "DUPLICATE_FINDER": (
+            "duplicate_finder.py",
+            lambda p, cfg: (
+                # O modo de execução é determinado pelo campo "acao"
+                # suportando as mesmas operações do CLI do script.
+                #
+                # Campos esperados:
+                #   modo: inventario | duplicatas | modelo_decisoes |
+                #         script_tratamento | dashboard_duplicatas | dashboard_decisoes
+                #   raiz, inventario, duplicatas, decisoes, etc.
+                #
+                # Exemplo de payloads:
+                #   {"modo": "inventario", "raiz": "/dados", "inventario": "inventario.csv"}
+                #   {"modo": "duplicatas", "inventario": "inventario.csv", "duplicatas": "duplicatas.csv"}
+                #   {"modo": "script_tratamento", "decisoes": "decisoes.csv", "gerar_script_remocao": "tratar.sh", "sistema": "linux", "acao": "quarentena"}
+                {
+                    "inventario": [
+                        "--raiz", p["raiz"],
+                        "--inventario", p["inventario"],
+                    ] + (["--mostrar-progresso"] if p.get("mostrar_progresso") else []),
+
+                    "duplicatas": [
+                        "--inventario", p["inventario"],
+                        "--duplicatas", p["duplicatas"],
+                    ],
+
+                    "modelo_decisoes": [
+                        "--from-duplicatas", p["duplicatas"],
+                        "--decisoes", p["decisoes"],
+                    ],
+
+                    "script_tratamento": [
+                        "--decisoes", p["decisoes"],
+                        "--gerar-script-remocao", p["gerar_script_remocao"],
+                        "--sistema", p.get("sistema", "linux"),
+                        "--acao", p.get("acao", "quarentena"),
+                        "--prefixo-quarentena", p.get("prefixo_quarentena", "quarentena"),
+                    ] + (
+                        ["--script-log-nome", p["script_log_nome"]] if p.get("script_log_nome") else []
+                    ),
+
+                    "dashboard_duplicatas": [
+                        "--inventario", p["inventario"],
+                        "--duplicatas", p["duplicatas"],
+                        "--dashboard-duplicatas-csv", p["dashboard_duplicatas_csv"],
+                    ] + (
+                        ["--dashboard-duplicatas-xlsx", p["dashboard_duplicatas_xlsx"]]
+                        if p.get("dashboard_duplicatas_xlsx") else []
+                    ),
+
+                    "dashboard_decisoes": [
+                        "--inventario", p["inventario"],
+                        "--decisoes", p["decisoes"],
+                        "--dashboard-decisoes-csv", p["dashboard_decisoes_csv"],
+                    ] + (
+                        ["--dashboard-decisoes-xlsx", p["dashboard_decisoes_xlsx"]]
+                        if p.get("dashboard_decisoes_xlsx") else []
+                    ),
+                }[p["modo"]]  # seleciona o conjunto de argumentos conforme o modo
+            ),
+        ),
     }

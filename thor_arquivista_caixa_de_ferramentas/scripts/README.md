@@ -295,6 +295,189 @@ python scripts/replicate.py --fonte "./dados" --destino "./backup1" --destino ".
    ```
 
 ---
+# `duplicate_finder.py` — Localizador de Duplicidades e Geração de Scripts de Tratamento
 
-**Thor Arquivista – APESP © 2025**  
-Desenvolvido pelo Arquivo Público do Estado de São Paulo.
+Este script detecta **arquivos duplicados** em um diretório, gera **relatórios CSV** e **modelos de decisão**, além de criar **scripts de tratamento** (Linux `.sh` ou Windows `.cmd`) para **mover duplicatas para quarentena** ou **removê-las definitivamente**.  
+Todas as operações registram um **log detalhado** das ações realizadas.
+
+---
+
+## ⚙️ Funcionalidades principais
+
+1. **Inventário de arquivos** com hash SHA-256 e metadados (`ctime`, `mtime`, `tamanho`, `caminho_relativo`)  
+2. **Detecção de duplicatas** por `(hash, tamanho)`  
+3. **Geração de modelo de decisões** para indicar o arquivo a manter e os que podem ser eliminados  
+4. **Geração de script de tratamento** para Linux ou Windows:
+   - Quarentena (movimentação não destrutiva)
+   - Remoção definitiva (com confirmação)
+   - Criação automática de log (`.log`)
+5. **Geração de dashboards**:
+   - **Potencial de recuperação** (base duplicatas)
+   - **Recuperação planejada** (base decisões)
+
+---
+
+## 🧭 Uso geral
+
+### 1️⃣ Inventariar arquivos
+
+```bash
+python scripts/duplicate_finder.py \\
+  --raiz "/caminho/para/storage" \\
+  --inventario inventario.csv \\
+  --mostrar-progresso
+```
+
+Cria `inventario.csv` com SHA-256 e metadados de cada arquivo.
+
+---
+
+### 2️⃣ Detectar duplicatas
+
+```bash
+python scripts/duplicate_finder.py \\
+  --inventario inventario.csv \\
+  --duplicatas duplicatas.csv
+```
+
+Gera `duplicatas.csv` listando grupos de arquivos com mesmo hash e tamanho.
+
+---
+
+### 3️⃣ Gerar modelo de decisões
+
+```bash
+python scripts/duplicate_finder.py \\
+  --from-duplicatas duplicatas.csv \\
+  --decisoes decisoes.csv
+```
+
+Cria um **modelo de planilha** para revisão humana e justificativa de decisão.
+
+---
+
+### 4️⃣ Gerar script de tratamento
+
+O script pode ser criado para **Linux (.sh)** ou **Windows (.cmd)**, com **ação de quarentena ou remoção definitiva**.
+
+#### 🐧 Linux — mover para quarentena (padrão)
+
+```bash
+python scripts/duplicate_finder.py \\
+  --decisoes decisoes.csv \\
+  --gerar-script-remocao tratar.sh \\
+  --sistema linux \\
+  --acao quarentena \\
+  --prefixo-quarentena QUARENTENA_DUP \\
+  --script-log-nome tratamento_duplicatas.log
+```
+
+**O que faz:**
+- Cria `tratar.sh` e uma pasta `QUARENTENA_DUP_YYYYMMDD_HHMMSS/`
+- Move arquivos para quarentena preservando a estrutura
+- Gera log detalhado em `tratamento_duplicatas.log`
+- Exige confirmação digitando `YES`
+
+#### 🐧 Linux — remover definitivamente
+
+```bash
+python scripts/duplicate_finder.py \\
+  --decisoes decisoes.csv \\
+  --gerar-script-remocao tratar.sh \\
+  --sistema linux \\
+  --acao remover
+```
+
+**O que faz:**
+- Cria `tratar.sh` que remove os arquivos após confirmação digitando `DELETE`
+- Gera log automático `tratamento_YYYYMMDD_HHMMSS.log`
+
+#### 🪟 Windows — mover para quarentena
+
+```bat
+python scripts\duplicate_finder.py ^
+  --decisoes decisoes.csv ^
+  --gerar-script-remocao tratar.cmd ^
+  --sistema windows ^
+  --acao quarentena ^
+  --prefixo-quarentena QUARENTENA_DUP ^
+  --script-log-nome tratamento_duplicatas.log
+```
+
+**O que faz:**
+- Usa PowerShell para criar pastas e mover arquivos preservando a estrutura
+- Gera log em `%cd%\tratamento_duplicatas.log`
+- Exige confirmação digitando `YES`
+
+#### 🪟 Windows — remover definitivamente
+
+```bat
+python scripts\duplicate_finder.py ^
+  --decisoes decisoes.csv ^
+  --gerar-script-remocao tratar.cmd ^
+  --sistema windows ^
+  --acao remover
+```
+
+**O que faz:**
+- Remove os arquivos após confirmação digitando `DELETE`
+- Gera log `tratamento_YYYYMMDD_HHMMSS.log`
+
+---
+
+## 📊 Dashboards
+
+### Potencial de recuperação (duplicatas)
+
+```bash
+python scripts/duplicate_finder.py \\
+  --inventario inventario.csv \\
+  --duplicatas duplicatas.csv \\
+  --dashboard-duplicatas-csv dashboard_duplicatas.csv \\
+  --dashboard-duplicatas-xlsx dashboard_duplicatas.xlsx
+```
+
+### Recuperação planejada (decisões)
+
+```bash
+python scripts/duplicate_finder.py \\
+  --inventario inventario.csv \\
+  --decisoes decisoes.csv \\
+  --dashboard-decisoes-csv dashboard_decisoes.csv \\
+  --dashboard-decisoes-xlsx dashboard_decisoes.xlsx
+```
+
+---
+
+## 📋 Parâmetros principais
+
+| Parâmetro | Descrição |
+|------------|------------|
+| `--raiz` | Pasta raiz a ser inventariada |
+| `--inventario` | Arquivo CSV de inventário |
+| `--duplicatas` | Arquivo CSV de duplicatas |
+| `--from-duplicatas` | Base de duplicatas para gerar modelo de decisões |
+| `--decisoes` | Arquivo CSV de decisões |
+| `--gerar-script-remocao` | Gera script de tratamento (`.sh` ou `.cmd`) |
+| `--sistema` | `linux` ou `windows` |
+| `--acao` | `quarentena` (mover) ou `remover` (excluir) |
+| `--prefixo-quarentena` | Prefixo do diretório de quarentena |
+| `--script-log-nome` | Nome do arquivo de log do script |
+| `--dashboard-duplicatas-*` | Geração de dashboards de duplicatas |
+| `--dashboard-decisoes-*` | Geração de dashboards de decisões |
+
+---
+
+## ⚠️ Observações importantes
+
+- **Nunca execute scripts de remoção diretamente em produção.**  
+  Revise sempre os caminhos e o arquivo `decisoes.csv` antes de aplicar.
+- O modo **quarentena** é **não destrutivo**, ideal para validação e testes.
+- Os scripts gerados são **auto-documentados e registram log** com `[OK]`, `[WARN]` e `[INFO]`.
+- O log é gravado tanto no terminal quanto em arquivo (`.log`).
+
+
+
+
+**Thor Arquivista – Amand © 2025**  
+Desenvolvido por Carlos Eduardo Carvalho Amand.
