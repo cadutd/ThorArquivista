@@ -22,14 +22,6 @@ def create_panel(app, enqueue_cb):
     """
     page = ttk.Frame(app._main_nb, padding=10)
 
-    # Topbar com "Fechar aba"
-    topbar = ttk.Frame(page); topbar.pack(fill=X)
-    ttk.Button(topbar, text="Fechar aba", bootstyle=DANGER,
-               command=lambda: _close_tab(app, page)).pack(side=RIGHT)
-
-    # Cabeçalho
-    ttk.Label(page, text="Controle do Worker", font=("Segoe UI", 14, "bold"), bootstyle=PRIMARY).pack(pady=(8, 12))
-
     # Estado + botões
     state_row = ttk.Frame(page); state_row.pack(fill=X)
     ttk.Label(state_row, text="Estado:").pack(side=LEFT, padx=(2, 8))
@@ -66,11 +58,17 @@ def create_panel(app, enqueue_cb):
         "error": StringVar(value="0"),
         "canceled": StringVar(value="0"),
     }
-    _add_count_row(counts_frame, "pending", counts_vars["pending"])
-    _add_count_row(counts_frame, "running", counts_vars["running"])
-    _add_count_row(counts_frame, "done", counts_vars["done"])
-    _add_count_row(counts_frame, "error", counts_vars["error"])
-    _add_count_row(counts_frame, "canceled", counts_vars["canceled"])
+
+    # Adiciona os contadores lado a lado
+    for col, (name, var) in enumerate(counts_vars.items()):
+        _add_count_cell(counts_frame, 0, col, name, var)
+
+
+#    _add_count_row(counts_frame, "pending", counts_vars["pending"])
+#    _add_count_row(counts_frame, "running", counts_vars["running"])
+#    _add_count_row(counts_frame, "done", counts_vars["done"])
+#    _add_count_row(counts_frame, "error", counts_vars["error"])
+#    _add_count_row(counts_frame, "canceled", counts_vars["canceled"])
 
     # Filtro e ações de fila
     actions = ttk.Frame(page); actions.pack(fill=X, pady=(10, 6))
@@ -88,6 +86,10 @@ def create_panel(app, enqueue_cb):
                command=lambda: _do_requeue_all(app, jobs_tree, filt)).pack(side=LEFT, padx=6)
     ttk.Button(actions, text="Limpar pendentes", bootstyle=DANGER,
                command=lambda: _do_clear_pending(app, jobs_tree, filt)).pack(side=LEFT, padx=6)
+    ttk.Button(actions, text="Limpar executados", bootstyle=DANGER,
+               command=lambda: _do_clear_done(app, jobs_tree, filt)).pack(side=LEFT, padx=6)
+    ttk.Button(actions, text="Limpar com erro", bootstyle=DANGER,
+               command=lambda: _do_clear_error(app, jobs_tree, filt)).pack(side=LEFT, padx=6)
     ttk.Button(actions, text="Cancelar selecionado", bootstyle=DANGER,
                command=lambda: _do_cancel_selected(app, jobs_tree, filt)).pack(side=LEFT, padx=6)
     ttk.Button(actions, text="Ver logs", bootstyle=INFO,
@@ -137,6 +139,13 @@ def create_panel(app, enqueue_cb):
 
         page.after(REFRESH_MS, _tick)
 
+
+    # rodape com "Fechar aba"
+    rodape = ttk.Frame(page); rodape.pack(fill=X)
+    ttk.Button(rodape, text="Fechar", bootstyle=DANGER,
+               command=lambda: _close_tab(app, page)).pack(side=LEFT)
+
+
     # primeira carga da lista
     _refresh_jobs(app, jobs_tree, filt.get())
     _tick()
@@ -154,6 +163,13 @@ def _add_count_row(parent, name, var):
     row = ttk.Frame(parent); row.pack(fill=X, pady=2)
     ttk.Label(row, text=f"{name}:", width=12, anchor="e").pack(side=LEFT, padx=(0, 8))
     ttk.Entry(row, textvariable=var, width=8, state="readonly").pack(side=LEFT)
+
+def _add_count_cell(parent, row, col, name, var):
+    """Adiciona um contador (label + valor) em uma célula da grid."""
+    ttk.Label(parent, text=f"{name}:", width=10, anchor="e").grid(row=row*2, column=col, padx=4, pady=(0, 2))
+    ttk.Entry(parent, textvariable=var, width=6, state="readonly", justify="center").grid(row=row*2+1, column=col, padx=4)
+    parent.grid_columnconfigure(col, weight=1)
+
 
 def _refresh_jobs(app, tree, status_filter):
     tree.delete(*tree.get_children())
@@ -242,6 +258,17 @@ def _do_clear_pending(app, tree, filt_var):
     n = app.worker.clear_pending()
     app._status.configure(text=f"Removidos {n} job(s) pendentes.")
     _refresh_jobs(app, tree, filt_var.get())
+
+def _do_clear_done(app, tree, filt_var):
+    n = app.worker.clear_done()
+    app._status.configure(text=f"Removidos {n} job(s) executados.")
+    _refresh_jobs(app, tree, filt_var.get())
+
+def _do_clear_error(app, tree, filt_var):
+    n = app.worker.clear_error()
+    app._status.configure(text=f"Removidos {n} job(s) com erro.")
+    _refresh_jobs(app, tree, filt_var.get())
+
 
 def _do_cancel_selected(app, tree, filt_var):
     sel = tree.selection()

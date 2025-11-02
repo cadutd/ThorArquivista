@@ -84,6 +84,14 @@ class Worker:
         """Remove todos os jobs 'pending'. Retorna quantos removeu."""
         return self.jobstore.clear_by_status('pending')
 
+    def clear_done(self) -> int:
+        """Remove todos os jobs 'done'. Retorna quantos removeu."""
+        return self.jobstore.clear_by_status('done')
+
+    def clear_error(self) -> int:
+        """Remove todos os jobs 'error'. Retorna quantos removeu."""
+        return self.jobstore.clear_by_status('error')
+
     def requeue_errors(self) -> int:
         """Muda jobs 'error' para 'pending'. Retorna quantos alterou."""
         return self.jobstore.requeue_from_status('error')
