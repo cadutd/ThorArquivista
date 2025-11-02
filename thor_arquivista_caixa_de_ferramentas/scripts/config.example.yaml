@@ -1,3 +1,19 @@
+# Thor Arquivista – Caixa de Ferramentas de Preservação Digital
+# Copyright (C) 2025  Carlos Eduardo Carvalho Amand
+#
+# Este programa é software livre: você pode redistribuí-lo e/ou modificá-lo
+# sob os termos da Licença Pública Geral GNU (GNU GPL), conforme publicada
+# pela Free Software Foundation, na versão 3 da Licença, ou (a seu critério)
+# qualquer versão posterior.
+#
+# Este programa é distribuído na esperança de que seja útil,
+# mas SEM QUALQUER GARANTIA; sem mesmo a garantia implícita de
+# COMERCIALIZAÇÃO ou ADEQUAÇÃO A UM PROPÓSITO PARTICULAR.
+# Veja a Licença Pública Geral GNU para mais detalhes.
+#
+# Você deve ter recebido uma cópia da GNU GPL junto com este programa.
+# Caso contrário, veja <https://www.gnu.org/licenses/>.
+
 # config.example.yaml — Exemplo de configuração compartilhada
 organismo: "Arquivo Público do Estado de São Paulo (APESP)"
 agente_padrao: "Sistema de Preservação Digital"

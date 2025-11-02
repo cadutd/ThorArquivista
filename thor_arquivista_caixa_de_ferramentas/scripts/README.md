@@ -478,6 +478,13 @@ python scripts/duplicate_finder.py \\
 
 
 
+## Licença
+Este projeto, **Thor Arquivista – Caixa de Ferramentas de Preservação Digital**,  
+é licenciado sob a **GNU General Public License v3.0 (GPLv3)**.  
 
-**Thor Arquivista – Amand © 2025**  
-Desenvolvido por Carlos Eduardo Carvalho Amand.
+© 2025 Carlos Eduardo Carvalho Amand.  
+Você é livre para usar, modificar e redistribuir este software,  
+desde que preserve esta licença e atribua o crédito ao autor original.  
+
+Mais informações: [https://www.gnu.org/licenses/gpl-3.0.html](https://www.gnu.org/licenses/gpl-3.0.html)
+

@@ -328,4 +328,11 @@ Além da UI, os scripts podem ser executados diretamente:
 ---
 
 ## Licença
-Definir conforme política institucional (ex.: MIT / BSD-3 / EUPL). Coloque o arquivo `LICENSE` na raiz.
+Este projeto, **Thor Arquivista – Caixa de Ferramentas de Preservação Digital**,  
+é licenciado sob a **GNU General Public License v3.0 (GPLv3)**.  
+
+© 2025 Carlos Eduardo Carvalho Amand.  
+Você é livre para usar, modificar e redistribuir este software,  
+desde que preserve esta licença e atribua o crédito ao autor original.  
+
+Mais informações: [https://www.gnu.org/licenses/gpl-3.0.html](https://www.gnu.org/licenses/gpl-3.0.html)
