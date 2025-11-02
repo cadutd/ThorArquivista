@@ -13,7 +13,7 @@ Cada script pode ser executado de forma independente pela linha de comando, ou c
 - [format_identify.py — Identificação de Formatos (em desenvolvimento)](#format_identifypy--identificação-de-formatos-em-desenvolvimento)
 - [replicate.py — Replicação de Diretórios (em desenvolvimento)](#replicatepy--replicação-de-diretórios-em-desenvolvimento)
 - [Boas práticas de execução](#boas-práticas-de-execução)
-
+- [Analise e eliminação de duplicatas](#duplicate_finderpy--localizador-de-duplicidades-e-geração-de-scripts-de-tratamento)
 ---
 
 ## `hash_files.py` — Geração de Manifesto BagIt
