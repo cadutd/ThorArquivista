@@ -2,6 +2,6 @@
   "scripts_dir": "./scripts",
   "logs_dir": "./logs",
   "premis_log": "./logs/premis_events.jsonl",
-  "premis_agent": "Gerenciador de Arquivos — Orquestração",
+  "premis_agent": "Thor Arquivista - Caixa de Ferramentas de Preservação Digital v1.0",
   "jobstore_path": "./jobs_db.json"
 }

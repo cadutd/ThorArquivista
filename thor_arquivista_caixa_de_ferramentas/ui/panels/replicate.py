@@ -9,7 +9,7 @@ def create_panel(app, enqueue_cb):
     page = ttk.Frame(app._main_nb, padding=10)
 
     topbar = ttk.Frame(page); topbar.pack(fill=X)
-    ttk.Button(topbar, text="Fechar aba", bootstyle=DANGER, command=lambda: _close_tab(app, page)).pack(side=RIGHT)
+    ttk.Button(topbar, text="Fechar", bootstyle=DANGER, command=lambda: _close_tab(app, page)).pack(side=RIGHT)
 
     fonte = StringVar(value="")
     destinos_text = None
@@ -38,7 +38,7 @@ def create_panel(app, enqueue_cb):
             "verificar_hash": bool(verificar.get()),
         })
 
-    ttk.Button(page, text="Executar", bootstyle=PRIMARY, command=_exec).pack(pady=10)
+    ttk.Button(page, text="Executar", bootstyle=PRIMARY, command=_exec).pack(pady=10)    
     return page
 
 def _ask_dir(var):

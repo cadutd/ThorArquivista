@@ -28,7 +28,7 @@ from ui.panels.duplicate_treatment import create_panel as panel_duplicate_treatm
 class MainApp(ttk.Window):
     def __init__(self, cfg: AppConfig):
         super().__init__(themename="flatly")
-        self.title("Thor Arquivista - Orquestrador de Preservação Digital")
+        self.title("Thor Arquivista - Caixa de Ferramentas de Preservação Digital")
         self.geometry("1200x800")
 
         self.cfg = cfg
@@ -73,7 +73,7 @@ class MainApp(ttk.Window):
 
         ttk.Label(
             start_frame,
-            text="Thor Arquivista\nOrquestrador de Preservação Digital",
+            text="Thor Arquivista\nCaixa de Ferramentas de Preservação Digital",
             font=("Segoe UI", 14, "bold"),
             bootstyle=PRIMARY,
             anchor="center",
@@ -92,10 +92,10 @@ class MainApp(ttk.Window):
         submenu_duplicatas.add_command(label="Analise de Duplicatas", command=lambda: _open("Analise de Duplicatas", panel_duplicate_analysis))
         submenu_duplicatas.add_command(label="Tratamento de Duplicatas", command=lambda: _open("Tratamento de Duplicatas", panel_duplicate_treatment))
         menu_tarefas.add_cascade(label="Duplicatas", menu=submenu_duplicatas)
-        menu_tarefas.add_command(label="SIP", command=lambda: _open("SIP", panel_sip))
-        menu_tarefas.add_command(label="Identificar Formatos", command=lambda: _open("Identificar Formatos", panel_fmt))
-        menu_tarefas.add_command(label="Replicar", command=lambda: _open("Replicar", panel_rep))
-        menu_tarefas.add_command(label="Evento PREMIS", command=lambda: _open("Evento PREMIS", panel_premis_evt))
+        menu_tarefas.add_command(label="Copiar", command=lambda: _open("Copiar", panel_rep))
+#        menu_tarefas.add_command(label="SIP", command=lambda: _open("SIP", panel_sip))
+#        menu_tarefas.add_command(label="Identificar Formatos", command=lambda: _open("Identificar Formatos", panel_fmt))
+        menu_tarefas.add_command(label="Registrar Evento PREMIS", command=lambda: _open("Evento PREMIS", panel_premis_evt))
         menu_visual.add_command(label="Eventos PREMIS", command=lambda: _open("Eventos PREMIS", panel_premis_view))
         menu_visual.add_command(label="Controle do Worker", command=lambda: _open("Controle do Worker", panel_worker))
 
