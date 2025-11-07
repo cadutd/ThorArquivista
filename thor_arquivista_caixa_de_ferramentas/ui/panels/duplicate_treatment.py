@@ -19,8 +19,9 @@
 from __future__ import annotations
 
 import tkinter as tk
+from tkinter import ttk
 from tkinter import filedialog, messagebox
-from ttkbootstrap import ttk
+import ttkbootstrap as tb
 from ttkbootstrap.constants import *
 
 # -----------------------------------------------------------------------------
@@ -35,7 +36,7 @@ from ttkbootstrap.constants import *
 # -----------------------------------------------------------------------------
 
 def create_panel(parent, enqueue_cb, close_cb=None):
-    page = ttk.Frame(parent)
+    page = tb.Frame(parent)
 
     # ----------------- Vars (Script de tratamento) -----------------
     decisoes_st = tk.StringVar()
@@ -64,18 +65,18 @@ def create_panel(parent, enqueue_cb, close_cb=None):
     _grid_pair_btn(grp_st, 0, "Decisões CSV:", decisoes_st, pick_file=True, csv_only=True)
     _grid_pair_btn(grp_st, 0, "Script de saída (.sh/.cmd):", script_out, col=3, pick_file=True, save_as=True, script_ft=True)
 
-    ttk.Label(grp_st, text="Sistema:").grid(row=1, column=0, sticky="e", padx=(6, 4), pady=(6, 0))
-    ttk.Combobox(grp_st, textvariable=sistema, state="readonly", values=["linux", "windows"], width=12)\
+    tb.Label(grp_st, text="Sistema:").grid(row=1, column=0, sticky="e", padx=(6, 4), pady=(6, 0))
+    tb.Combobox(grp_st, textvariable=sistema, state="readonly", values=["linux", "windows"], width=12)\
         .grid(row=1, column=1, sticky="w", padx=(0, 6), pady=(6, 0))
 
-    ttk.Label(grp_st, text="Ação:").grid(row=1, column=2, sticky="e", padx=(6, 4), pady=(6, 0))
-    ttk.Combobox(grp_st, textvariable=acao, state="readonly", values=["quarentena", "remover"], width=14)\
+    tb.Label(grp_st, text="Ação:").grid(row=1, column=2, sticky="e", padx=(6, 4), pady=(6, 0))
+    tb.Combobox(grp_st, textvariable=acao, state="readonly", values=["quarentena", "remover"], width=14)\
         .grid(row=1, column=3, sticky="w", padx=(0, 6), pady=(6, 0))
 
     _grid_pair(grp_st, 2, "Prefixo quarentena:", prefixo_quarentena, width=22, col=0)
     _grid_pair(grp_st, 2, "Nome do log (opcional):", script_log_nome, width=40, col=2)
 
-    ttk.Button(
+    tb.Button(
         grp_st,
         text="Gerar script",
         bootstyle=PRIMARY,
@@ -95,7 +96,7 @@ def create_panel(parent, enqueue_cb, close_cb=None):
     _grid_pair_btn(grp_dd, 1, "Dashboard CSV (saída):", dash_dup_csv, pick_file=True, save_as=True, csv_only=True)
     _grid_pair_btn(grp_dd, 1, "Dashboard XLSX (opcional):", dash_dup_xlsx, col=3, pick_file=True, save_as=True, xlsx_only=True)
 
-    ttk.Button(
+    tb.Button(
         grp_dd,
         text="Gerar dashboard (duplicatas)",
         bootstyle=PRIMARY,
@@ -115,7 +116,7 @@ def create_panel(parent, enqueue_cb, close_cb=None):
     _grid_pair_btn(grp_dm, 1, "Dashboard CSV (saída):", dash_dec_csv, pick_file=True, save_as=True, csv_only=True)
     _grid_pair_btn(grp_dm, 1, "Dashboard XLSX (opcional):", dash_dec_xlsx, col=3, pick_file=True, save_as=True, xlsx_only=True)
 
-    ttk.Button(
+    tb.Button(
         grp_dm,
         text="Gerar dashboard (decisões)",
         bootstyle=PRIMARY,
@@ -126,9 +127,9 @@ def create_panel(parent, enqueue_cb, close_cb=None):
     grp_dm.grid_columnconfigure(4, weight=1)
 
     # ----------------- Rodapé -----------------
-    fr_btns = ttk.Frame(page)
+    fr_btns = tb.Frame(page)
     fr_btns.pack(fill="x", pady=8)
-    ttk.Button(fr_btns, text="Fechar", bootstyle=DANGER, command=lambda: _close()).pack(side="left", padx=6)
+    tb.Button(fr_btns, text="Fechar", bootstyle=DANGER, command=lambda: _close()).pack(side="left", padx=6)
 
     # ----------------- Funções locais -----------------
 
@@ -252,22 +253,22 @@ def _pick_file(var: tk.StringVar, save_as: bool = False, *, csv_only=False, xlsx
 
 
 def _grid_pair(parent, row, label, var, width=None, *, col=0, colspan=1):
-    ttk.Label(parent, text=label).grid(row=row, column=col, sticky="e", padx=(6 if col else 0, 4), pady=2)
-    entry = ttk.Entry(parent, textvariable=var, width=width or 40)
+    tb.Label(parent, text=label).grid(row=row, column=col, sticky="e", padx=(6 if col else 0, 4), pady=2)
+    entry = tb.Entry(parent, textvariable=var, width=width or 40)
     entry.grid(row=row, column=col + 1, columnspan=colspan, sticky="we", pady=2)
     parent.grid_columnconfigure(col + 1, weight=1)
 
 
 def _grid_pair_btn(parent, row, label, var, *, col=0, pick_dir=False, pick_file=False, save_as=False, csv_only=False, xlsx_only=False, script_ft=False):
-    ttk.Label(parent, text=label).grid(row=row, column=col, sticky="e", padx=(6 if col else 0, 4), pady=2)
-    entry = ttk.Entry(parent, textvariable=var)
+    tb.Label(parent, text=label).grid(row=row, column=col, sticky="e", padx=(6 if col else 0, 4), pady=2)
+    entry = tb.Entry(parent, textvariable=var)
     entry.grid(row=row, column=col + 1, sticky="we", pady=2)
 
     if pick_dir:
-        ttk.Button(parent, text="📂", width=3, command=lambda: _pick_dir(var))\
+        tb.Button(parent, text="📂", width=3, command=lambda: _pick_dir(var))\
            .grid(row=row, column=col + 2, sticky="w", padx=(6, 0), pady=2)
     elif pick_file:
-        ttk.Button(parent, text="📄", width=3, command=lambda: _pick_file(var, save_as=save_as, csv_only=csv_only, xlsx_only=xlsx_only, script_ft=script_ft))\
+        tb.Button(parent, text="📄", width=3, command=lambda: _pick_file(var, save_as=save_as, csv_only=csv_only, xlsx_only=xlsx_only, script_ft=script_ft))\
            .grid(row=row, column=col + 2, sticky="w", padx=(6, 0), pady=2)
 
     parent.grid_columnconfigure(col + 1, weight=1)

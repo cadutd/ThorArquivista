@@ -26,8 +26,9 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 import tkinter as tk
+from tkinter import ttk 
 from tkinter import filedialog, messagebox
-from ttkbootstrap import ttk
+import ttkbootstrap as tb
 from ttkbootstrap.constants import *
 
 # -------------------------
@@ -119,7 +120,7 @@ def _prettify_label(key: str) -> str:
 # Fábrica no padrão do projeto
 # -------------------------
 def create_panel(parent, enqueue_cb, close_cb=None):
-    page = ttk.Frame(parent)
+    page = tb.Frame(parent)
 
     # Vars principais
     raiz = tk.StringVar()
@@ -145,45 +146,45 @@ def create_panel(parent, enqueue_cb, close_cb=None):
     dynamic_params: Dict[str, tuple[tk.Variable, str]] = {}
 
     # Layout fixo
-    fr_paths = ttk.Frame(page)
+    fr_paths = tb.Frame(page)
     fr_paths.pack(fill="x", pady=2)
 
-    ttk.Label(fr_paths, text="Pasta fonte (payload):").grid(row=0, column=0, sticky="w")
-    ttk.Entry(fr_paths, textvariable=raiz, width=60).grid(row=0, column=1, sticky="we", padx=4)
-    ttk.Button(fr_paths, text="Selecionar…", command=lambda: _pick_dir(raiz)).grid(row=0, column=2, sticky="w")
+    tb.Label(fr_paths, text="Pasta fonte (payload):").grid(row=0, column=0, sticky="w")
+    tb.Entry(fr_paths, textvariable=raiz, width=60).grid(row=0, column=1, sticky="we", padx=4)
+    tb.Button(fr_paths, text="Selecionar…", command=lambda: _pick_dir(raiz)).grid(row=0, column=2, sticky="w")
 
-    ttk.Label(fr_paths, text="Nome do Pacote:").grid(row=1, column=0, sticky="w", pady=(4, 0))
-    ttk.Entry(fr_paths, textvariable=bag_name, width=40).grid(row=1, column=1, sticky="w", padx=4, pady=(4, 0))
+    tb.Label(fr_paths, text="Nome do Pacote:").grid(row=1, column=0, sticky="w", pady=(4, 0))
+    tb.Entry(fr_paths, textvariable=bag_name, width=40).grid(row=1, column=1, sticky="w", padx=4, pady=(4, 0))
 
-    ttk.Label(fr_paths, text="Diretório destino (pai):").grid(row=2, column=0, sticky="w", pady=(4, 0))
-    ttk.Entry(fr_paths, textvariable=destino, width=60).grid(row=2, column=1, sticky="we", padx=4, pady=(4, 0))
-    ttk.Button(fr_paths, text="Selecionar…", command=lambda: _pick_dir(destino)).grid(row=2, column=2, sticky="w", pady=(4, 0))
+    tb.Label(fr_paths, text="Diretório destino (pai):").grid(row=2, column=0, sticky="w", pady=(4, 0))
+    tb.Entry(fr_paths, textvariable=destino, width=60).grid(row=2, column=1, sticky="we", padx=4, pady=(4, 0))
+    tb.Button(fr_paths, text="Selecionar…", command=lambda: _pick_dir(destino)).grid(row=2, column=2, sticky="w", pady=(4, 0))
     fr_paths.grid_columnconfigure(1, weight=1)
 
     # Profile
-    fr_prof = ttk.Frame(page)
+    fr_prof = tb.Frame(page)
     fr_prof.pack(fill="x", pady=6)
-    ttk.Label(fr_prof, text="Profile:").grid(row=0, column=0, sticky="w")
-    cmb = ttk.Combobox(fr_prof, textvariable=profile_choice, state="readonly", width=40,
+    tb.Label(fr_prof, text="Profile:").grid(row=0, column=0, sticky="w")
+    cmb = tb.Combobox(fr_prof, textvariable=profile_choice, state="readonly", width=40,
                        values=sorted(list(profile_map.keys())))
     if cmb["values"]:
         cmb.current(0)
     cmb.grid(row=0, column=1, sticky="w", padx=4)
-    ttk.Button(fr_prof, text="Abrir JSON…", command=lambda: _browse_profile_file()).grid(row=0, column=2, padx=(6, 0))
-    ttk.Button(fr_prof, text="Carregar campos", command=lambda: _load_selected_profile()).grid(row=0, column=3, padx=(6, 0))
+    tb.Button(fr_prof, text="Abrir JSON…", command=lambda: _browse_profile_file()).grid(row=0, column=2, padx=(6, 0))
+    tb.Button(fr_prof, text="Carregar campos", command=lambda: _load_selected_profile()).grid(row=0, column=3, padx=(6, 0))
 
     # Opções
-    fr_opts = ttk.Frame(page)
+    fr_opts = tb.Frame(page)
     fr_opts.pack(fill="x", pady=4)
-    ttk.Label(fr_opts, text="Algoritmo:").grid(row=0, column=0, sticky="e")
-    ttk.Combobox(fr_opts, textvariable=algo, values=["sha256", "sha512", "md5"], width=10, state="readonly").grid(row=0, column=1, sticky="w", padx=4)
-    ttk.Label(fr_opts, text="Modo:").grid(row=0, column=2, sticky="e")
-    ttk.Combobox(fr_opts, textvariable=modo, values=["copy", "link", "move"], width=10, state="readonly").grid(row=0, column=3, sticky="w", padx=4)
-    ttk.Label(fr_opts, text="Pattern:").grid(row=0, column=4, sticky="e")
-    ttk.Entry(fr_opts, textvariable=pattern, width=14).grid(row=0, column=5, sticky="w", padx=4)
-    ttk.Checkbutton(fr_opts, text="Incluir ocultos", variable=include_hidden).grid(row=1, column=0, sticky="w", pady=(6, 0))
-    ttk.Checkbutton(fr_opts, text="Seguir symlinks", variable=follow_symlinks).grid(row=1, column=1, sticky="w", pady=(6, 0))
-    ttk.Checkbutton(fr_opts, text="Gerar tagmanifest", variable=tagmanifest).grid(row=1, column=2, sticky="w", pady=(6, 0))
+    tb.Label(fr_opts, text="Algoritmo:").grid(row=0, column=0, sticky="e")
+    tb.Combobox(fr_opts, textvariable=algo, values=["sha256", "sha512", "md5"], width=10, state="readonly").grid(row=0, column=1, sticky="w", padx=4)
+    tb.Label(fr_opts, text="Modo:").grid(row=0, column=2, sticky="e")
+    tb.Combobox(fr_opts, textvariable=modo, values=["copy", "link", "move"], width=10, state="readonly").grid(row=0, column=3, sticky="w", padx=4)
+    tb.Label(fr_opts, text="Pattern:").grid(row=0, column=4, sticky="e")
+    tb.Entry(fr_opts, textvariable=pattern, width=14).grid(row=0, column=5, sticky="w", padx=4)
+    tb.Checkbutton(fr_opts, text="Incluir ocultos", variable=include_hidden).grid(row=1, column=0, sticky="w", pady=(6, 0))
+    tb.Checkbutton(fr_opts, text="Seguir symlinks", variable=follow_symlinks).grid(row=1, column=1, sticky="w", pady=(6, 0))
+    tb.Checkbutton(fr_opts, text="Gerar tagmanifest", variable=tagmanifest).grid(row=1, column=2, sticky="w", pady=(6, 0))
 
     # Metadados padrão
     fr_meta = ttk.LabelFrame(page, text="Metadados padrão")
@@ -199,8 +200,8 @@ def create_panel(parent, enqueue_cb, close_cb=None):
     grp_dyn.pack(fill="both", expand=True, pady=6)
 
     canvas = tk.Canvas(grp_dyn, highlightthickness=0)
-    scrollbar = ttk.Scrollbar(grp_dyn, orient="vertical", command=canvas.yview)
-    scroll_frame = ttk.Frame(canvas)
+    scrollbar = tb.Scrollbar(grp_dyn, orient="vertical", command=canvas.yview)
+    scroll_frame = tb.Frame(canvas)
     scroll_window = canvas.create_window((0, 0), window=scroll_frame, anchor="nw")
 
     canvas.configure(yscrollcommand=scrollbar.set)
@@ -278,10 +279,10 @@ def create_panel(parent, enqueue_cb, close_cb=None):
     # -------------------------------------------------------------------
 
     # Botões
-    fr_btns = ttk.Frame(page)
+    fr_btns = tb.Frame(page)
     fr_btns.pack(fill="x", pady=8)
-    ttk.Button(fr_btns, text="Executar", bootstyle=PRIMARY, command=lambda: _exec()).pack(side="left")
-    ttk.Button(fr_btns, text="Fechar", bootstyle=DANGER, command=lambda: _close()).pack(side="left", padx=6)
+    tb.Button(fr_btns, text="Executar", bootstyle=PRIMARY, command=lambda: _exec()).pack(side="left")
+    tb.Button(fr_btns, text="Fechar", bootstyle=DANGER, command=lambda: _close()).pack(side="left", padx=6)
 
     # ---------------
     def _pick_dir(var):
@@ -318,7 +319,7 @@ def create_panel(parent, enqueue_cb, close_cb=None):
         dynamic_params.clear()
 
         if not current_profile_data:
-            ttk.Label(scroll_frame, text="Nenhum profile carregado.").pack(anchor="w")
+            tb.Label(scroll_frame, text="Nenhum profile carregado.").pack(anchor="w")
             return
 
         phs = _extract_placeholders(current_profile_data)
@@ -326,23 +327,23 @@ def create_panel(parent, enqueue_cb, close_cb=None):
         ui_defaults = current_profile_data.get("ui_defaults", {}) or {}
 
         if not phs:
-            ttk.Label(scroll_frame, text="O profile não define placeholders adicionais.").pack(anchor="w")
+            tb.Label(scroll_frame, text="O profile não define placeholders adicionais.").pack(anchor="w")
             return
 
         for r, key in enumerate(phs):
             label_text = _prettify_label(key)
-            ttk.Label(scroll_frame, text=f"{label_text}:").grid(row=r, column=0, sticky="e", padx=(0, 6), pady=2)
+            tb.Label(scroll_frame, text=f"{label_text}:").grid(row=r, column=0, sticky="e", padx=(0, 6), pady=2)
             default_val = ui_defaults.get(key, "")
             opts = ui_opts.get(key)
             if isinstance(opts, list) and opts:
                 var = tk.StringVar()
-                cb = ttk.Combobox(scroll_frame, textvariable=var, values=opts, state="readonly", width=42)
+                cb = tb.Combobox(scroll_frame, textvariable=var, values=opts, state="readonly", width=42)
                 var.set(default_val if default_val in opts else opts[0])
                 cb.grid(row=r, column=1, sticky="we", pady=2)
                 dynamic_params[key] = (var, "combo")
             else:
                 var = tk.StringVar(value=default_val)
-                ttk.Entry(scroll_frame, textvariable=var, width=42).grid(row=r, column=1, sticky="we", pady=2)
+                tb.Entry(scroll_frame, textvariable=var, width=42).grid(row=r, column=1, sticky="we", pady=2)
                 dynamic_params[key] = (var, "entry")
         scroll_frame.grid_columnconfigure(1, weight=1)
 
@@ -404,5 +405,5 @@ def create_panel(parent, enqueue_cb, close_cb=None):
 
 # Helper
 def _grid_pair(parent, row, label, var, width, *, col=0, colspan=1):
-    ttk.Label(parent, text=label).grid(row=row, column=col, sticky="e", padx=(6 if col else 0, 4), pady=2)
-    ttk.Entry(parent, textvariable=var, width=width).grid(row=row, column=col + 1, columnspan=colspan, sticky="we", pady=2)
+    tb.Label(parent, text=label).grid(row=row, column=col, sticky="e", padx=(6 if col else 0, 4), pady=2)
+    tb.Entry(parent, textvariable=var, width=width).grid(row=row, column=col + 1, columnspan=colspan, sticky="we", pady=2)

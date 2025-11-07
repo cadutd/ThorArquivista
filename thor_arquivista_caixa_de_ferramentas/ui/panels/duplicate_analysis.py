@@ -18,8 +18,9 @@
 from __future__ import annotations
 
 import tkinter as tk
+from tkinter import ttk 
 from tkinter import filedialog, messagebox
-from ttkbootstrap import ttk
+import ttkbootstrap as tb
 from ttkbootstrap.constants import *
 
 # -----------------------------------------------------------------------------
@@ -34,7 +35,7 @@ from ttkbootstrap.constants import *
 # -----------------------------------------------------------------------------
 
 def create_panel(parent, enqueue_cb, close_cb=None):
-    page = ttk.Frame(parent)
+    page = tb.Frame(parent)
 
     # ----------------- Vars (Inventário) -----------------
     raiz_inv = tk.StringVar()
@@ -55,9 +56,9 @@ def create_panel(parent, enqueue_cb, close_cb=None):
 
     _grid_pair_btn(grp_inv, 0, "Pasta raiz:", raiz_inv, pick_dir=True)
     _grid_pair_btn(grp_inv, 0, "Inventário CSV:", inventario_inv, col=3, pick_file=True, save_as=True)
-    ttk.Checkbutton(grp_inv, text="Mostrar progresso", variable=mostrar_progresso).grid(row=1, column=0, sticky="w", padx=6, pady=(4, 2))
+    tb.Checkbutton(grp_inv, text="Mostrar progresso", variable=mostrar_progresso).grid(row=1, column=0, sticky="w", padx=6, pady=(4, 2))
 
-    ttk.Button(
+    tb.Button(
         grp_inv,
         text="Executar inventário",
         bootstyle=PRIMARY,
@@ -74,7 +75,7 @@ def create_panel(parent, enqueue_cb, close_cb=None):
     _grid_pair_btn(grp_dup, 0, "Inventário CSV:", inventario_dup, pick_file=True)
     _grid_pair_btn(grp_dup, 0, "Duplicatas CSV:", duplicatas_dup, col=3, pick_file=True, save_as=True)
 
-    ttk.Button(
+    tb.Button(
         grp_dup,
         text="Detectar duplicatas",
         bootstyle=PRIMARY,
@@ -91,7 +92,7 @@ def create_panel(parent, enqueue_cb, close_cb=None):
     _grid_pair_btn(grp_mod, 0, "Duplicatas CSV:", duplicatas_mod, pick_file=True)
     _grid_pair_btn(grp_mod, 0, "Decisões CSV:", decisoes_mod, col=3, pick_file=True, save_as=True)
 
-    ttk.Button(
+    tb.Button(
         grp_mod,
         text="Gerar modelo de decisão",
         bootstyle=PRIMARY,
@@ -102,9 +103,9 @@ def create_panel(parent, enqueue_cb, close_cb=None):
     grp_mod.grid_columnconfigure(4, weight=1)
 
     # ----------------- Rodapé -----------------
-    fr_btns = ttk.Frame(page)
+    fr_btns = tb.Frame(page)
     fr_btns.pack(fill="x", pady=8)
-    ttk.Button(fr_btns, text="Fechar", bootstyle=DANGER, command=lambda: _close()).pack(side="left", padx=6)
+    tb.Button(fr_btns, text="Fechar", bootstyle=DANGER, command=lambda: _close()).pack(side="left", padx=6)
 
     # ----------------- Funções locais -----------------
 
@@ -196,23 +197,23 @@ def _pick_file(var: tk.StringVar, save_as: bool = False):
 
 
 def _grid_pair(parent, row, label, var, width=None, *, col=0, colspan=1):
-    ttk.Label(parent, text=label).grid(row=row, column=col, sticky="e", padx=(6 if col else 0, 4), pady=2)
-    entry = ttk.Entry(parent, textvariable=var, width=width or 40)
+    tb.Label(parent, text=label).grid(row=row, column=col, sticky="e", padx=(6 if col else 0, 4), pady=2)
+    entry = tb.Entry(parent, textvariable=var, width=width or 40)
     entry.grid(row=row, column=col + 1, columnspan=colspan, sticky="we", pady=2)
     parent.grid_columnconfigure(col + 1, weight=1)
 
 
 def _grid_pair_btn(parent, row, label, var, *, col=0, pick_dir=False, pick_file=False, save_as=False):
-    ttk.Label(parent, text=label).grid(row=row, column=col, sticky="e", padx=(6 if col else 0, 4), pady=2)
-    entry = ttk.Entry(parent, textvariable=var)
+    tb.Label(parent, text=label).grid(row=row, column=col, sticky="e", padx=(6 if col else 0, 4), pady=2)
+    entry = tb.Entry(parent, textvariable=var)
     entry.grid(row=row, column=col + 1, sticky="we", pady=2)
 
     # Botão com ícone unicode para ação
     if pick_dir:
-        ttk.Button(parent, text="📂", width=3, command=lambda: _pick_dir(var))\
+        tb.Button(parent, text="📂", width=3, command=lambda: _pick_dir(var))\
            .grid(row=row, column=col + 2, sticky="w", padx=(6, 0), pady=2)
     elif pick_file:
-        ttk.Button(parent, text="📄", width=3, command=lambda: _pick_file(var, save_as=save_as))\
+        tb.Button(parent, text="📄", width=3, command=lambda: _pick_file(var, save_as=save_as))\
            .grid(row=row, column=col + 2, sticky="w", padx=(6, 0), pady=2)
 
     parent.grid_columnconfigure(col + 1, weight=1)

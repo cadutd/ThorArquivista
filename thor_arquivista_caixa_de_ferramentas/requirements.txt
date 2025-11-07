@@ -1,9 +1,9 @@
 
-ttkbootstrap>=1.10.1
+ttkbootstrap>=1.18.1
 pymongo>=4.10.1
 tqdm>=4.66.4
 PyYAML>=6.0.2
 python-dotenv>=1.0.1
 XlsxWriter>=3.0.0
-pandascd ..
-Pillow
+pandas>=2.3.3
+Pillow>=10.4.0
