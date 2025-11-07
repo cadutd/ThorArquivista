@@ -1,4 +1,38 @@
 {
-  "jobs": [],
-  "logs": {}
+  "jobs": [
+    {
+      "_id": "52d2b33d-5bef-4556-8a68-4b9f45fefa53",
+      "job_type": "HASH_MANIFEST",
+      "status": "done",
+      "params": {
+        "raiz": "C:\\Users\\cadut\\Desktop\\LISTAS",
+        "saida": "C:\\Users\\cadut\\Desktop\\LISTAS\\manifest-sha256.txt",
+        "algo": "sha256",
+        "progress": false,
+        "ignore_hidden": true
+      },
+      "created_at": "2025-11-07T01:00:11.649816Z",
+      "updated_at": "2025-11-07T01:00:12.468569Z",
+      "error_msg": null
+    }
+  ],
+  "logs": {
+    "52d2b33d-5bef-4556-8a68-4b9f45fefa53": [
+      {
+        "ts": "2025-11-07T01:00:11.651362Z",
+        "level": "INFO",
+        "msg": "Enfileirado HASH_MANIFEST"
+      },
+      {
+        "ts": "2025-11-07T01:00:11.981786Z",
+        "level": "INFO",
+        "msg": "Iniciando job HASH_MANIFEST"
+      },
+      {
+        "ts": "2025-11-07T01:00:12.467034Z",
+        "level": "INFO",
+        "msg": "Concluído com sucesso"
+      }
+    ]
+  }
 }

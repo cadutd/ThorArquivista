@@ -3,5 +3,6 @@
   "logs_dir": "./logs",
   "premis_log": "./logs/premis_events.jsonl",
   "premis_agent": "Thor Arquivista - Caixa de Ferramentas de Preservação Digital v1.0",
-  "jobstore_path": "./jobs_db.json"
+  "jobstore_path": "./jobs_db.json",
+  "ui_theme": "flatly"
 }
