@@ -19,7 +19,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-import ttkbootstrap as ttk
+import tkinter as tk
+from tkinter import ttk
+import ttkbootstrap as tb
 from ttkbootstrap.constants import *
 from tkinter import BOTH, X, YES
 
@@ -28,7 +30,6 @@ from core.jobstore import JobStore
 from core.worker import Worker
 
 # painéis (cada um com create_panel(app, enqueue_cb))
-# mantenha seus outros painéis anteriores, ex.:
 from ui.panels.premis_view import create_panel as panel_premis_view
 from ui.panels.hash_manifest import create_panel as panel_hash
 from ui.panels.verify_fixity import create_panel as panel_fixity
@@ -41,9 +42,11 @@ from ui.panels.worker_control import create_panel as panel_worker
 from ui.panels.duplicate_analysis import create_panel as panel_duplicate_analysis
 from ui.panels.duplicate_treatment import create_panel as panel_duplicate_treatment
 
-class MainApp(ttk.Window):
+
+class MainApp(tb.Window):
     def __init__(self, cfg: AppConfig):
         super().__init__(themename="flatly")
+
         self.title("Thor Arquivista - Caixa de Ferramentas de Preservação Digital")
         self.geometry("1200x800")
 
@@ -52,17 +55,55 @@ class MainApp(ttk.Window):
         self.worker = Worker(cfg=self.cfg, jobstore=self.jobstore)
         self.worker.start()
 
+        # Style para gerenciar temas
+        self._style = tb.Style()
+        self._theme_var = tk.StringVar(value=self._style.theme_use())
+        themes = sorted(self._style.theme_names())
+
         # Barra superior
         top = ttk.Frame(self, padding=10)
         top.pack(fill=X)
-        ttk.Label(top, text=f"JobStore: {Path(self.jobstore.path).resolve()}", bootstyle=INFO).pack(side=LEFT, padx=5)
-        ttk.Label(top, text=f"Scripts: {self.cfg.scripts_dir}", bootstyle=INFO).pack(side=LEFT, padx=10)
+
+        # Esquerda: informações
+        left_box = ttk.Frame(top)
+        left_box.pack(side=LEFT, fill=X, expand=True)
+        ttk.Label(left_box, text=f"JobStore: {Path(self.jobstore.path).resolve()}",
+                  bootstyle=INFO).pack(side=LEFT, padx=5)
+        ttk.Label(left_box, text=f"Scripts: {self.cfg.scripts_dir}",
+                  bootstyle=INFO).pack(side=LEFT, padx=10)
+
+        # Direita: Combobox de tema + Botão aplicar
+        right_box = ttk.Frame(top)
+        right_box.pack(side=RIGHT)
+
+        ttk.Label(right_box, text="Tema:", bootstyle=SECONDARY).pack(side=LEFT, padx=(0, 6))
+        self._theme_cbx = ttk.Combobox(
+            right_box, textvariable=self._theme_var, values=themes,
+            width=18, state="readonly"
+        )
+        try:
+            self._theme_cbx.set(self._style.theme_use())
+        except Exception:
+            pass
+        self._theme_cbx.pack(side=LEFT)
+
+        def apply_theme():
+            try:
+                sel = (self._theme_var.get() or "").strip()
+                if sel:
+                    self._style.theme_use(sel)
+                    self._status.configure(text=f"Tema aplicado: {sel}")
+            except Exception as e:
+                self._status.configure(text=f"Falha ao aplicar tema: {e}")
+
+        ttk.Button(right_box, text="Aplicar", command=apply_theme,
+                   bootstyle=PRIMARY).pack(side=LEFT, padx=6)
 
         # Menu + Notebook
-        menubar = ttk.Menu(self)
-        menu_tarefas = ttk.Menu(menubar, tearoff=False)
-        menu_visual = ttk.Menu(menubar, tearoff=False)
-        submenu_duplicatas = ttk.Menu(menubar, tearoff=False)
+        menubar = tk.Menu(self)  # <- tk.Menu (não ttk)
+        menu_tarefas = tk.Menu(menubar, tearoff=False)
+        menu_visual = tk.Menu(menubar, tearoff=False)
+        submenu_duplicatas = tk.Menu(menubar, tearoff=False)
         menubar.add_cascade(label="Tarefas", menu=menu_tarefas)
         menubar.add_cascade(label="Visualização", menu=menu_visual)
         self.config(menu=menubar)
@@ -83,9 +124,11 @@ class MainApp(ttk.Window):
                 ttk.Label(start_frame, image=photo).pack(pady=30)
                 setattr(self, "_start_img", photo)
             except Exception as e:
-                ttk.Label(start_frame, text=f"Falha ao carregar imagem: {e}", bootstyle=DANGER).pack(pady=50)
+                ttk.Label(start_frame, text=f"Falha ao carregar imagem: {e}",
+                          bootstyle=DANGER).pack(pady=50)
         else:
-            ttk.Label(start_frame, text=f"Imagem não encontrada: {img_path.name}", bootstyle=WARNING).pack(pady=50)
+            ttk.Label(start_frame, text=f"Imagem não encontrada: {img_path.name}",
+                      bootstyle=WARNING).pack(pady=50)
 
         ttk.Label(
             start_frame,
