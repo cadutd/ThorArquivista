@@ -7,3 +7,4 @@ python-dotenv>=1.0.1
 XlsxWriter>=3.0.0
 pandas>=2.3.3
 Pillow>=10.4.0
+lxml>=6.0.2 

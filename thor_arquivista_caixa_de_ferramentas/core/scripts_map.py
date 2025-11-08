@@ -168,6 +168,49 @@ def _args_duplicate_finder(p: Dict[str, Any], cfg: AppConfig) -> list[str]:
     raise ValueError(f"DUPLICATE_FINDER: modo não tratado: {modo!r}")
 
 
+def _args_premis_converter(p: Dict[str, Any], cfg: AppConfig) -> list[str]:
+    """
+    Constrói argv para scripts/premis_converter.py.
+
+    Payload aceito (chaves PT/EN):
+      - entrada | in      -> caminho de entrada (.xml | .csv | .json)
+      - saida   | out     -> caminho de saída (.xml | .csv | .json) (opcional)
+      - validar | validate (bool) -> adiciona --validate
+      - schema            -> caminho do XSD (opcional)
+      - exemplo | example (bool) -> se True, gera exemplos (--example) e ignora os demais
+
+    Regras:
+      - Se exemplo/example=True: retorna apenas ["--example"] (e opcionalmente --schema, se houver).
+      - Caso contrário, 'entrada'/'in' é obrigatório.
+    """
+    # Normaliza chaves
+    entrada = p.get("entrada") or p.get("in") or p.get("--in")
+    saida   = p.get("saida")   or p.get("out") or p.get("--out")
+    validar = p.get("validar") if "validar" in p else p.get("validate") or p.get("--validate")
+    schema  = p.get("schema")  or p.get("--schema")
+    exemplo = p.get("exemplo") if "exemplo" in p else p.get("example") or p.get("--example")
+
+    args: list[str] = []
+
+    if exemplo:
+        args.append("--example")
+        if schema:
+            args += ["--schema", str(schema)]
+        return args
+
+    if not entrada:
+        raise ValueError("PREMIS_CONVERTER: campo obrigatório 'entrada'/'in' ausente.")
+
+    args += ["--in", str(entrada)]
+    if saida:
+        args += ["--out", str(saida)]
+    if validar:
+        args.append("--validate")
+    if schema:
+        args += ["--schema", str(schema)]
+
+    return args
+
 def get_scripts_map() -> ScriptsMap:
     """
     Retorna o mapeamento de jobs para scripts e seus builders de argumentos.
@@ -231,4 +274,8 @@ def get_scripts_map() -> ScriptsMap:
             "duplicate_finder.py",
             _args_duplicate_finder,
         ),
+        "PREMIS_CONVERTER": (
+            "premis_converter.py",
+            _args_premis_converter,
+        ),        
     }

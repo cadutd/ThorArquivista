@@ -14,6 +14,20 @@
       "created_at": "2025-11-07T01:00:11.649816Z",
       "updated_at": "2025-11-07T01:00:12.468569Z",
       "error_msg": null
+    },
+    {
+      "_id": "0ff646f0-6a74-4a47-86a0-909c706ede8e",
+      "job_type": "PREMIS_CONVERTER",
+      "status": "done",
+      "params": {
+        "entrada": "C:/Users/cadut/Downloads/premis.csv",
+        "saida": "c:/users/cadut/downloads/convertido.xml",
+        "validar": false,
+        "schema": "C:/workfolder/ThorArquivista/thor_arquivista_caixa_de_ferramentas/schemas/premis-v3-0.xsd"
+      },
+      "created_at": "2025-11-08T19:27:04.209557Z",
+      "updated_at": "2025-11-08T19:27:05.063863Z",
+      "error_msg": null
     }
   ],
   "logs": {
@@ -30,6 +44,28 @@
       },
       {
         "ts": "2025-11-07T01:00:12.467034Z",
+        "level": "INFO",
+        "msg": "Concluído com sucesso"
+      }
+    ],
+    "0ff646f0-6a74-4a47-86a0-909c706ede8e": [
+      {
+        "ts": "2025-11-08T19:27:04.211013Z",
+        "level": "INFO",
+        "msg": "Enfileirado PREMIS_CONVERTER"
+      },
+      {
+        "ts": "2025-11-08T19:27:04.250414Z",
+        "level": "INFO",
+        "msg": "Iniciando job PREMIS_CONVERTER"
+      },
+      {
+        "ts": "2025-11-08T19:27:05.060457Z",
+        "level": "INFO",
+        "msg": "[OK] XML PREMIS escrito em: c:\\users\\cadut\\downloads\\convertido.xml\n[AVISO] Validação pós-geração: file:/c:/users/cadut/downloads/convertido.xml:2:0:ERROR:SCHEMASV:SCHEMAV_CVC_COMPLEX_TYPE_4: Element '{http://www.loc.gov/premis/v3}premis': The attribute 'version' is required but missing.; file:/c:/users/cadut/downloads/convertido.xml:3:0:ERROR:SCHEMASV:SCHEMAV_CVC_TYPE_2: Element '{http://www.loc.gov/premis/v3}object': The type definition is abstract.; file:/c:/users/cadut/downloads/convertido.xml:10:0:ERROR:SCHEMASV:SCHEMAV_CVC_TYPE_2: Element '{http://www.loc.gov/premis/v3}object': The type definition is abstract.; file:/c:/users/cadut/downloads/convertido.xml:29:0:ERROR:SCHEMASV:SCHEMAV_CVC_TYPE_2: Element '{http://www.loc.gov/premis/v3}object': The type definition is abstract.; file:/c:/users/cadut/downloads/convertido.xml:48:0:ERROR:SCHEMASV:SCHEMAV_CVC_TYPE_2: Element '{http://www.loc.gov/premis/v3}object': The type definition is abstract.; file:/c:/users/cadut/downloads/convertido.xml:67:0:ERROR:SCHEMASV:SCHEMAV_CVC_TYPE_2: Element '{http://www.loc.gov/premis/v3}object': The type definition is abstract.; file:/c:/users/cadut/downloads/convertido.xml:86:0:ERROR:SCHEMASV:SCHEMAV_CVC_TYPE_2: Element '{http://www.loc.gov/premis/v3}object': The type definition is abstract.; file:/c:/users/cadut/downloads/convertido.xml:105:0:ERROR:SCHEMASV:SCHEMAV_CVC_TYPE_2: Element '{http://www.loc.gov/premis/v3}object': The type definition is abstract.; file:/c:/users/cadut/downloads/convertido.xml:124:0:ERROR:SCHEMASV:SCHEMAV_CVC_TYPE_2: Element '{http://www.loc.gov/premis/v3}object': The type definition is abstract.; file:/c:/users/cadut/downloads/convertido.xml:143:0:ERROR:SCHEMASV:SCHEMAV_CVC_TYPE_2: Element '{http://www.loc.gov/premis/v3}object': The type definition is abstract.; file:/c:/users/cadut/downloads/convertido.xml:162:0:ERROR:SCHEMASV:SCHEMAV_CVC_TYPE_2: Element '{http://www.loc.gov/premis/v3}object': The type definition is abstract.; file:/c:/users/cadut/downlo"
+      },
+      {
+        "ts": "2025-11-08T19:27:05.062439Z",
         "level": "INFO",
         "msg": "Concluído com sucesso"
       }

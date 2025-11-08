@@ -57,7 +57,7 @@ from ui.panels.premis_event import create_panel as panel_premis_evt
 from ui.panels.worker_control import create_panel as panel_worker
 from ui.panels.duplicate_analysis import create_panel as panel_duplicate_analysis
 from ui.panels.duplicate_treatment import create_panel as panel_duplicate_treatment
-
+from ui.panels.premis_converter import create_panel as panel_premis_converter
 
 class MainApp(tb.Window):
     """Janela principal do Thor Arquivista – Caixa de Ferramentas de Preservação Digital."""
@@ -189,6 +189,8 @@ class MainApp(tb.Window):
         menu_tarefas.add_cascade(label="Duplicatas", menu=submenu_duplicatas)
 
         menu_tarefas.add_command(label="Copiar", command=lambda: _open("Copiar", panel_rep))
+        menu_tarefas.add_command(label="Conversor Premis", command=lambda: _open("Conversor Premis", panel_premis_converter))
+
         menu_tarefas.add_command(label="SIP", command=lambda: _open("SIP", panel_sip))
         menu_tarefas.add_command(label="Identificar Formatos", command=lambda: _open("Identificar Formatos", panel_fmt))
         menu_tarefas.add_command(label="Registrar Evento PREMIS", command=lambda: _open("Evento PREMIS", panel_premis_evt))
