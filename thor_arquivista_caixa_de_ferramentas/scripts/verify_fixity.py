@@ -25,10 +25,11 @@ import re
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Tuple
 
 CHUNK = 1024 * 1024  # 1 MiB
-LINE_RE = re.compile(r"^([A-Fa-f0-9]+)\s+(.*\S)\s*$")  # hash + whitespace + path (não vazio)
+# hash + whitespace + path (não vazio, mas pode ter espaços)
+LINE_RE = re.compile(r"^([A-Fa-f0-9]+)\s+(.*?)\s*$")
 
 
 def parse_args() -> argparse.Namespace:
@@ -37,14 +38,25 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--raiz", required=True, help="Pasta raiz onde os arquivos esperados se encontram.")
     p.add_argument("--manifesto", required=True, help="Arquivo de manifesto (ex.: manifest-sha256.txt).")
-    p.add_argument("--algo", default=None,
-                   help="Algoritmo de hash. Se omitido, tenta inferir do nome do manifesto (manifest-<algo>.txt).")
+    p.add_argument(
+        "--algo",
+        default=None,
+        help="Algoritmo de hash. Se omitido, tenta inferir do nome do manifesto (manifest-<algo>.txt).",
+    )
     p.add_argument("--workers", type=int, default=os.cpu_count() or 4, help="Threads de verificação.")
     p.add_argument("--progress", action="store_true", default=False, help="Mostra progresso no stderr.")
-    p.add_argument("--strict-missing", action="store_true", default=False,
-                   help="Retorna erro se houver arquivos faltando (padrão: também retorna erro, mas essa flag deixa explícito).")
-    p.add_argument("--report-extras", action="store_true", default=False,
-                   help="Reporta arquivos presentes em disco mas ausentes no manifesto.")
+    p.add_argument(
+        "--strict-missing",
+        action="store_true",
+        default=False,
+        help="Retorna erro se houver arquivos faltando (padrão: também retorna erro, mas essa flag deixa explícito).",
+    )
+    p.add_argument(
+        "--report-extras",
+        action="store_true",
+        default=False,
+        help="Reporta arquivos presentes em disco mas ausentes no manifesto.",
+    )
     return p.parse_args()
 
 
@@ -69,6 +81,11 @@ def hash_file(p: Path, algo: str) -> str:
 
 def main() -> int:
     args = parse_args()
+
+    # remove aspas extras se algum chamador tiver passado com "..." literal
+    args.raiz = args.raiz.strip('"').strip("'")
+    args.manifesto = args.manifesto.strip('"').strip("'")
+
     raiz = Path(args.raiz).resolve()
     mani = Path(args.manifesto).resolve()
 
@@ -84,7 +101,7 @@ def main() -> int:
         print(f"[ERRO] Algoritmo não suportado: {algo}", file=sys.stderr)
         return 2
 
-    entries: list[tuple[str, str]] = []  # (digest_hex, relpath_posix)
+    entries: List[Tuple[str, str]] = []  # (digest_hex, relpath_posix)
     with mani.open("r", encoding="utf-8") as f:
         for ln, line in enumerate(f, 1):
             line = line.rstrip("\n")
@@ -92,7 +109,10 @@ def main() -> int:
                 continue
             m = LINE_RE.match(line)
             if not m:
-                print(f"[AVISO] Linha ignorada (não casa com '<hash><espacos><path>'): {ln}", file=sys.stderr)
+                print(
+                    f"[AVISO] Linha ignorada (não casa com '<hash><espacos><path>'): {ln}",
+                    file=sys.stderr,
+                )
                 continue
             digest = m.group(1).lower()
             rel = m.group(2)
@@ -107,12 +127,13 @@ def main() -> int:
     total = len(entries)
     if args.progress:
         print(f"[INFO] Entradas no manifesto: {total} (algo={algo})", file=sys.stderr)
+        print("[INFO] Iniciando verificação de arquivos...", file=sys.stderr)
 
-    mismatches: list[str] = []
-    missing: list[str] = []
+    mismatches: List[str] = []
+    missing: List[str] = []
     ok = 0
 
-    def _check_one(item: tuple[str, str]) -> tuple[str, Optional[str]]:
+    def _check_one(item: Tuple[str, str]) -> Tuple[str, Optional[str]]:
         exp_digest, rel = item
         p = raiz / Path(rel)
         if not p.exists() or not p.is_file():
@@ -125,11 +146,18 @@ def main() -> int:
         except Exception as e:
             return (rel, f"ERROR {e}")
 
+    # verificação em paralelo
     with ThreadPoolExecutor(max_workers=max(1, int(args.workers))) as ex:
         futs = {ex.submit(_check_one, it): it for it in entries}
         done = 0
         for fut in as_completed(futs):
-            rel, err = fut.result()
+            try:
+                rel, err = fut.result()
+            except Exception as e:
+                # erro inesperado em uma thread
+                rel = "<desconhecido>"
+                err = f"THREAD_ERROR {e}"
+
             if err is None:
                 ok += 1
             elif err == "MISSING":
@@ -139,20 +167,26 @@ def main() -> int:
             else:
                 mismatches.append(f"{rel} :: {err}")
             done += 1
-            if args.progress and (done % 50 == 0 or done == total):
-                print(f"[INFO] Progresso: {done}/{total}", file=sys.stderr)
+
+            if args.progress:
+                # mostra progresso por arquivo, para não dar sensação de travamento
+                print(f"[INFO] Verificado {done}/{total}: {rel}", file=sys.stderr)
 
     # Extras (arquivos em disco não listados)
     extras_count = 0
     if args.report_extras:
-        in_manifest = {Path(rel) for _, rel in entries}
+        if args.progress:
+            print("[INFO] Procurando arquivos extras em disco...", file=sys.stderr)
+
+        # usa conjunto de strings POSIX para evitar sutilezas de Path
+        in_manifest = {rel for _, rel in entries}
         for root, dirs, files in os.walk(raiz):
             root_path = Path(root)
             for name in files:
                 p = root_path / name
                 rel = p.relative_to(raiz)
                 rel_posix = rel.as_posix()
-                if Path(rel_posix) not in in_manifest:
+                if rel_posix not in in_manifest:
                     extras_count += 1
                     print(f"[EXTRA] {rel_posix}", file=sys.stderr)
 

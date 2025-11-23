@@ -23,7 +23,7 @@ import threading
 import traceback
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Any, Tuple,  List, Optional
+from typing import Dict, Any, Tuple, List, Optional
 
 from core.config import AppConfig
 from core.jobstore import JobStore
@@ -46,13 +46,16 @@ class Worker:
       - cancel_job(job_id)
       - list_jobs(status=None)
       - counts_by_status()
+
+    E com 'streaming' de saída:
+      - stdout/stderr são lidos linha a linha e gravados em JobStore.add_log()
+        durante a execução do job.
     """
 
     def __init__(self, cfg: AppConfig, jobstore: JobStore):
         self.cfg = cfg
         self.jobstore = jobstore
         self._stop_event = threading.Event()
-#        self._thread: threading.Thread | None = None
         self._pause_event = threading.Event()
         self._pause_event.clear()  # não pausado por padrão
         self._thread: Optional[threading.Thread] = None
@@ -128,7 +131,7 @@ class Worker:
         while not self._stop_event.is_set():
             # respeita pausa
             if self._pause_event.is_set():
-                self._stop_event.wait(0.3)
+                self._stop_event.wait(0.3)                
                 continue
 
             job = self.jobstore.pop_next_pending()
@@ -142,12 +145,21 @@ class Worker:
             self.jobstore.add_log(jid, f"Iniciando job {jtype}")
 
             try:
-                rc, out, err = self._execute(jtype, params)
+                # _execute agora recebe o ID do job para poder logar em tempo real
+                rc, out, err = self._execute(jid, jtype, params)
 
+                # logs resumidos finais (últimas linhas)
                 if out:
-                    self.jobstore.add_log(jid, out[:2000])
+                    self.jobstore.add_log(
+                        jid,
+                        f"[stdout] (últimas linhas)\n{out[:2000]}",
+                    )
                 if err:
-                    self.jobstore.add_log(jid, err[:2000], level="ERROR" if rc else "INFO")
+                    self.jobstore.add_log(
+                        jid,
+                        f"[stderr] (últimas linhas)\n{err[:2000]}",
+                        level="ERROR" if rc else "INFO",
+                    )
 
                 if jtype != "PREMIS_EVENT":
                     append_event(
@@ -168,19 +180,85 @@ class Worker:
                     self.jobstore.set_status(jid, "done")
                 else:
                     self.jobstore.add_log(jid, f"Erro (rc={rc})", level="ERROR")
-                    self.jobstore.set_status(jid, "error", error_msg=(err or "")[:500])
+                    # usa stderr resumido como mensagem de erro, se houver
+                    err_msg = (err or out or "")[:500]
+                    self.jobstore.set_status(jid, "error", error_msg=err_msg)
 
             except Exception as e:
                 traceback.print_exc()
                 self.jobstore.add_log(jid, f"Falha inesperada: {e}", level="ERROR")
                 self.jobstore.set_status(jid, "error", error_msg=str(e)[:500])
 
-    def _execute(self, job_type: str, params: Dict[str, Any]) -> tuple[int, str, str]:
+    def _execute(self, job_id: str, job_type: str, params: Dict[str, Any]) -> tuple[int, str, str]:
+        """
+        Executa o script correspondente ao job_type, fazendo streaming de stdout/stderr
+        para o JobStore em tempo real.
+
+        Retorna:
+          (exit_code, stdout_resumido, stderr_resumido)
+        """
         if job_type not in self._scripts:
-            return 1, "", f"Job não suportado: {job_type}"
+            msg = f"Job não suportado: {job_type}"
+            self.jobstore.add_log(job_id, msg, level="ERROR")
+            return 1, "", msg
 
         script_name, arg_builder = self._scripts[job_type]
         args = arg_builder(params, self.cfg)  # builder recebe (params, cfg)
         cmd = [sys.executable, str(Path(self.cfg.scripts_dir) / script_name)] + args
-        proc = subprocess.run(cmd, capture_output=True, text=True)
-        return proc.returncode, proc.stdout, proc.stderr
+
+        # registra o comando completo no log
+        self.jobstore.add_log(job_id, f"Comando: {' '.join(cmd)}")
+
+        # buffers para manter uma cópia resumida
+        full_out: List[str] = []
+        full_err: List[str] = []
+
+        try:
+            proc = subprocess.Popen(  # noqa: S603
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                bufsize=1,  # line-buffered
+            )
+        except FileNotFoundError as e:
+            msg = f"Falha ao iniciar processo: {e}"
+            self.jobstore.add_log(job_id, msg, level="ERROR")
+            return 127, "", msg
+        except Exception as e:  # noqa: BLE001
+            msg = f"Erro ao iniciar processo: {e}"
+            self.jobstore.add_log(job_id, msg, level="ERROR")
+            return 1, "", msg
+
+        def _reader(stream, is_err: bool) -> None:
+            if stream is None:
+                return
+            for line in stream:
+                line = line.rstrip("\n")
+                if not line:
+                    continue
+                if is_err:
+                    full_err.append(line + "\n")
+                    self.jobstore.add_log(job_id, line, level="ERROR")
+                else:
+                    full_out.append(line + "\n")
+                    self.jobstore.add_log(job_id, line)
+
+        # threads para ler stdout e stderr em paralelo
+        t_out = threading.Thread(target=_reader, args=(proc.stdout, False), daemon=True)
+        t_err = threading.Thread(target=_reader, args=(proc.stderr, True), daemon=True)
+        t_out.start()
+        t_err.start()
+
+        # aguarda fim do processo
+        proc.wait()
+        t_out.join()
+        t_err.join()
+
+        rc = proc.returncode
+
+        # Mantém apenas o "rabo" de stdout/stderr para guardar
+        out_tail = "".join(full_out)[-4000:]
+        err_tail = "".join(full_err)[-4000:]
+
+        return rc, out_tail, err_tail
