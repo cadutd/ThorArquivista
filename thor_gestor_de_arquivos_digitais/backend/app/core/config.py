@@ -11,6 +11,15 @@ class Settings(BaseSettings):
 
     app_env: str = "dev"
     app_name: str = "Thor Gestor de Arquivos Digitais"
+
+    #DB
     database_url: str = "postgresql+psycopg://thor:thor@localhost:5432/thor_db"
+
+    # Keycloak
+    keycloak_url: str = "http://localhost:8081"  # host (browser)
+    keycloak_internal_url: str = "http://keycloak:8080"  # dentro do docker network
+    keycloak_realm: str = "thor"
+    keycloak_client_id: str = "thor-api"
+    keycloak_verify_audience: bool = True  # valida aud/azp
 
 settings = Settings()

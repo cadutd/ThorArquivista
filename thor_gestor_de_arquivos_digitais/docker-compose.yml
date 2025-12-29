@@ -84,11 +84,13 @@ services:
       # Guardadas para uso futuro (não quebram o Settings)
       redis_url: redis://redis:6379/0
       meili_url: http://meilisearch:7700
-      meili_master_key: dev-meili-key
-      keycloak_url: http://keycloak:8080
+      meili_master_key: dev-meili-key      
+      keycloak_url: http://localhost:8081
+      keycloak_internal_url: http://keycloak:8080
       keycloak_realm: thor
       keycloak_client_id: thor-api
-
+      keycloak_verify_audience: "true"
+    
     ports:
       - "8000:8000"
     command: >
