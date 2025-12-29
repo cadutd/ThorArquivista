@@ -1,0 +1,15 @@
+[project]
+name = "thor-gestor-backend"
+version = "0.1.0"
+description = "Backend (FastAPI) do Thor Gestor de Arquivos Digitais"
+requires-python = ">=3.13"
+dependencies = [
+  "fastapi==0.115.6",
+  "uvicorn[standard]==0.32.1",
+  "pydantic-settings==2.6.1",
+  "SQLAlchemy==2.0.36",
+  "psycopg[binary]==3.2.3",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["app/tests"]
