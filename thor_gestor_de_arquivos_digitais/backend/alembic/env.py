@@ -10,6 +10,7 @@ from app.models import aip, event, job  # noqa: F401
 from app.models import unidade_acondicionamento, unidade_acondicionamento_digital  # noqa: F401
 from app.models import midia_armazenamento, copia_unidade_acondicionamento_digital  # noqa: F401
 from app.models import evento_preservacao  # noqa: F401
+import alembic_postgresql_enum # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:
@@ -24,6 +25,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        compare_type=True,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -39,7 +41,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        context.configure(connection=connection, target_metadata=target_metadata,  compare_type=True,)
         with context.begin_transaction():
             context.run_migrations()
 
