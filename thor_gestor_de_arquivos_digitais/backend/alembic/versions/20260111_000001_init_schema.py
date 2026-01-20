@@ -16,58 +16,54 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Tudo em SQL nativo, executado numa transação do Alembic.
-    # Observação: CREATE INDEX CONCURRENTLY não pode ser usado dentro de transação,
-    # então usamos CREATE INDEX IF NOT EXISTS (sem concurrently).
-
     op.execute(
         r"""
         -- =========================
         -- ENUM TYPES (idempotente)
         -- =========================
         DO $$ BEGIN
-            CREATE TYPE tipo_suporte AS ENUM ('fisico','digital','hibrido');
+            CREATE TYPE tipo_suporte AS ENUM ('FISICO','DIGITAL','HIBRIDO');
         EXCEPTION WHEN duplicate_object THEN NULL;
         END $$;
 
         DO $$ BEGIN
-            CREATE TYPE tipo_unidade AS ENUM ('caixa','pasta','volume','aip','sip','dip');
+            CREATE TYPE tipo_unidade AS ENUM ('CAIXA','PASTA','VOLUME','AIP','SIP','DIP');
         EXCEPTION WHEN duplicate_object THEN NULL;
         END $$;
 
         DO $$ BEGIN
-            CREATE TYPE nivel_acesso AS ENUM ('publico','restrito','confidencial');
+            CREATE TYPE nivel_acesso AS ENUM ('PUBLICO','RESTRITO','CONFIDENCIAL');
         EXCEPTION WHEN duplicate_object THEN NULL;
         END $$;
 
         DO $$ BEGIN
-            CREATE TYPE status_unidade AS ENUM ('ativa','inativa','transferida','eliminada');
+            CREATE TYPE status_unidade AS ENUM ('ATIVA','INATIVA','TRANSFERIDA','ELIMINADA');
         EXCEPTION WHEN duplicate_object THEN NULL;
         END $$;
 
         DO $$ BEGIN
-            CREATE TYPE tipo_midia_armazenamento AS ENUM ('filesystem','nas','nfs','lto','s3','cloud');
+            CREATE TYPE tipo_midia_armazenamento AS ENUM ('FILESYSTEM','NAS','NFS','LTO','S3','CLOUD');
         EXCEPTION WHEN duplicate_object THEN NULL;
         END $$;
 
         DO $$ BEGIN
-            CREATE TYPE funcao_copia AS ENUM ('preservacao','backup','acesso','quarentena');
+            CREATE TYPE funcao_copia AS ENUM ('PRESERVACAO','BACKUP','ACESSO','QUARENTENA');
         EXCEPTION WHEN duplicate_object THEN NULL;
         END $$;
 
         DO $$ BEGIN
-            CREATE TYPE status_copia AS ENUM ('ativa','indisponivel','corrompida','em_verificacao');
+            CREATE TYPE status_copia AS ENUM ('ATIVA','INDISPONIVEL','CORROMPIDA','EM_VERIFICACAO');
         EXCEPTION WHEN duplicate_object THEN NULL;
         END $$;
 
         DO $$ BEGIN
             CREATE TYPE tipo_evento_preservacao AS ENUM
-                ('ingestao','validacao','fixidez','replicacao','migracao','acesso','movimentacao','outro');
+                ('INGESTAO','VALIDACAO','FIXIDEZ','REPLICACAO','MIGRACAO','ACESSO','MOVIMENTACAO','OUTRO');
         EXCEPTION WHEN duplicate_object THEN NULL;
         END $$;
 
         DO $$ BEGIN
-            CREATE TYPE resultado_evento_preservacao AS ENUM ('sucesso','falha','alerta','indeterminado');
+            CREATE TYPE resultado_evento_preservacao AS ENUM ('SUCESSO','FALHA','ALERTA','INDETERMINADO');
         EXCEPTION WHEN duplicate_object THEN NULL;
         END $$;
 
@@ -83,8 +79,8 @@ def upgrade() -> None:
             descricao          VARCHAR(2000),
             tipo_suporte       tipo_suporte NOT NULL,
             tipo_unidade       tipo_unidade NOT NULL,
-            nivel_acesso       nivel_acesso NOT NULL DEFAULT 'restrito',
-            status             status_unidade NOT NULL DEFAULT 'ativa',
+            nivel_acesso       nivel_acesso NOT NULL DEFAULT 'RESTRITO',
+            status             status_unidade NOT NULL DEFAULT 'ATIVA',
             id_unidade_pai     INTEGER NULL,
             id_representa      INTEGER NULL,
             criado_em          TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -122,7 +118,7 @@ def upgrade() -> None:
                 REFERENCES midias_armazenamento(id),
             uri_copia               VARCHAR(1200) NOT NULL,
             funcao_copia            funcao_copia NOT NULL,
-            status_copia            status_copia NOT NULL DEFAULT 'ativa',
+            status_copia            status_copia NOT NULL DEFAULT 'ATIVA',
             algoritmo_fixidez       VARCHAR(32),
             hash_fixidez            VARCHAR(128),
             ultima_verificacao_em   TIMESTAMPTZ,
@@ -137,7 +133,7 @@ def upgrade() -> None:
             id_unidade_acondicionamento INTEGER NOT NULL
                 REFERENCES unidades_acondicionamento(id),
             tipo_evento             tipo_evento_preservacao NOT NULL,
-            resultado               resultado_evento_preservacao NOT NULL DEFAULT 'sucesso',
+            resultado               resultado_evento_preservacao NOT NULL DEFAULT 'SUCESSO',
             detalhe                 TEXT,
             agente                  VARCHAR(255),
             correlacao              VARCHAR(255),
@@ -188,8 +184,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    # Em downgrade “manual”, removemos tabelas e tipos na ordem correta.
-    # IF EXISTS deixa tolerante.
     op.execute(
         r"""
         DROP TABLE IF EXISTS eventos_preservacao;

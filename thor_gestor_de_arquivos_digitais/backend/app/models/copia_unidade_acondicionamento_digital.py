@@ -83,11 +83,6 @@ class CopiaUnidadeAcondicionamentoDigital(Base):
     )
 
     unidade = relationship(
-        "UnidadeAcondicionamentoDigital",
-        back_populates="copias",
-        viewonly=True,
-        primaryjoin=(
-            "CopiaUnidadeAcondicionamentoDigital.id_unidade_acondicionamento"
-            "==UnidadeAcondicionamentoDigital.id_unidade_acondicionamento"
-        ),
+        "UnidadeAcondicionamento",
+        back_populates="copias_digitais",
     )

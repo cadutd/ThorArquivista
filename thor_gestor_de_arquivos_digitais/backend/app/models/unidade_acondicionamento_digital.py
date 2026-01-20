@@ -18,7 +18,8 @@ class UnidadeAcondicionamentoDigital(Base):
     tamanho_bytes: Mapped[int | None] = mapped_column(BigInteger)
     status_fixidez: Mapped[str | None] = mapped_column(nullable=True)
 
-    copias = relationship(
-        "CopiaUnidadeAcondicionamentoDigital",
-        back_populates="unidade",
+    unidade = relationship(
+        "UnidadeAcondicionamento",
+        back_populates="digital",
+        uselist=False,
     )

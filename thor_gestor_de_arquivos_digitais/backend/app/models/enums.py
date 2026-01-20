@@ -1,67 +1,70 @@
-# app/models/enums.py
 from enum import Enum
 
 
 class TipoSuporte(str, Enum):
-    FISICO = "fisico"
-    DIGITAL = "digital"
-    HIBRIDO = "hibrido"
+    FISICO = "FISICO"
+    DIGITAL = "DIGITAL"
+    HIBRIDO = "HIBRIDO"
 
 
 class TipoUnidade(str, Enum):
-    CAIXA = "caixa"
-    PASTA = "pasta"
-    VOLUME = "volume"
-    AIP = "aip"
-    SIP = "sip"
-    DIP = "dip"
+    CAIXA = "CAIXA"
+    PASTA = "PASTA"
+    VOLUME = "VOLUME"
+    AIP = "AIP"
+    SIP = "SIP"
+    DIP = "DIP"
 
 
 class NivelAcesso(str, Enum):
-    PUBLICO = "publico"
-    RESTRITO = "restrito"
-    CONFIDENCIAL = "confidencial"
+    PUBLICO = "PUBLICO"
+    RESTRITO = "RESTRITO"
+    CONFIDENCIAL = "CONFIDENCIAL"
 
 
 class StatusUnidade(str, Enum):
-    ATIVA = "ativa"
-    INATIVA = "inativa"
-    TRANSFERIDA = "transferida"
-    ELIMINADA = "eliminada"
+    ATIVA = "ATIVA"
+    INATIVA = "INATIVA"
+    TRANSFERIDA = "TRANSFERIDA"
+    ELIMINADA = "ELIMINADA"
 
 
 class TipoMidiaArmazenamento(str, Enum):
-    FILESYSTEM = "filesystem"
-    NAS = "nas"
-    NFS = "nfs"
-    LTO = "lto"
-    S3 = "s3"
-    CLOUD = "cloud"
+    FILESYSTEM = "FILESYSTEM"
+    NAS = "NAS"
+    NFS = "NFS"
+    LTO = "LTO"
+    S3 = "S3"
+    CLOUD = "CLOUD"
+
 
 class FuncaoCopia(str, Enum):
-    PRESERVACAO = "preservacao"
-    BACKUP = "backup"
-    ACESSO = "acesso"
-    QUARENTENA = "quarentena"
+    PRESERVACAO = "PRESERVACAO"
+    BACKUP = "BACKUP"
+    ACESSO = "ACESSO"
+    QUARENTENA = "QUARENTENA"
+
 
 class StatusCopia(str, Enum):
-    ATIVA = "ativa"
-    INDISPONIVEL = "indisponivel"
-    CORROMPIDA = "corrompida"
-    EM_VERIFICACAO = "em_verificacao"
+    ATIVA = "ATIVA"
+    INDISPONIVEL = "INDISPONIVEL"
+    CORROMPIDA = "CORROMPIDA"
+    EM_VERIFICACAO = "EM_VERIFICACAO"
+
 
 class TipoEventoPreservacao(str, Enum):
-    INGESTAO = "ingestao"
-    VALIDACAO = "validacao"
-    FIXIDEZ = "fixidez"
-    REPLICACAO = "replicacao"
-    MIGRACAO = "migracao"
-    ACESSO = "acesso"
-    MOVIMENTACAO = "movimentacao"
-    OUTRO = "outro"
+    INGESTAO = "INGESTAO"
+    VALIDACAO = "VALIDACAO"
+    FIXIDEZ = "FIXIDEZ"
+    REPLICACAO = "REPLICACAO"
+    MIGRACAO = "MIGRACAO"
+    ACESSO = "ACESSO"
+    MOVIMENTACAO = "MOVIMENTACAO"
+    OUTRO = "OUTRO"
+
 
 class ResultadoEventoPreservacao(str, Enum):
-    SUCESSO = "sucesso"
-    FALHA = "falha"
-    ALERTA = "alerta"
-    INDETERMINADO = "indeterminado"
+    SUCESSO = "SUCESSO"
+    FALHA = "FALHA"
+    ALERTA = "ALERTA"
+    INDETERMINADO = "INDETERMINADO"

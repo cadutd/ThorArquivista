@@ -16,6 +16,30 @@ services:
       timeout: 3s
       retries: 30
 
+  pgadmin:
+    image: dpage/pgadmin4:8
+    container_name: thor-pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@thor.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      # Faz o pgAdmin importar o servers.json automaticamente
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+      # ✅ aponta para o seu arquivo montado
+      PGADMIN_SERVER_JSON_FILE: /pgadmin4/provisioning/servers/servers.json
+
+      # ✅ força importar/substituir a cada start
+      PGADMIN_REPLACE_SERVERS_ON_STARTUP: "True"      
+    ports:
+      - "5050:80"
+    volumes:
+      - thor_pgadmin_data:/var/lib/pgadmin
+      # Arquivo de configuração dos servidores (veja abaixo como criar)
+      - ./pgadmin/provisioning:/pgadmin4/provisioning:ro
+
   redis:
     image: redis:7-alpine
     container_name: thor-redis
@@ -50,6 +74,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 30
+
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
     container_name: thor-keycloak
@@ -85,21 +110,19 @@ services:
       keycloak:
         condition: service_started
     environment:
-      # 🔑 EXACT MATCH com app/core/config.py
       app_env: dev
       app_name: "Thor Gestor de Arquivos Digitais"
       database_url: postgresql+psycopg://thor:thor@postgres:5432/thor_db
 
-      # Guardadas para uso futuro (não quebram o Settings)
       redis_url: redis://redis:6379/0
       meili_url: http://meilisearch:7700
-      meili_master_key: dev-meili-key      
+      meili_master_key: dev-meili-key
       keycloak_url: http://localhost:8081
       keycloak_internal_url: http://keycloak:8080
       keycloak_realm: thor
       keycloak_client_id: thor-api
       keycloak_verify_audience: "true"
-    
+
     ports:
       - "8000:8000"
     command: >
@@ -107,13 +130,15 @@ services:
       until pg_isready -h postgres -p 5432 -U thor -d thor_db; do
         echo 'Aguardando Postgres...';
         sleep 2;
-      done;      
+      done;
       cd /app &&
       alembic -c alembic.ini upgrade head &&
       uvicorn app.main:app --host 0.0.0.0 --port 8000
       "
+
 volumes:
   thor_postgres_data:
+  thor_pgadmin_data:
   thor_redis_data:
   thor_meili_data:
   thor_keycloak_db_data:

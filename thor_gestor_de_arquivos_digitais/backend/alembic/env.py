@@ -6,7 +6,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.db.base import Base  # noqa: F401
 from app.core.config import settings
-from app.models import aip, event, job  # noqa: F401
+#from app.models import aip, event, job  # noqa: F401
 from app.models import unidade_acondicionamento, unidade_acondicionamento_digital  # noqa: F401
 from app.models import midia_armazenamento, copia_unidade_acondicionamento_digital  # noqa: F401
 from app.models import evento_preservacao  # noqa: F401

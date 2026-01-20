@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "thor-postgres",
+      "Group": "Thor",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "thor_db",
+      "Username": "thor",
+      "SSLMode": "prefer"
+    }
+  }
+}

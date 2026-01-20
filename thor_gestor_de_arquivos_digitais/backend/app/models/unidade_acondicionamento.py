@@ -82,6 +82,20 @@ class UnidadeAcondicionamento(Base):
         foreign_keys=[id_representa],
     )
 
+
+    digital = relationship(
+        "UnidadeAcondicionamentoDigital",
+        back_populates="unidade",
+        uselist=False,
+        cascade="all, delete-orphan",
+    )
+
+    copias_digitais = relationship(
+        "CopiaUnidadeAcondicionamentoDigital",
+        back_populates="unidade",
+        cascade="all, delete-orphan",
+    )
+
     # --------------------
     # Auditoria
     # --------------------

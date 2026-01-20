@@ -1,12 +1,15 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from datetime import datetime
+from pydantic import BaseModel, Field, ConfigDict
 from app.models.enums import FuncaoCopia, StatusCopia
 
 
 class CopiaUnidadeAcondicionamentoDigitalBase(BaseModel):
-    id_unidade_acondicionamento: int
-    id_midia_armazenamento: int
+    model_config = ConfigDict(use_enum_values=True)
+
+    id_unidade_acondicionamento: int = Field(..., ge=1)
+    id_midia_armazenamento: int = Field(..., ge=1)
 
     uri_copia: str = Field(..., max_length=1200)
     funcao_copia: FuncaoCopia
@@ -14,7 +17,7 @@ class CopiaUnidadeAcondicionamentoDigitalBase(BaseModel):
 
     algoritmo_fixidez: str | None = Field(default=None, max_length=32)
     hash_fixidez: str | None = Field(default=None, max_length=128)
-    ultima_verificacao_em: str | None = None
+    ultima_verificacao_em: datetime | None = None
 
 
 class CopiaUnidadeAcondicionamentoDigitalCreate(CopiaUnidadeAcondicionamentoDigitalBase):
@@ -22,14 +25,16 @@ class CopiaUnidadeAcondicionamentoDigitalCreate(CopiaUnidadeAcondicionamentoDigi
 
 
 class CopiaUnidadeAcondicionamentoDigitalUpdate(BaseModel):
+    model_config = ConfigDict(use_enum_values=True)
+
     status_copia: StatusCopia | None = None
     algoritmo_fixidez: str | None = Field(default=None, max_length=32)
     hash_fixidez: str | None = Field(default=None, max_length=128)
-    ultima_verificacao_em: str | None = None
+    ultima_verificacao_em: datetime | None = None
 
 
 class CopiaUnidadeAcondicionamentoDigitalOut(CopiaUnidadeAcondicionamentoDigitalBase):
-    id: int
-    criada_em: str | None = None
+    model_config = ConfigDict(from_attributes=True, use_enum_values=True)
 
-    model_config = {"from_attributes": True}
+    id: int
+    criada_em: datetime | None = None
