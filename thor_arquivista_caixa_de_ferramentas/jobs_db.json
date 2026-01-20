@@ -158,6 +158,49 @@
       "created_at": "2025-11-23T01:11:03.680485Z",
       "updated_at": "2025-11-23T01:12:03.893450Z",
       "error_msg": null
+    },
+    {
+      "_id": "47fb1a01-7113-46c7-899b-4f629159786e",
+      "job_type": "HASH_MANIFEST",
+      "status": "done",
+      "params": {
+        "raiz": "C:\\Users\\cadut\\Desktop\\LISTAS",
+        "saida": "C:\\Users\\cadut\\Desktop\\LISTAS\\manifest-sha256.txt",
+        "algo": "sha256",
+        "progress": false,
+        "ignore_hidden": true
+      },
+      "created_at": "2025-12-11T00:47:39.654887Z",
+      "updated_at": "2025-12-11T00:47:40.841739Z",
+      "error_msg": null
+    },
+    {
+      "_id": "8586d574-aa69-4c66-9fbc-d1c0b12e8687",
+      "job_type": "VERIFY_FIXITY",
+      "status": "error",
+      "params": {
+        "raiz": "C:/Users/cadut/Desktop/LISTAS",
+        "manifesto": "C:/Users/cadut/Desktop/manifest-sha256.txt",
+        "report_extras": false,
+        "progress": false
+      },
+      "created_at": "2025-12-11T00:49:25.802355Z",
+      "updated_at": "2025-12-11T00:49:26.294191Z",
+      "error_msg": "=== Verificação de fixidez ===\nManifesto : C:\\Users\\cadut\\Desktop\\manifest-sha256.txt\nRaiz      : C:\\Users\\cadut\\Desktop\\LISTAS\nAlgoritmo : sha256\nTotal     : 168\nOK        : 167\nFaltando  : 1\nDivergências: 0\n-- Faltando --\nmanifest-sha256.txt\n"
+    },
+    {
+      "_id": "8eefd8e0-e8b7-456a-8350-5d18e21ae2f7",
+      "job_type": "VERIFY_FIXITY",
+      "status": "error",
+      "params": {
+        "raiz": "C:/Users/cadut/Desktop/LISTAS",
+        "manifesto": "C:/Users/cadut/Desktop/LISTAS/manifest-sha256.txt",
+        "report_extras": false,
+        "progress": false
+      },
+      "created_at": "2025-12-11T00:50:17.409699Z",
+      "updated_at": "2025-12-11T00:50:17.887654Z",
+      "error_msg": "=== Verificação de fixidez ===\nManifesto : C:\\Users\\cadut\\Desktop\\LISTAS\\manifest-sha256.txt\nRaiz      : C:\\Users\\cadut\\Desktop\\LISTAS\nAlgoritmo : sha256\nTotal     : 168\nOK        : 167\nFaltando  : 0\nDivergências: 1\n-- Divergências --\nmanifest-sha256.txt :: MISMATCH expected=441d10048e83d9884bce0f03380effc94dd7cc6ceff7ff0da758a8e30af551f5 got=5f746c4f31cb5112909d310a798ced1c85a31f57fa79fa406826d8216a2f3e2b\n"
     }
   ],
   "logs": {
@@ -1086,6 +1129,182 @@
         "ts": "2025-11-23T01:12:03.891868Z",
         "level": "INFO",
         "msg": "Concluído com sucesso"
+      }
+    ],
+    "47fb1a01-7113-46c7-899b-4f629159786e": [
+      {
+        "ts": "2025-12-11T00:47:39.661411Z",
+        "level": "INFO",
+        "msg": "Enfileirado HASH_MANIFEST"
+      },
+      {
+        "ts": "2025-12-11T00:47:40.164879Z",
+        "level": "INFO",
+        "msg": "Iniciando job HASH_MANIFEST"
+      },
+      {
+        "ts": "2025-12-11T00:47:40.169348Z",
+        "level": "INFO",
+        "msg": "Comando: C:\\Users\\cadut\\AppData\\Local\\Programs\\Python\\Python313\\python.exe scripts\\hash_files.py --raiz C:\\Users\\cadut\\Desktop\\LISTAS --saida C:\\Users\\cadut\\Desktop\\LISTAS\\manifest-sha256.txt --algo sha256 --ignore-hidden"
+      },
+      {
+        "ts": "2025-12-11T00:47:40.835557Z",
+        "level": "INFO",
+        "msg": "Concluído com sucesso"
+      }
+    ],
+    "8586d574-aa69-4c66-9fbc-d1c0b12e8687": [
+      {
+        "ts": "2025-12-11T00:49:25.806978Z",
+        "level": "INFO",
+        "msg": "Enfileirado VERIFY_FIXITY"
+      },
+      {
+        "ts": "2025-12-11T00:49:25.940193Z",
+        "level": "INFO",
+        "msg": "Iniciando job VERIFY_FIXITY"
+      },
+      {
+        "ts": "2025-12-11T00:49:25.945993Z",
+        "level": "INFO",
+        "msg": "Comando: C:\\Users\\cadut\\AppData\\Local\\Programs\\Python\\Python313\\python.exe scripts\\verify_fixity.py --raiz C:/Users/cadut/Desktop/LISTAS --manifesto C:/Users/cadut/Desktop/manifest-sha256.txt"
+      },
+      {
+        "ts": "2025-12-11T00:49:26.230489Z",
+        "level": "INFO",
+        "msg": "=== Verificação de fixidez ==="
+      },
+      {
+        "ts": "2025-12-11T00:49:26.237759Z",
+        "level": "INFO",
+        "msg": "Manifesto : C:\\Users\\cadut\\Desktop\\manifest-sha256.txt"
+      },
+      {
+        "ts": "2025-12-11T00:49:26.244153Z",
+        "level": "INFO",
+        "msg": "Raiz      : C:\\Users\\cadut\\Desktop\\LISTAS"
+      },
+      {
+        "ts": "2025-12-11T00:49:26.250588Z",
+        "level": "INFO",
+        "msg": "Algoritmo : sha256"
+      },
+      {
+        "ts": "2025-12-11T00:49:26.255859Z",
+        "level": "INFO",
+        "msg": "Total     : 168"
+      },
+      {
+        "ts": "2025-12-11T00:49:26.260423Z",
+        "level": "INFO",
+        "msg": "OK        : 167"
+      },
+      {
+        "ts": "2025-12-11T00:49:26.265749Z",
+        "level": "INFO",
+        "msg": "Faltando  : 1"
+      },
+      {
+        "ts": "2025-12-11T00:49:26.270537Z",
+        "level": "INFO",
+        "msg": "Divergências: 0"
+      },
+      {
+        "ts": "2025-12-11T00:49:26.275323Z",
+        "level": "INFO",
+        "msg": "-- Faltando --"
+      },
+      {
+        "ts": "2025-12-11T00:49:26.280517Z",
+        "level": "INFO",
+        "msg": "manifest-sha256.txt"
+      },
+      {
+        "ts": "2025-12-11T00:49:26.285205Z",
+        "level": "INFO",
+        "msg": "[stdout] (últimas linhas)\n=== Verificação de fixidez ===\nManifesto : C:\\Users\\cadut\\Desktop\\manifest-sha256.txt\nRaiz      : C:\\Users\\cadut\\Desktop\\LISTAS\nAlgoritmo : sha256\nTotal     : 168\nOK        : 167\nFaltando  : 1\nDivergências: 0\n-- Faltando --\nmanifest-sha256.txt\n"
+      },
+      {
+        "ts": "2025-12-11T00:49:26.289915Z",
+        "level": "ERROR",
+        "msg": "Erro (rc=1)"
+      }
+    ],
+    "8eefd8e0-e8b7-456a-8350-5d18e21ae2f7": [
+      {
+        "ts": "2025-12-11T00:50:17.415346Z",
+        "level": "INFO",
+        "msg": "Enfileirado VERIFY_FIXITY"
+      },
+      {
+        "ts": "2025-12-11T00:50:17.585835Z",
+        "level": "INFO",
+        "msg": "Iniciando job VERIFY_FIXITY"
+      },
+      {
+        "ts": "2025-12-11T00:50:17.590601Z",
+        "level": "INFO",
+        "msg": "Comando: C:\\Users\\cadut\\AppData\\Local\\Programs\\Python\\Python313\\python.exe scripts\\verify_fixity.py --raiz C:/Users/cadut/Desktop/LISTAS --manifesto C:/Users/cadut/Desktop/LISTAS/manifest-sha256.txt"
+      },
+      {
+        "ts": "2025-12-11T00:50:17.813184Z",
+        "level": "INFO",
+        "msg": "=== Verificação de fixidez ==="
+      },
+      {
+        "ts": "2025-12-11T00:50:17.819745Z",
+        "level": "INFO",
+        "msg": "Manifesto : C:\\Users\\cadut\\Desktop\\LISTAS\\manifest-sha256.txt"
+      },
+      {
+        "ts": "2025-12-11T00:50:17.825445Z",
+        "level": "INFO",
+        "msg": "Raiz      : C:\\Users\\cadut\\Desktop\\LISTAS"
+      },
+      {
+        "ts": "2025-12-11T00:50:17.830962Z",
+        "level": "INFO",
+        "msg": "Algoritmo : sha256"
+      },
+      {
+        "ts": "2025-12-11T00:50:17.836258Z",
+        "level": "INFO",
+        "msg": "Total     : 168"
+      },
+      {
+        "ts": "2025-12-11T00:50:17.841715Z",
+        "level": "INFO",
+        "msg": "OK        : 167"
+      },
+      {
+        "ts": "2025-12-11T00:50:17.850101Z",
+        "level": "INFO",
+        "msg": "Faltando  : 0"
+      },
+      {
+        "ts": "2025-12-11T00:50:17.856027Z",
+        "level": "INFO",
+        "msg": "Divergências: 1"
+      },
+      {
+        "ts": "2025-12-11T00:50:17.861541Z",
+        "level": "INFO",
+        "msg": "-- Divergências --"
+      },
+      {
+        "ts": "2025-12-11T00:50:17.867247Z",
+        "level": "INFO",
+        "msg": "manifest-sha256.txt :: MISMATCH expected=441d10048e83d9884bce0f03380effc94dd7cc6ceff7ff0da758a8e30af551f5 got=5f746c4f31cb5112909d310a798ced1c85a31f57fa79fa406826d8216a2f3e2b"
+      },
+      {
+        "ts": "2025-12-11T00:50:17.873988Z",
+        "level": "INFO",
+        "msg": "[stdout] (últimas linhas)\n=== Verificação de fixidez ===\nManifesto : C:\\Users\\cadut\\Desktop\\LISTAS\\manifest-sha256.txt\nRaiz      : C:\\Users\\cadut\\Desktop\\LISTAS\nAlgoritmo : sha256\nTotal     : 168\nOK        : 167\nFaltando  : 0\nDivergências: 1\n-- Divergências --\nmanifest-sha256.txt :: MISMATCH expected=441d10048e83d9884bce0f03380effc94dd7cc6ceff7ff0da758a8e30af551f5 got=5f746c4f31cb5112909d310a798ced1c85a31f57fa79fa406826d8216a2f3e2b\n"
+      },
+      {
+        "ts": "2025-12-11T00:50:17.881043Z",
+        "level": "ERROR",
+        "msg": "Erro (rc=1)"
       }
     ]
   }

@@ -72,6 +72,21 @@ def iter_files(root: str) -> Iterator[str]:
         for name in filenames:
             yield os.path.join(dirpath, name)
 
+def iter_files(root: str) -> Iterator[str]:
+    IGNORE_NAMES = {
+        ".DS_Store",
+        "Thumbs.db",
+        "desktop.ini",
+        ".BridgeLabelsAndRatings",
+    }
+
+    for dirpath, _, filenames in os.walk(root):
+        for name in filenames:
+            if name in IGNORE_NAMES or name.startswith("._"):
+                yield os.path.join(dirpath, name)  # ainda contamos como "lixo"
+                continue
+            yield os.path.join(dirpath, name)
+
 def relpath(path: str, root: str) -> str:
     try:
         return os.path.relpath(path, root).replace('\\', '/')
@@ -111,11 +126,31 @@ def load_inventory_map(inventario_csv: str) -> Tuple[Dict[str, int], Dict[str, i
 
 def inventariar(raiz: str, inventario_csv: str, show_progress: bool = True) -> int:
     raiz = os.path.abspath(raiz)
+
     total = 0
+    ignored_total = 0
+
+    ignored_stats = {
+        "lixo_sistema": 0,
+        "erro_permissao": 0,
+        "erro_rede": 0,
+        "outros_erros": 0,
+    }
+
     with open(inventario_csv, 'w', newline='', encoding='utf-8') as out:
         w = csv.writer(out)
         w.writerow(['sha256','tamanho','caminho_relativo','ctime','mtime'])
+
         for path in iter_files(raiz):
+            name = os.path.basename(path)
+
+            # 1) lixo conhecido de sistema
+            if name in {".DS_Store", "Thumbs.db", "desktop.ini"} or name.startswith("._"):
+                ignored_total += 1
+                ignored_stats["lixo_sistema"] += 1
+                _log_warn(f"Ignorado (lixo de sistema): {path}")
+                continue
+
             try:
                 st = os.stat(path)
                 size = st.st_size
@@ -124,13 +159,42 @@ def inventariar(raiz: str, inventario_csv: str, show_progress: bool = True) -> i
                 ctime = datetime.fromtimestamp(st.st_ctime).isoformat()
                 mtime = datetime.fromtimestamp(st.st_mtime).isoformat()
                 w.writerow([digest, size, rpath, ctime, mtime])
+
                 total += 1
                 if show_progress and total % 200 == 0:
                     _log_info(f"Processados {total} arquivos...")
-            except (PermissionError, FileNotFoundError) as e:
-                _log_warn(f"Ignorado (sem acesso/movido): {path} -> {e}")
+
+            except PermissionError as e:
+                ignored_total += 1
+                ignored_stats["erro_permissao"] += 1
+                _log_warn(f"Ignorado (permissão negada): {path} -> {e}")
+
+            except FileNotFoundError as e:
+                ignored_total += 1
+                ignored_stats["outros_erros"] += 1
+                _log_warn(f"Ignorado (arquivo não encontrado): {path} -> {e}")
+
+            except OSError as e:
+                ignored_total += 1
+                # WinError 59 = erro de rede inesperado
+                if getattr(e, "winerror", None) == 59:
+                    ignored_stats["erro_rede"] += 1
+                    _log_warn(f"Ignorado (erro de rede): {path} -> {e}")
+                else:
+                    ignored_stats["outros_erros"] += 1
+                    _log_warn(f"Ignorado (erro de sistema): {path} -> {e}")
+
     _log_ok(f"Inventário gerado: {inventario_csv} (arquivos: {total})")
+
+    if ignored_total:
+        _log_info(f"Arquivos ignorados: {ignored_total}")
+        _log_info(f"  - lixo do sistema : {ignored_stats['lixo_sistema']}")
+        _log_info(f"  - erro de acesso  : {ignored_stats['erro_permissao']}")
+        _log_info(f"  - erro de rede    : {ignored_stats['erro_rede']}")
+        _log_info(f"  - outros erros    : {ignored_stats['outros_erros']}")
+
     return total
+
 
 def detectar_duplicatas(inventario_csv: str, duplicatas_csv: str) -> int:
     grupos: Dict[str, List[str]] = {}
