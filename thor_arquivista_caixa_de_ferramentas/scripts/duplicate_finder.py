@@ -68,11 +68,6 @@ def sha256_file(path: str) -> str:
     return h.hexdigest()
 
 def iter_files(root: str) -> Iterator[str]:
-    for dirpath, _, filenames in os.walk(root):
-        for name in filenames:
-            yield os.path.join(dirpath, name)
-
-def iter_files(root: str) -> Iterator[str]:
     IGNORE_NAMES = {
         ".DS_Store",
         "Thumbs.db",

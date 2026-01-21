@@ -1,0 +1,17 @@
+# Normaliza finais de linha para LF no repo; no Windows o Git converte no checkout se autocrlf=true
+* text=auto eol=lf
+
+# Arquivos binários
+*.png binary
+*.jpg binary
+*.ico binary
+*.zip binary
+*.db binary
+
+# Python
+*.py text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.txt text eol=lf
