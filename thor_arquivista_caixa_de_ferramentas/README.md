@@ -1,338 +1,403 @@
-# Thor Arquivista — Orquestrador de Preservação Digital
+# Thor Arquivista - Caixa de Ferramentas de Preservação Digital
 
-Aplicativo desktop (Tkinter + ttkbootstrap) para **orquestrar tarefas de preservação digital**: geração de manifestos BagIt, verificação de fixidez, registro/consulta de eventos PREMIS, replicação e empacotamento, com **fila local de jobs** e execução assíncrona por *worker*.
+Aplicativo desktop em Python para executar tarefas comuns de preservação digital: manifestos BagIt, verificação de fixidez, geração de pacote BagIt, cópia validada, análise/tratamento de duplicatas, exclusão de duplicatas por manifesto e conversão PREMIS.
 
-> **Estado atual:** versão portátil (sem banco externo). A persistência usa **arquivos JSON** na raiz do projeto.
+O aplicativo usa Tkinter com `ttkbootstrap`, executa tarefas em fila local e grava o estado em arquivos JSON na própria pasta do projeto.
 
----
-
-## Sumário
-- [Principais recursos](#principais-recursos)
-- [Arquitetura](#arquitetura)
-- [Requisitos](#requisitos)
-- [Instalação do ambiente](#instalação-do-ambiente)
-- [Execução do aplicativo](#execução-do-aplicativo)
-- [Estrutura de diretórios](#estrutura-de-diretórios)
-- [Configuração (`preservacao_app.json`)](#configuração-preservacao_appjson)
-- [Fila de jobs (`jobs_db.json`)](#fila-de-jobs-jobs_dbjson)
-- [Painéis da interface](#painéis-da-interface)
-  - [Manifesto (Hash)](#painel-manifesto-hash)
-  - [Verificação de Fixidez](#painel-verificação-de-fixidez)
-  - [PREMIS — Registrar Evento](#painel-premis-—-registrar-evento)
-  - [PREMIS — Visualizar](#painel-premis-—-visualizar)
-  - [Replicação / Bag / SIP / Identificar Formatos](#painéis-replicação--bag--sip--identificar-formatos)
-  - [Controle do Worker](#painel-controle-do-worker)
-- [Execução dos scripts via CLI](#execução-dos-scripts-via-cli)
-- [Mapeamento de jobs → scripts](#mapeamento-de-jobs--scripts)
-- [Boas práticas e desempenho](#boas-práticas-e-desempenho)
-- [Solução de problemas](#solução-de-problemas)
-- [Roadmap](#roadmap)
-- [Licença](#licença)
+![Tela inicial do Thor Arquivista](docs/images/app-home.png)
 
 ---
 
-## Principais recursos
-- **Portabilidade total:** sem dependências externas; usa JSON em disco.
-- **Fila local de jobs:** `jobs_db.json` com estados `pending|running|done|error|canceled`.
-- **Worker** em *thread* dedicada com **pausar / retomar / reiniciar** e modal de **logs por job**.
-- **PREMIS**: registro de eventos (*append-only* em JSONL) e painel de consulta.
-- **Geração de manifesto BagIt** com múltiplos algoritmos e filtros.
-- **Verificação de fixidez** (mismatch, faltantes e *extras* opcionais).
-- **UI modular** com *tabs* por funcionalidade e **Fechar aba** em todos (exceto tela inicial).
-- **Imagem inicial configurável** (`assets/logo_inicial.png`).
+## Instalação Rápida
 
----
+### 1. Baixar o projeto
 
-## Arquitetura
-
-```
-app.py ── inicializa configuração, JobStore e Worker; carrega UI
-core/
-  config.py        ─ carrega/salva config do app (JSON)
-  jobstore.py      ─ fila persistente em JSON (thread-safe)
-  worker.py        ─ executa jobs chamando scripts (subprocess)
-  scripts_map.py   ─ mapeia job_type → script + builder de argumentos
-negocio/
-  premis.py        ─ funções de negócio PREMIS (append JSONL, helpers)
-ui/
-  main_window.py   ─ janela principal e roteamento para painéis
-  panels/
-    hash_manifest.py    ─ UI do manifesto BagIt
-    verify_fixity.py    ─ UI da verificação de fixidez
-    worker_control.py   ─ UI de controle do worker e visualização de logs
-    premis_event.py     ─ UI de registro manual de eventos PREMIS
-    premis_view.py      ─ UI de consulta/exportação de eventos PREMIS
-    (... demais painéis modulares ...)
-scripts/
-  hash_files.py     ─ gera manifestos BagIt
-  verify_fixity.py  ─ valida manifestos BagIt
-  (outros scripts opcionais)
-```
-
----
-
-## Requisitos
-- **Python 3.10+** (recomendado 3.12/3.13)
-- Windows, Linux ou macOS
-- Permissão de leitura/escrita na pasta do projeto
-
-> Se usar Windows PowerShell, habilite a execução da venv: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` (se necessário).
-
----
-
-## Instalação do ambiente
+Com Git:
 
 ```bash
-# 1) criar ambiente virtual
-python -m venv .venv
-
-# 2) ativar
-# Windows (PowerShell):
-.venv\Scripts\Activate.ps1
-# Linux/macOS (bash/zsh):
-source .venv/bin/activate
-
-# 3) instalar dependências mínimas
-pip install ttkbootstrap
+git clone https://github.com/cadutd/ThorArquivista.git
+cd ThorArquivista/thor_arquivista_caixa_de_ferramentas
 ```
 
-> Caso exista `requirements.txt`, use `pip install -r requirements.txt`.
+Sem Git: baixe o ZIP do repositório no GitHub, extraia o arquivo e abra a pasta `thor_arquivista_caixa_de_ferramentas` no terminal.
 
----
+### 2. Criar o ambiente Python
 
-## Execução do aplicativo
+Windows PowerShell:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+Linux/macOS:
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 3. Rodar a aplicação
 
 ```bash
 python app.py
 ```
 
-Na primeira execução serão criados automaticamente, se ausentes:
-- `preservacao_app.json` (configurações do app) — **na raiz** do projeto
-- `jobs_db.json` (fila e logs) — **na raiz** do projeto
+Na primeira execução, o aplicativo usa ou cria os arquivos locais de configuração e fila, como `preservacao_app.json`, `jobs_db.json` e `logs/premis_events.jsonl`.
 
 ---
 
-## Estrutura de diretórios
+## Estrutura Essencial
 
-```
-orquestrador_preservacao_digital/
-├─ app.py
-├─ README.md
-├─ preservacao_app.json          # config local do projeto
-├─ jobs_db.json                  # fila de jobs + logs
-├─ assets/
-│  └─ logo_inicial.png          # imagem da tela inicial (configurável)
-├─ core/
-│  ├─ config.py
-│  ├─ jobstore.py
-│  ├─ scripts_map.py
-│  └─ worker.py
-├─ negocio/
-│  └─ premis.py
-├─ ui/
-│  ├─ main_window.py
-│  └─ panels/
-│     ├─ hash_manifest.py
-│     ├─ verify_fixity.py
-│     ├─ worker_control.py
-│     ├─ premis_event.py
-│     ├─ premis_view.py
-│     └─ (...)
-└─ scripts/
-   ├─ hash_files.py
-   └─ verify_fixity.py
+```text
+app.py                         # entrada da aplicação
+preservacao_app.json           # configuração local
+jobs_db.json                   # fila local de jobs e logs
+logs/premis_events.jsonl       # eventos PREMIS gerados pelas tarefas
+core/
+  config.py                    # leitura/gravação da configuração
+  jobstore.py                  # fila persistente em JSON
+  worker.py                    # executor assíncrono de jobs
+  scripts_map.py               # mapeia job_type para scripts
+ui/
+  main_window.py               # janela principal e menus
+  panels/                      # painéis da interface gráfica
+scripts/                       # scripts usados pela interface e pela CLI
 ```
 
 ---
 
-## Configuração (`preservacao_app.json`)
+## Como a Fila Funciona
 
-Exemplo de configuração padrão (criada automaticamente se ausente):
+Os painéis não executam tarefas pesadas diretamente. Eles criam um job em `jobs_db.json`. O `Worker` lê os jobs pendentes e executa o script correspondente em `scripts/`.
+
+Estados usados:
+
+```text
+pending | running | done | error | canceled
+```
+
+Use o painel **Visualização > Controle do Worker** para acompanhar, pausar, retomar, reenfileirar ou limpar jobs.
+
+---
+
+## Manual da Interface
+
+Os painéis disponíveis ficam nos menus **Tarefas** e **Visualização**.
+
+### Tarefas > Gerar Manifesto (Hash)
+
+Script usado: `scripts/hash_files.py`
+
+![Painel Gerar Manifesto](docs/images/panel-hash-manifest.png)
+
+Gera um manifesto BagIt no formato:
+
+```text
+<hash>  <caminho/relativo>
+```
+
+Campos principais:
+
+- **Pasta raiz**: pasta que será varrida.
+- **Arquivo de saída**: caminho do manifesto, por exemplo `manifest-sha256.txt`.
+- **Algoritmo**: normalmente `sha256`.
+- **Ignorar ocultos**: ignora arquivos e pastas iniciados por ponto.
+- **Mostrar progresso**: registra andamento no log do job.
+
+Exemplo por linha de comando:
+
+```bash
+python scripts/hash_files.py --raiz "D:/acervo" --saida "D:/acervo/manifest-sha256.txt" --algo sha256 --ignore-hidden --progress
+```
+
+### Tarefas > Verificar Fixidez
+
+Script usado: `scripts/verify_fixity.py`
+
+![Painel Verificar Fixidez](docs/images/panel-verify-fixity.png)
+
+Compara os arquivos de uma pasta com um manifesto BagIt.
+
+Campos principais:
+
+- **Pasta raiz**: pasta onde estão os arquivos a verificar.
+- **Manifesto**: arquivo `manifest-<algo>.txt`.
+- **Reportar extras**: lista arquivos que existem na pasta, mas não aparecem no manifesto.
+- **Mostrar progresso**: registra andamento no log.
+
+Exemplo por linha de comando:
+
+```bash
+python scripts/verify_fixity.py --raiz "D:/acervo" --manifesto "D:/acervo/manifest-sha256.txt" --report-extras --progress
+```
+
+### Tarefas > Gerar Pacote BagIt
+
+Script usado: `scripts/build_bag.py`
+
+![Painel Gerar Pacote BagIt](docs/images/panel-build-bag.png)
+
+Cria um pacote BagIt com `bagit.txt`, `bag-info.txt`, `data/`, manifesto do payload e, opcionalmente, tagmanifest.
+
+Campos principais:
+
+- **Fonte**: pasta com os arquivos que entrarão no pacote.
+- **Destino**: pasta onde o BagIt será criado.
+- **Algoritmo**: algoritmo do manifesto, normalmente `sha256`.
+- **Modo**: cópia, hardlink ou movimentação, conforme opções do painel.
+- **Metadados BagIt**: organização, contato, descrição e profile.
+
+Exemplo por linha de comando:
+
+```bash
+python scripts/build_bag.py "D:/acervo/fonte" "D:/bags/bag_001" --algo sha256 --mode copy --tagmanifest
+```
+
+### Tarefas > Copiar
+
+Script usado: `scripts/replicate_storage.py`
+
+![Painel Copiar](docs/images/panel-replicate.png)
+
+Copia uma pasta para um ou mais destinos. A verificação de hash é obrigatória: o script gera `manifest-sha256.txt` antes da cópia e valida cada destino com esse manifesto ao final.
+
+Campos principais:
+
+- **Fonte**: pasta original.
+- **Destinos**: uma pasta de destino por linha.
+
+Exemplo por linha de comando:
+
+```bash
+python scripts/replicate_storage.py --fonte "D:/acervo" --destino "E:/backup_1" --destino "F:/backup_2"
+```
+
+### Tarefas > Duplicatas > Análise de Duplicatas
+
+Script usado: `scripts/duplicate_finder.py`
+
+![Painel Análise de Duplicatas](docs/images/panel-duplicate-analysis.png)
+
+Painel dividido em três operações:
+
+- **Inventariar (SHA-256)**: varre uma pasta e gera CSV de inventário.
+- **Detectar duplicatas**: lê o inventário e gera CSV com grupos duplicados.
+- **Gerar modelo de decisão**: cria uma planilha CSV para revisão humana dos arquivos a manter/remover.
+
+Exemplos por linha de comando:
+
+```bash
+python scripts/duplicate_finder.py --raiz "D:/acervo" --inventario "D:/relatorios/inventario.csv" --mostrar-progresso
+python scripts/duplicate_finder.py --inventario "D:/relatorios/inventario.csv" --duplicatas "D:/relatorios/duplicatas.csv"
+python scripts/duplicate_finder.py --from-duplicatas "D:/relatorios/duplicatas.csv" --decisoes "D:/relatorios/decisoes.csv"
+```
+
+### Tarefas > Duplicatas > Tratamento de Duplicatas
+
+Script usado: `scripts/duplicate_finder.py`
+
+![Painel Tratamento de Duplicatas](docs/images/panel-duplicate-treatment.png)
+
+Gera artefatos para executar decisões já revisadas.
+
+Operações:
+
+- **Gerar script de tratamento**: cria `.sh` ou `.cmd` para mover para quarentena ou remover arquivos.
+- **Dashboard de duplicatas**: gera CSV/XLSX com potencial de recuperação.
+- **Dashboard de decisões**: gera CSV/XLSX com recuperação planejada.
+
+Exemplo por linha de comando:
+
+```bash
+python scripts/duplicate_finder.py --decisoes "D:/relatorios/decisoes.csv" --gerar-script-remocao "D:/relatorios/tratar.cmd" --sistema windows --acao quarentena
+```
+
+### Tarefas > Duplicatas > Excluir Duplicatas por Manifesto
+
+Script usado: `scripts/delete_duplicates_by_manifest.py`
+
+![Painel Excluir Duplicatas por Manifesto](docs/images/panel-delete-duplicates.png)
+
+Remove arquivos de uma pasta de possíveis duplicatas quando o SHA-256 desses arquivos já existe na pasta origem.
+
+Fluxo:
+
+1. Gera um manifesto BagIt da pasta origem.
+2. Percorre a pasta com possíveis duplicatas.
+3. Apaga arquivos cujo hash aparece no manifesto da origem.
+4. Gera relatório CSV com arquivos apagados e espaço recuperado.
+
+Campos principais:
+
+- **Pasta origem**: pasta de referência.
+- **Pasta com possíveis duplicatas**: pasta onde arquivos podem ser apagados.
+- **Pasta do manifesto**: pasta onde será gravado `manifest-sha256.txt`.
+- **Pasta do relatório**: pasta onde será gravado `relatorio_exclusao_duplicatas.csv`.
+
+Proteção: o script bloqueia execução quando origem e duplicatas são a mesma pasta ou pastas sobrepostas.
+
+Exemplo por linha de comando:
+
+```bash
+python scripts/delete_duplicates_by_manifest.py \
+  --origem "D:/acervo/originais" \
+  --duplicatas "D:/acervo/possiveis_duplicatas" \
+  --manifesto "D:/relatorios/manifesto_origem" \
+  --relatorio "D:/relatorios/exclusao_duplicatas" \
+  --progress
+```
+
+Saídas:
+
+```text
+D:/relatorios/manifesto_origem/manifest-sha256.txt
+D:/relatorios/exclusao_duplicatas/relatorio_exclusao_duplicatas.csv
+```
+
+### Tarefas > Conversor Premis
+
+Script usado: `scripts/premis_converter.py`
+
+![Painel Conversor PREMIS](docs/images/panel-premis-converter.png)
+
+Converte e valida registros PREMIS entre XML, CSV e JSON.
+
+Campos principais:
+
+- **Arquivo de entrada**: `.xml`, `.csv` ou `.json`.
+- **Arquivo de saída**: `.xml`, `.csv` ou `.json`.
+- **Validar XML contra XSD**: valida XML com o schema PREMIS.
+- **XSD**: caminho opcional para `schemas/premis-v3-0.xsd`.
+- **Gerar exemplos**: cria exemplos em `./examples`.
+
+Exemplos por linha de comando:
+
+```bash
+python scripts/premis_converter.py --in "D:/premis/premis.xml" --out "D:/premis/premis.csv" --validate
+python scripts/premis_converter.py --in "D:/premis/premis.csv" --out "D:/premis/premis.xml" --schema "schemas/premis-v3-0.xsd"
+python scripts/premis_converter.py --example
+```
+
+### Visualização > Eventos PREMIS
+
+Script direto: nenhum. O painel lê o arquivo configurado em `premis_log`, normalmente `logs/premis_events.jsonl`.
+
+![Painel Eventos PREMIS](docs/images/panel-premis-events.png)
+
+Uso:
+
+- filtrar eventos por tipo, período e agente;
+- consultar eventos gerados automaticamente pelo Worker;
+- exportar eventos para CSV.
+
+### Visualização > Controle do Worker
+
+Script direto: nenhum. O painel controla o `Worker` e o `JobStore`.
+
+![Painel Controle do Worker](docs/images/panel-worker-control.png)
+
+Uso:
+
+- iniciar, parar, pausar, retomar e reiniciar o worker;
+- ver contadores por status;
+- listar jobs por status;
+- cancelar jobs pendentes;
+- reenfileirar jobs com erro, concluídos ou cancelados;
+- limpar jobs pendentes, concluídos ou com erro;
+- abrir logs detalhados de cada job.
+
+---
+
+## Scripts Disponíveis Pela Interface
+
+A interface gráfica usa estes scripts:
+
+| Painel | Script |
+|---|---|
+| Gerar Manifesto (Hash) | `scripts/hash_files.py` |
+| Verificar Fixidez | `scripts/verify_fixity.py` |
+| Gerar Pacote BagIt | `scripts/build_bag.py` |
+| Copiar | `scripts/replicate_storage.py` |
+| Análise de Duplicatas | `scripts/duplicate_finder.py` |
+| Tratamento de Duplicatas | `scripts/duplicate_finder.py` |
+| Excluir Duplicatas por Manifesto | `scripts/delete_duplicates_by_manifest.py` |
+| Conversor Premis | `scripts/premis_converter.py` |
+
+Outros scripts ou módulos podem existir no repositório como suporte interno, legado ou desenvolvimento, mas este README documenta apenas o que aparece na interface gráfica atual.
+
+---
+
+## Configuração
+
+Arquivo principal: `preservacao_app.json`.
+
+Exemplo:
 
 ```json
 {
   "scripts_dir": "./scripts",
-  "premis_log": "./dados/premis_events.jsonl",
-  "premis_agent": "Thor Arquivista",
-  "logo_path": "./assets/logo_inicial.png",
-  "jobs_path": "./jobs_db.json"
+  "logs_dir": "./logs",
+  "premis_log": "./logs/premis_events.jsonl",
+  "premis_agent": "Thor Arquivista - Caixa de Ferramentas de Preservação Digital v1.0",
+  "jobstore_path": "./jobs_db.json",
+  "ui_theme": "flatly"
 }
 ```
 
-- `scripts_dir`: pasta dos scripts chamados pelo *worker*.
-- `premis_log`: arquivo **JSONL** de eventos PREMIS (um evento por linha).
-- `premis_agent`: nome do agente aplicado aos eventos.
-- `logo_path`: caminho da imagem PNG da tela inicial.
-- `jobs_path`: base JSON da fila.
+Campos:
 
-> Ajuste caminhos conforme necessidade. Diretórios ausentes são criados quando possível.
+- `scripts_dir`: pasta dos scripts chamados pelo Worker.
+- `logs_dir`: pasta padrão de logs.
+- `premis_log`: arquivo JSONL de eventos PREMIS.
+- `premis_agent`: agente registrado nos eventos PREMIS.
+- `jobstore_path`: arquivo JSON da fila.
+- `ui_theme`: tema inicial do `ttkbootstrap`.
 
 ---
 
-## Fila de jobs (`jobs_db.json`)
+## Boas Práticas
 
-Estrutura (simplificada):
-```json
-{
-  "jobs": [
-    {
-      "_id": "uuid4",
-      "job_type": "HASH_MANIFEST",
-      "status": "pending|running|done|error|canceled",
-      "params": { "...": "..." },
-      "created_at": "UTC-ISO",
-      "updated_at": "UTC-ISO",
-      "error_msg": null
-    }
-  ],
-  "logs": {
-    "uuid4": [
-      {"ts":"UTC-ISO","level":"INFO|ERROR|...","msg":"texto"}
-    ]
-  }
-}
+- Use `sha256` como padrão para fixidez e duplicatas.
+- Antes de excluir duplicatas em acervos reais, rode em uma cópia de teste.
+- Guarde os relatórios CSV junto com a documentação do processamento.
+- Evite usar uma pasta de destino dentro da pasta de origem.
+- Caminhos com espaços devem ficar entre aspas na linha de comando.
+- Em Windows, os comandos aceitam `\`, mas os manifestos BagIt gravam caminhos relativos com `/`.
+
+---
+
+## Solução de Problemas
+
+**O app não abre**
+
+Confira se o ambiente virtual está ativo e se as dependências foram instaladas:
+
+```bash
+pip install -r requirements.txt
+python app.py
 ```
 
-Operações expostas pelo `JobStore` (usadas pelo *worker* e pelo painel):
-- `add_job`, `add_log`, `get_logs(job_id)`
-- `pop_next_pending()` (marca como `running`)
-- `set_status(job_id, ...)`
-- `list_jobs(status=None)`
-- `counts_by_status()`
-- `clear_by_status(status)`
-- `requeue_from_status(status)`
-- `cancel_job(job_id)`
+**O Worker parece parado**
 
-Gravação atômica e lock por *thread* para consistência local.
+Abra **Visualização > Controle do Worker** e use **Iniciar** ou **Reiniciar**.
 
----
+**Um job ficou com erro**
 
-## Painéis da interface
+Abra os logs no painel **Controle do Worker**. O erro do script geralmente aparece em `stderr` dentro dos logs do job.
 
-### Painel: Manifesto (Hash)
-- Gera arquivos `manifest-<algo>.txt` no **padrão BagIt**:
-  ```text
-  <hash>␠␠<caminho/relativo>
-  ```
-- **Opções**: algoritmo (`sha256`, `sha512`, `md5`, `sha1`, `blake2b`, `blake2s`), *ignorar ocultos*, *mostrar progresso*.
-- **Sugestão automática** do nome de saída conforme algoritmo e pasta raiz.
-- Enfileira um job `HASH_MANIFEST` no *worker*.
+**Erro de permissão**
 
-### Painel: Verificação de Fixidez
-- Lê um manifesto BagIt e compara com os arquivos na **pasta raiz**.
-- **Opções**: *reportar extras* (arquivos presentes e não listados), *mostrar progresso*.
-- Deduz o algoritmo pelo nome (`manifest-<algo>.txt`) ou aceita `--algo` explícito.
-- Enfileira um job `VERIFY_FIXITY`.
-
-### Painel: PREMIS — Registrar Evento
-- Form para inserir um evento PREMIS (*eventType*, *eventDetail*, *linkingObjectIdentifier*, etc.).
-- Persistência *append-only* em JSONL.
-
-### Painel: PREMIS — Visualizar
-- Filtros por tipo, período e agente.
-- Lista paginada de eventos.
-- Exportação CSV.
-
-### Painéis: Replicação / Bag / SIP / Identificar Formatos
-- *Placeholders* ou versões iniciais, conforme os scripts disponibilizados no diretório `scripts/`.
-
-### Painel: Controle do Worker
-- Estado do *worker*: **Em execução / Pausado / Parado**.
-- **Ações**: Iniciar, Parar, Pausar, Retomar, Reiniciar.
-- **Contadores por status** + **lista de jobs** com filtro.
-- **Ações de fila**: Reenfileirar erros, Reenfileirar todos, Limpar pendentes, Cancelar selecionado.
-- **Ver logs** (modal) do job selecionado (copiar/atualizar).
-
----
-
-## Execução dos scripts via CLI
-
-Além da UI, os scripts podem ser executados diretamente:
-
-- **Gerar manifesto BagIt**:
-  ```bash
-  python scripts/hash_files.py --raiz "D:/colecao" --saida "D:/colecao/manifest-sha256.txt" --algo sha256 --ignore-hidden --progress
-  ```
-
-- **Verificar fixidez**:
-  ```bash
-  python scripts/verify_fixity.py --raiz "D:/colecao" --manifesto "D:/colecao/manifest-sha256.txt" --report-extras --progress
-  ```
-
-> Caminhos com espaços devem ser colocados entre aspas. Em Windows, `\` é aceito; os manifestos usam caminho **relativo POSIX** (`/`).
-
----
-
-## Mapeamento de jobs → scripts
-
-`core/scripts_map.py` determina como cada `job_type` vira chamada de script:
-
-```python
-{
-  "HASH_MANIFEST": (
-      "hash_files.py",
-      lambda p, cfg: [
-          "--raiz", p["raiz"],
-          "--saida", p["saida"],
-          "--algo", p.get("algo", "sha256"),
-          *(["--progress"] if p.get("progress") else []),
-          *(["--ignore-hidden"] if p.get("ignore_hidden") else []),
-      ]
-  ),
-  "VERIFY_FIXITY": (
-      "verify_fixity.py",
-      lambda p, cfg: [
-          "--raiz", p["raiz"],
-          "--manifesto", p["manifesto"],
-          *(["--report-extras"] if p.get("report_extras") else []),
-          *(["--progress"] if p.get("progress") else []),
-      ]
-  ),
-  # ...demais jobs...
-}
-```
-
----
-
-## Boas práticas e desempenho
-- Prefira **`sha256`** para manifestos; `md5`/`sha1` são mais rápidos mas menos robustos.
-- Utilize `--ignore-hidden` para evitar lixo de metadados (`.DS_Store`, `.git`, etc.).
-- Ative `--progress` em coleções grandes para acompanhamento.
-- Em SSDs/RAIDs rápidos, aumentar `--workers` pode ajudar, mas evite saturar o I/O.
-- Mantenha os **caminhos relativos** no manifesto (portabilidade).
-
----
-
-## Solução de problemas
-
-- **ImportError: attempted relative import beyond top-level package**  
-  Garanta que o `app.py` execute o app como pacote e que `ui/main_window.py` use imports absolutos coerentes (`from core.config import AppConfig`, etc.).
-
-- **Mistura de barras em caminhos (Windows)**  
-  A UI usa `pathlib` para sugerir caminhos; ajuste manualmente se necessário. Os manifestos usam **POSIX** (`/`).
-
-- **Worker não inicia / não para**  
-  Use o painel *Controle do Worker*. Se necessário, feche o app para matar a *thread*. Arquivos de log de job ficam no `jobs_db.json` (seção `logs`).
-
-- **Permissões de escrita**  
-  Rode o app em uma pasta onde você tenha permissão de leitura/escrita.
-
----
-
-## Roadmap
-- Integração com ferramentas externas (Siegfried/DROID/ExifTool).
-- Empacotamento **BagIt** completo (bagit.txt, manifests, `data/`).
-- Geração de **SIP** com metadados e estrutura recomendada.
-- Replicação com checksum pós-cópia e relatórios.
+Execute o aplicativo em uma pasta onde o usuário tenha permissão de leitura e escrita. As tarefas criam manifestos, relatórios, logs e arquivos temporários.
 
 ---
 
 ## Licença
-Este projeto, **Thor Arquivista – Caixa de Ferramentas de Preservação Digital**,  
-é licenciado sob a **GNU General Public License v3.0 (GPLv3)**.  
 
-© 2025 Carlos Eduardo Carvalho Amand.  
-Você é livre para usar, modificar e redistribuir este software,  
-desde que preserve esta licença e atribua o crédito ao autor original.  
+Este projeto é licenciado sob a **GNU General Public License v3.0 (GPLv3)**.
+
+© 2025 Carlos Eduardo Carvalho Amand.
 
 Mais informações: [https://www.gnu.org/licenses/gpl-3.0.html](https://www.gnu.org/licenses/gpl-3.0.html)
