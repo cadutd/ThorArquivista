@@ -18,7 +18,7 @@
 from __future__ import annotations
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
-from tkinter import StringVar, Text, IntVar, filedialog, END
+from tkinter import StringVar, Text, filedialog, END
 from tkinter import X
 
 def create_panel(app, enqueue_cb):
@@ -29,7 +29,6 @@ def create_panel(app, enqueue_cb):
 
     fonte = StringVar(value="")
     destinos_text = None
-    verificar = IntVar(value=0)
 
     r1 = ttk.Frame(page); r1.pack(fill=X, pady=5)
     ttk.Label(r1, text="Fonte (pasta)").pack(side=LEFT, padx=4)
@@ -43,15 +42,11 @@ def create_panel(app, enqueue_cb):
     destinos_text.pack(side=LEFT, fill=X, expand=True)
     ttk.Button(r2, text="Adicionar…", command=lambda: _add_dest(destinos_text)).pack(side=LEFT, padx=6)
 
-    r3 = ttk.Frame(page); r3.pack(fill=X, pady=5)
-    ttk.Checkbutton(r3, text="Verificar hash após copiar", variable=verificar, bootstyle="round-toggle").pack(side=LEFT, padx=4)
-
     def _exec():
         destinos = [ln.strip() for ln in destinos_text.get("1.0", END).splitlines() if ln.strip()]
         enqueue_cb("REPLICATE", {
             "fonte": fonte.get(),
             "destinos": destinos,
-            "verificar_hash": bool(verificar.get()),
         })
 
     ttk.Button(page, text="Executar", bootstyle=PRIMARY, command=_exec).pack(pady=10)    
