@@ -1,490 +1,638 @@
-# Scripts de Preservação Digital — Thor Arquivista
+# Manual dos Scripts - Thor Arquivista
 
-Este diretório contém os **scripts autônomos** utilizados pelo sistema *Thor Arquivista – Orquestrador de Preservação Digital*.  
-Cada script pode ser executado de forma independente pela linha de comando, ou controlado pelo *Worker* interno da aplicação.
+Esta pasta contém os scripts de linha de comando usados pelo Thor Arquivista. Eles também são chamados pela interface gráfica por meio do `Worker`, mas podem ser executados diretamente no terminal.
+
+Execute os comandos a partir da raiz do projeto:
+
+```bash
+python scripts/<script>.py --help
+```
+
+No Windows, use aspas em caminhos com espaços. Os manifestos BagIt gravam caminhos relativos com `/`, mesmo quando o comando recebe caminhos com `\`.
 
 ---
 
 ## Sumário
-- [hash_files.py — Geração de Manifesto BagIt](#hash_filespy--geração-de-manifesto-bagit)
-- [verify_fixity.py — Verificação de Fixidez](#verify_fixitypy--verificação-de-fixidez)
-- [build_bag.py — Empacotamento BagIt (em desenvolvimento)](#build_bagpy--empacotamento-bagit-em-desenvolvimento)
-- [build_sip.py — Geração de SIP (em desenvolvimento)](#build_sippy--geração-de-sip-em-desenvolvimento)
-- [format_identify.py — Identificação de Formatos (em desenvolvimento)](#format_identifypy--identificação-de-formatos-em-desenvolvimento)
-- [replicate.py — Replicação de Diretórios (em desenvolvimento)](#replicatepy--replicação-de-diretórios-em-desenvolvimento)
-- [Boas práticas de execução](#boas-práticas-de-execução)
-- [Analise e eliminação de duplicatas](#duplicate_finderpy--localizador-de-duplicidades-e-geração-de-scripts-de-tratamento)
----
 
-## `hash_files.py` — Geração de Manifesto BagIt
-
-Script responsável por gerar manifestos **BagIt** no formato:
-```
-<hash>␠␠<caminho/relativo>
-```
-
-### Uso
-```bash
-python scripts/hash_files.py --raiz <pasta> --saida <manifesto> [--algo sha256] [--ignore-hidden] [--progress]
-```
-
-### Principais parâmetros
-| Parâmetro | Descrição |
-|------------|------------|
-| `--raiz` | Caminho da pasta onde estão os arquivos a serem processados |
-| `--saida` | Caminho do manifesto de saída (ex.: manifest-sha256.txt) |
-| `--algo` | Algoritmo de hash (`sha256`, `sha512`, `md5`, `sha1`, `blake2b`, `blake2s`) |
-| `--ignore-hidden` | Ignora arquivos/pastas iniciados por ponto |
-| `--progress` | Exibe progresso no stderr |
-| `--include-ext` / `--exclude-ext` | Filtra extensões específicas |
-| `--pattern` | Glob relativo (ex.: `**/*.pdf`) |
-| `--workers` | Número de threads de hashing |
-
-### Exemplo prático
-```bash
-python scripts/hash_files.py   --raiz "D:/acervo"   --saida "D:/acervo/manifest-sha256.txt"   --algo sha256   --ignore-hidden   --progress
-```
-
-### Entrada
-```
-D:/acervo/
-├─ carta1.pdf
-├─ carta2.pdf
-└─ subpasta/
-   └─ imagem1.jpg
-```
-
-### Saída (`manifest-sha256.txt`)
-```
-d2c7c963f83b2f92e4f18f46c92a89f0  carta1.pdf
-7ad0c4583a61e894bc1c1ccdc22cf34b  carta2.pdf
-fb7ffb8f67bba7b5a612aab524e667a9  subpasta/imagem1.jpg
-```
+- [`hash_files.py`](#hash_filespy)
+- [`verify_fixity.py`](#verify_fixitypy)
+- [`build_bag.py`](#build_bagpy)
+- [`build_sip.py`](#build_sippy)
+- [`format_identify.py`](#format_identifypy)
+- [`replicate_storage.py`](#replicate_storagepy)
+- [`duplicate_finder.py`](#duplicate_finderpy)
+- [`delete_duplicates_by_manifest.py`](#delete_duplicates_by_manifestpy)
+- [`premis_converter.py`](#premis_converterpy)
+- [`premis_log.py`](#premis_logpy)
+- [Módulo de apoio: `pd_common.py`](#modulo-de-apoio-pd_commonpy)
+- [Boas práticas](#boas-praticas)
 
 ---
 
-## `verify_fixity.py` — Verificação de Fixidez
+## `hash_files.py`
 
-Compara os hashes do manifesto BagIt com os arquivos existentes.
+Gera manifesto BagIt de uma pasta.
 
-### Uso
-```bash
-python scripts/verify_fixity.py --raiz <pasta> --manifesto <arquivo> [--report-extras] [--progress]
+Formato de saída:
+
+```text
+<hash>  <caminho/relativo>
 ```
 
-### Parâmetros principais
+Uso básico:
+
+```bash
+python scripts/hash_files.py --raiz "D:/acervo" --saida "D:/acervo/manifest-sha256.txt"
+```
+
+Uso com opções:
+
+```bash
+python scripts/hash_files.py \
+  --raiz "D:/acervo" \
+  --saida "D:/relatorios/manifest-sha256.txt" \
+  --algo sha256 \
+  --ignore-hidden \
+  --pattern "**/*.pdf" \
+  --workers 8 \
+  --progress
+```
+
+Parâmetros:
+
 | Parâmetro | Descrição |
-|------------|------------|
-| `--raiz` | Pasta onde estão os arquivos originais |
-| `--manifesto` | Caminho do manifesto a validar |
-| `--algo` | (opcional) Força o algoritmo |
-| `--report-extras` | Mostra arquivos em disco não listados |
-| `--progress` | Exibe progresso durante a execução |
+|---|---|
+| `--raiz` | Pasta raiz a varrer. Obrigatório. |
+| `--saida` | Arquivo de manifesto a gravar. Obrigatório. |
+| `--algo` | Algoritmo de hash. Padrão: `sha256`. |
+| `--include-ext` | Extensões a incluir, sem ponto. Ex.: `pdf tif jpg`. |
+| `--exclude-ext` | Extensões a excluir, sem ponto. |
+| `--min-size` | Tamanho mínimo em bytes. |
+| `--max-size` | Tamanho máximo em bytes. |
+| `--modified-after` | Inclui arquivos modificados após `YYYY-MM-DD`. |
+| `--modified-before` | Inclui arquivos modificados antes de `YYYY-MM-DD`. |
+| `--pattern` | Glob relativo. Ex.: `**/*.pdf`. |
+| `--ignore-hidden` | Ignora itens ocultos iniciados por ponto. |
+| `--follow-symlinks` | Segue links simbólicos. |
+| `--workers` | Número de threads. |
+| `--progress` | Mostra progresso no `stderr`. |
 
-### Exemplo prático
+Saída esperada:
+
+```text
+f2ca1bb6c7e907d06dafe4687e579fce  documento.pdf
+9f86d081884c7d659a2feaa0c55ad015  subpasta/imagem.tif
+```
+
+---
+
+## `verify_fixity.py`
+
+Verifica fixidez comparando uma pasta com um manifesto BagIt.
+
+Uso básico:
+
 ```bash
-python scripts/verify_fixity.py   --raiz "D:/acervo"   --manifesto "D:/acervo/manifest-sha256.txt"   --report-extras   --progress
+python scripts/verify_fixity.py --raiz "D:/acervo" --manifesto "D:/acervo/manifest-sha256.txt"
 ```
 
-### Entrada
-```
-D:/acervo/
-├─ carta1.pdf
-├─ carta2.pdf
-├─ subpasta/
-│  └─ imagem1.jpg
-└─ manifest-sha256.txt
+Uso com relatório de extras:
+
+```bash
+python scripts/verify_fixity.py \
+  --raiz "D:/acervo" \
+  --manifesto "D:/acervo/manifest-sha256.txt" \
+  --report-extras \
+  --progress
 ```
 
-### Saída esperada
-```
+Parâmetros:
+
+| Parâmetro | Descrição |
+|---|---|
+| `--raiz` | Pasta onde os arquivos esperados estão. Obrigatório. |
+| `--manifesto` | Manifesto BagIt a validar. Obrigatório. |
+| `--algo` | Força o algoritmo. Se omitido, tenta inferir de `manifest-<algo>.txt`. |
+| `--workers` | Número de threads de verificação. |
+| `--progress` | Mostra progresso. |
+| `--strict-missing` | Deixa explícito que faltantes geram erro. |
+| `--report-extras` | Reporta arquivos existentes que não estão no manifesto. |
+
+Códigos de saída:
+
+| Código | Significado |
+|---|---|
+| `0` | Tudo OK. |
+| `1` | Há faltantes, divergências ou erro em arquivo. |
+| `2` | Parâmetros inválidos, manifesto inválido ou algoritmo não suportado. |
+
+Saída resumida:
+
+```text
 === Verificação de fixidez ===
-Manifesto : D:/acervo/manifest-sha256.txt
-Raiz      : D:/acervo
+Manifesto : D:\acervo\manifest-sha256.txt
+Raiz      : D:\acervo
 Algoritmo : sha256
-Total     : 3
-OK        : 3
+Total     : 100
+OK        : 100
 Faltando  : 0
 Divergências: 0
-Extras    : 0
-```
-
-Se um arquivo estiver faltando:
-```
-=== Verificação de fixidez ===
-OK        : 2
-Faltando  : 1
-Divergências: 0
-
--- Faltando --
-subpasta/imagem1.jpg
 ```
 
 ---
 
-## `build_bag.py` — Empacotamento BagIt
+## `build_bag.py`
 
-Cria pacotes completos no padrao BagIt 0.97, com `bagit.txt`, `bag-info.txt`, `data/`, `manifest-ALGO.txt` e opcionalmente `tagmanifest-ALGO.txt`. Suporta preenchimento de `bag-info.txt` a partir de **profiles** em `profiles/*-profileBagit.json`.
+Cria pacote BagIt completo.
 
-### Uso
-```bash
-python scripts/build_bag.py SRC DST
-  [--algo ALGO]
-  [--mode {copy,link,move}]
-  [--pattern GLOB]
-  [--include-hidden]
-  [--follow-symlinks]
-  [--tagmanifest]
-  [--organization ORG]
-  [--source-organization SRCORG]
-  [--contact-name NAME]
-  [--contact-email EMAIL]
-  [--description TEXT]
-  [--profile NAME_OR_JSON_PATH]
-  [--profile-param KEY=VALUE]    # pode repetir
+Saídas principais:
+
+```text
+bagit.txt
+bag-info.txt
+manifest-sha256.txt
+data/
+tagmanifest-sha256.txt   # opcional
 ```
 
-### Principais parametros
-| Parametro | Descricao |
+Uso básico:
+
+```bash
+python scripts/build_bag.py "D:/acervo/fonte" "D:/bags/bag_001"
+```
+
+Uso com metadados e tagmanifest:
+
+```bash
+python scripts/build_bag.py "D:/acervo/fonte" "D:/bags/bag_001" \
+  --algo sha256 \
+  --mode copy \
+  --pattern "**/*.pdf" \
+  --tagmanifest \
+  --organization "APESP" \
+  --source-organization "Secretaria X" \
+  --contact-name "Nome do contato" \
+  --contact-email "contato@example.org" \
+  --description "Transferência 2026-04" \
+  --profile apesp \
+  --profile-param transfer_id=TRF-2026-001
+```
+
+Parâmetros:
+
+| Parâmetro | Descrição |
 |---|---|
-| `SRC` | Pasta fonte do payload a ser empacotado em `data/` |
-| `DST` | Pasta destino do pacote BagIt. Deve estar vazia ou nao existir |
-| `--algo` | Algoritmo do manifesto. Padrao: `sha256` |
-| `--mode` | Transferencia para `data/`: `copy` (padrao), `link` (hardlink, com fallback para copia), `move` |
-| `--pattern` | Glob para selecionar arquivos da origem. Ex.: `*.pdf`, `**/*.tif` |
-| `--include-hidden` | Inclui arquivos ocultos (nomes iniciando com ponto) |
-| `--follow-symlinks` | Segue symlinks ao varrer a origem |
-| `--tagmanifest` | Gera tagmanifest para `bagit.txt`, `bag-info.txt` e `manifest-ALGO.txt` |
-| `--organization` | Valor que pode alimentar o profile (`Organization`) |
-| `--source-organization` | Valor que pode alimentar o profile (`Source-Organization`) |
-| `--contact-name` | Valor que pode alimentar o profile (`Contact-Name`) |
-| `--contact-email` | Valor que pode alimentar o profile (`Contact-Email`) |
-| `--description` | Valor que pode alimentar o profile (`External-Description`) |
-| `--profile` | Nome logico do profile em `profiles/[NAME]-profileBagit.json` ou caminho para um JSON de profile |
-| `--profile-param KEY=VALUE` | Parametros extras para preencher placeholders do profile. Pode repetir a opcao |
+| `src` | Pasta fonte do payload. Obrigatório. |
+| `dst` | Pasta destino do BagIt. Obrigatório. |
+| `--algo` | Algoritmo do manifesto. Padrão: `sha256`. |
+| `--mode` | `copy`, `link` ou `move`. Padrão: `copy`. |
+| `--pattern` | Glob dos arquivos a empacotar. Padrão: `*`. |
+| `--include-hidden` | Inclui arquivos ocultos. |
+| `--follow-symlinks` | Segue links simbólicos. |
+| `--tagmanifest` | Gera tagmanifest dos arquivos de tag. |
+| `--organization` | Valor de `Organization`. |
+| `--source-organization` | Valor de `Source-Organization`. |
+| `--contact-name` | Valor de `Contact-Name`. |
+| `--contact-email` | Valor de `Contact-Email`. |
+| `--description` | Valor de `External-Description`. |
+| `--profile` | Nome lógico em `profiles/[nome]-profileBagit.json` ou caminho JSON. |
+| `--profile-param` | Parâmetro extra `chave=valor`. Pode repetir. |
 
-### Exemplo pratico
-```bash
-python scripts/build_bag.py "./fonte" "./bag_apesp"   --organization APESP   --source-organization "Secretaria X"   --contact-name "Carlos Eduardo"   --contact-email "carlos@example.org"   --description "Transferencia 2025-10-30 - Serie Y"   --profile apesp   --profile-param transfer_id=TRF-2025-001   --profile-param transfer_desc="Recolhimento serie Y, unidade Z"   --tagmanifest
-```
+Observações:
 
-### Entrada
-```
-./fonte/
-├─ carta1.pdf
-├─ carta2.pdf
-└─ subpasta/
-   └─ imagem1.jpg
-```
-
-### Saida
-```
-./bag_apesp/
-├─ bagit.txt
-├─ bag-info.txt
-├─ manifest-sha256.txt
-├─ data/
-│  ├─ carta1.pdf
-│  ├─ carta2.pdf
-│  └─ subpasta/
-│     └─ imagem1.jpg
-└─ tagmanifest-sha256.txt    # se --tagmanifest for usado
-```
-
-### Sobre profiles BagIt
-- Local de busca por nome logico: `profiles/[NAME]-profileBagit.json`.
-- Estrutura minima do profile:
-  ```json
-  {
-    "bag_info": {
-      "Source-Organization": "{source_organization}",
-      "Organization": "{organization}",
-      "Contact-Name": "{contact_name}",
-      "Contact-Email": "{contact_email}",
-      "External-Description": "{external_description}",
-      "Internal-Sender-Identifier": "{transfer_id}",
-      "Internal-Sender-Description": "{transfer_desc}"
-    },
-    "required_tags": ["Source-Organization", "Contact-Email"]
-  }
-  ```
-- Placeholders resolvidos automaticamente:
-  - Calculados: `bagging_date`, `payload_oxum`, `algo`, `total_bytes`, `file_count`, `src`, `dst`, `bag_software_agent`
-  - Via flags: `organization`, `source_organization`, `contact_name`, `contact_email`, `external_description`
-  - Via `--profile-param`: quaisquer chaves adicionais, por exemplo `transfer_id`, `serie`, `produtor`
-- Observacao: `Bagging-Date`, `Payload-Oxum` e `Bag-Software-Agent` sao sempre escritos com valores calculados pelo script.
-
-### Codigos de retorno
-- `0`: sucesso
-- `2`: erro de execucao ou parametros invalidos
-
-### Observacoes
-- Caminhos no manifesto usam separador `/` e fim de linha LF.
-- Se `--mode link` nao for suportado pelo filesystem, o script faz fallback para copia.
-- Para usar via interface, o painel `build_bag` enfileira um job `BUILD_BAG` que e mapeado por `core/scripts_map.py` para este script com os argumentos correspondentes.
+- O destino deve não existir ou estar vazio.
+- Em `--mode link`, se hardlink não for suportado, o script faz fallback para cópia.
+- Profiles podem preencher campos obrigatórios de `bag-info.txt`.
 
 ---
 
-## `build_sip.py` — Geração de SIP (em desenvolvimento)
+## `build_sip.py`
 
-Cria **Submission Information Packages (SIP)**, com metadados e estrutura definida.
+Cria um SIP simples com objetos, metadados e manifesto SHA-256.
 
-### Uso (planejado)
-```bash
-python scripts/build_sip.py --fonte <pasta> --saida <pasta> [--id <identificador>]
+Estrutura gerada:
+
+```text
+<saida>/<sip-id>/
+  objects/
+  metadata/metadata.json
+  manifest-sha256.txt
 ```
 
----
-
-## `format_identify.py` — Identificação de Formatos (em desenvolvimento)
-
-Identifica formatos de arquivo, gera CSV com MIME type e extensão detectada.
-
-### Uso (planejado)
-```bash
-python scripts/format_identify.py --raiz <pasta> --saida <relatorio.csv>
-```
-
----
-
-## `replicate.py` — Replicação de Diretórios (em desenvolvimento)
-
-Copia uma árvore de diretórios para múltiplos destinos, podendo validar hash após a cópia.
-
-### Uso (planejado)
-```bash
-python scripts/replicate.py --fonte <pasta> --destino <dest1> --destino <dest2> [--verificar-hash]
-```
-
-### Exemplo (planejado)
-```bash
-python scripts/replicate.py --fonte "./dados" --destino "./backup1" --destino "./backup2" --verificar-hash
-```
-
----
-
-## Boas práticas de execução
-
-- Prefira **caminhos relativos** e formato POSIX (`/`).
-- Gere manifestos separados por algoritmo (`manifest-sha256.txt`, etc.).
-- Use `--ignore-hidden` para evitar arquivos de sistema.
-- Utilize `--progress` em coleções grandes.
-- Mantenha manifesto e dados juntos.
-
----
-
-## Exemplo de fluxo completo
-
-1. **Gerar manifesto:**
-   ```bash
-   python scripts/hash_files.py --raiz "./colecao" --saida "./colecao/manifest-sha256.txt"
-   ```
-
-2. **Transferir** ou replicar o conjunto.
-
-3. **Validar integridade:**
-   ```bash
-   python scripts/verify_fixity.py --raiz "./colecao" --manifesto "./colecao/manifest-sha256.txt"
-   ```
-
-4. **Saída esperada:**
-   ```
-   OK        : 100%
-   Faltando  : 0
-   Divergências: 0
-   ```
-
----
-# `duplicate_finder.py` — Localizador de Duplicidades e Geração de Scripts de Tratamento
-
-Este script detecta **arquivos duplicados** em um diretório, gera **relatórios CSV** e **modelos de decisão**, além de criar **scripts de tratamento** (Linux `.sh` ou Windows `.cmd`) para **mover duplicatas para quarentena** ou **removê-las definitivamente**.  
-Todas as operações registram um **log detalhado** das ações realizadas.
-
----
-
-## ⚙️ Funcionalidades principais
-
-1. **Inventário de arquivos** com hash SHA-256 e metadados (`ctime`, `mtime`, `tamanho`, `caminho_relativo`)  
-2. **Detecção de duplicatas** por `(hash, tamanho)`  
-3. **Geração de modelo de decisões** para indicar o arquivo a manter e os que podem ser eliminados  
-4. **Geração de script de tratamento** para Linux ou Windows:
-   - Quarentena (movimentação não destrutiva)
-   - Remoção definitiva (com confirmação)
-   - Criação automática de log (`.log`)
-5. **Geração de dashboards**:
-   - **Potencial de recuperação** (base duplicatas)
-   - **Recuperação planejada** (base decisões)
-
----
-
-## 🧭 Uso geral
-
-### 1️⃣ Inventariar arquivos
+Uso básico:
 
 ```bash
-python scripts/duplicate_finder.py \\
-  --raiz "/caminho/para/storage" \\
-  --inventario inventario.csv \\
+python scripts/build_sip.py --fonte "D:/acervo/fonte" --saida "D:/sips" --sip-id "SIP_001"
+```
+
+Gerar também ZIP:
+
+```bash
+python scripts/build_sip.py \
+  --fonte "D:/acervo/fonte" \
+  --saida "D:/sips" \
+  --sip-id "SIP_001" \
+  --zip
+```
+
+Parâmetros:
+
+| Parâmetro | Descrição |
+|---|---|
+| `--fonte` | Pasta de origem dos objetos. Obrigatório. |
+| `--saida` | Diretório onde o SIP será criado. Obrigatório. |
+| `--sip-id` | Identificador/nome do SIP. Obrigatório. |
+| `--zip` | Compacta o SIP em ZIP. |
+| `--no-zip` | Não compacta. Padrão. |
+| `--config` | Arquivo YAML/JSON opcional. |
+| `--log-jsonl` | Caminho de log JSONL opcional. |
+| `--quiet` | Modo silencioso. |
+
+---
+
+## `format_identify.py`
+
+Identifica formato de arquivos em uma pasta.
+
+Se o utilitário externo `sf` (Siegfried) estiver disponível no `PATH`, o script usa Siegfried. Caso contrário, usa fallback por `mimetypes`.
+
+Uso imprimindo no terminal:
+
+```bash
+python scripts/format_identify.py --raiz "D:/acervo"
+```
+
+Uso gravando JSONL:
+
+```bash
+python scripts/format_identify.py --raiz "D:/acervo" --saida "D:/relatorios/formatos.jsonl"
+```
+
+Parâmetros:
+
+| Parâmetro | Descrição |
+|---|---|
+| `--raiz` | Pasta a varrer. Obrigatório. |
+| `--saida` | Arquivo JSONL de saída. Se omitido, imprime no terminal. |
+| `--config` | Arquivo YAML/JSON opcional. |
+| `--log-jsonl` | Caminho de log JSONL opcional. |
+| `--quiet` | Modo silencioso. |
+
+Exemplo de linha JSONL:
+
+```json
+{"path":"D:/acervo/doc.pdf","sha256":"...","mime":"application/pdf","id":"fmt/18","format":"Acrobat PDF","basis":"...","relpath":"doc.pdf"}
+```
+
+---
+
+## `replicate_storage.py`
+
+Replica arquivos para um ou mais destinos e valida a cópia por manifesto.
+
+Fluxo:
+
+1. Gera `manifest-sha256.txt` da pasta fonte dentro de cada destino.
+2. Copia os arquivos.
+3. Valida cada destino com `verify_fixity.py`.
+
+Uso com um destino:
+
+```bash
+python scripts/replicate_storage.py --fonte "D:/acervo" --destino "E:/backup"
+```
+
+Uso com múltiplos destinos:
+
+```bash
+python scripts/replicate_storage.py \
+  --fonte "D:/acervo" \
+  --destino "E:/backup_1" \
+  --destino "F:/backup_2"
+```
+
+Parâmetros:
+
+| Parâmetro | Descrição |
+|---|---|
+| `--fonte` | Pasta de origem. Obrigatório. |
+| `--destino` | Pasta de destino. Obrigatório; pode repetir. |
+| `--verificar-hash` | Compatibilidade. A verificação por manifesto é sempre executada. |
+| `--config` | Arquivo YAML/JSON opcional. |
+| `--log-jsonl` | Caminho de log JSONL opcional. |
+| `--quiet` | Modo silencioso. |
+
+Proteção:
+
+- O destino não pode estar dentro da origem.
+- Se a verificação falhar, o script encerra com erro.
+
+---
+
+## `duplicate_finder.py`
+
+Ferramenta multifunção para inventariar arquivos, detectar duplicatas, gerar planilha de decisão, gerar scripts de tratamento e dashboards.
+
+### 1. Inventariar arquivos
+
+```bash
+python scripts/duplicate_finder.py \
+  --raiz "D:/acervo" \
+  --inventario "D:/relatorios/inventario.csv" \
   --mostrar-progresso
 ```
 
-Cria `inventario.csv` com SHA-256 e metadados de cada arquivo.
+Gera CSV com hash SHA-256, tamanho e metadados.
 
----
-
-### 2️⃣ Detectar duplicatas
+### 2. Detectar duplicatas
 
 ```bash
-python scripts/duplicate_finder.py \\
-  --inventario inventario.csv \\
-  --duplicatas duplicatas.csv
+python scripts/duplicate_finder.py \
+  --inventario "D:/relatorios/inventario.csv" \
+  --duplicatas "D:/relatorios/duplicatas.csv"
 ```
 
-Gera `duplicatas.csv` listando grupos de arquivos com mesmo hash e tamanho.
+Gera CSV com grupos de duplicatas.
 
----
-
-### 3️⃣ Gerar modelo de decisões
+### 3. Gerar modelo de decisões
 
 ```bash
-python scripts/duplicate_finder.py \\
-  --from-duplicatas duplicatas.csv \\
-  --decisoes decisoes.csv
+python scripts/duplicate_finder.py \
+  --from-duplicatas "D:/relatorios/duplicatas.csv" \
+  --decisoes "D:/relatorios/decisoes.csv"
 ```
 
-Cria um **modelo de planilha** para revisão humana e justificativa de decisão.
+Gera CSV para revisão humana. Use esse arquivo para indicar o que manter e o que tratar.
 
----
+### 4. Gerar script de tratamento
 
-### 4️⃣ Gerar script de tratamento
-
-O script pode ser criado para **Linux (.sh)** ou **Windows (.cmd)**, com **ação de quarentena ou remoção definitiva**.
-
-#### 🐧 Linux — mover para quarentena (padrão)
+Mover para quarentena no Windows:
 
 ```bash
-python scripts/duplicate_finder.py \\
-  --decisoes decisoes.csv \\
-  --gerar-script-remocao tratar.sh \\
-  --sistema linux \\
-  --acao quarentena \\
-  --prefixo-quarentena QUARENTENA_DUP \\
-  --script-log-nome tratamento_duplicatas.log
+python scripts/duplicate_finder.py \
+  --decisoes "D:/relatorios/decisoes.csv" \
+  --gerar-script-remocao "D:/relatorios/tratar.cmd" \
+  --sistema windows \
+  --acao quarentena \
+  --prefixo-quarentena "QUARENTENA_DUP"
 ```
 
-**O que faz:**
-- Cria `tratar.sh` e uma pasta `QUARENTENA_DUP_YYYYMMDD_HHMMSS/`
-- Move arquivos para quarentena preservando a estrutura
-- Gera log detalhado em `tratamento_duplicatas.log`
-- Exige confirmação digitando `YES`
-
-#### 🐧 Linux — remover definitivamente
+Mover para quarentena no Linux/macOS:
 
 ```bash
-python scripts/duplicate_finder.py \\
-  --decisoes decisoes.csv \\
-  --gerar-script-remocao tratar.sh \\
-  --sistema linux \\
+python scripts/duplicate_finder.py \
+  --decisoes "D:/relatorios/decisoes.csv" \
+  --gerar-script-remocao "D:/relatorios/tratar.sh" \
+  --sistema linux \
+  --acao quarentena \
+  --prefixo-quarentena "QUARENTENA_DUP"
+```
+
+Gerar script de remoção definitiva:
+
+```bash
+python scripts/duplicate_finder.py \
+  --decisoes "D:/relatorios/decisoes.csv" \
+  --gerar-script-remocao "D:/relatorios/remover.cmd" \
+  --sistema windows \
   --acao remover
 ```
 
-**O que faz:**
-- Cria `tratar.sh` que remove os arquivos após confirmação digitando `DELETE`
-- Gera log automático `tratamento_YYYYMMDD_HHMMSS.log`
+### 5. Gerar dashboards
 
-#### 🪟 Windows — mover para quarentena
-
-```bat
-python scripts\duplicate_finder.py ^
-  --decisoes decisoes.csv ^
-  --gerar-script-remocao tratar.cmd ^
-  --sistema windows ^
-  --acao quarentena ^
-  --prefixo-quarentena QUARENTENA_DUP ^
-  --script-log-nome tratamento_duplicatas.log
-```
-
-**O que faz:**
-- Usa PowerShell para criar pastas e mover arquivos preservando a estrutura
-- Gera log em `%cd%\tratamento_duplicatas.log`
-- Exige confirmação digitando `YES`
-
-#### 🪟 Windows — remover definitivamente
-
-```bat
-python scripts\duplicate_finder.py ^
-  --decisoes decisoes.csv ^
-  --gerar-script-remocao tratar.cmd ^
-  --sistema windows ^
-  --acao remover
-```
-
-**O que faz:**
-- Remove os arquivos após confirmação digitando `DELETE`
-- Gera log `tratamento_YYYYMMDD_HHMMSS.log`
-
----
-
-## 📊 Dashboards
-
-### Potencial de recuperação (duplicatas)
+Dashboard de potencial de recuperação:
 
 ```bash
-python scripts/duplicate_finder.py \\
-  --inventario inventario.csv \\
-  --duplicatas duplicatas.csv \\
-  --dashboard-duplicatas-csv dashboard_duplicatas.csv \\
-  --dashboard-duplicatas-xlsx dashboard_duplicatas.xlsx
+python scripts/duplicate_finder.py \
+  --inventario "D:/relatorios/inventario.csv" \
+  --duplicatas "D:/relatorios/duplicatas.csv" \
+  --dashboard-duplicatas-csv "D:/relatorios/dashboard_duplicatas.csv" \
+  --dashboard-duplicatas-xlsx "D:/relatorios/dashboard_duplicatas.xlsx"
 ```
 
-### Recuperação planejada (decisões)
+Dashboard de recuperação planejada:
 
 ```bash
-python scripts/duplicate_finder.py \\
-  --inventario inventario.csv \\
-  --decisoes decisoes.csv \\
-  --dashboard-decisoes-csv dashboard_decisoes.csv \\
-  --dashboard-decisoes-xlsx dashboard_decisoes.xlsx
+python scripts/duplicate_finder.py \
+  --inventario "D:/relatorios/inventario.csv" \
+  --decisoes "D:/relatorios/decisoes.csv" \
+  --dashboard-decisoes-csv "D:/relatorios/dashboard_decisoes.csv" \
+  --dashboard-decisoes-xlsx "D:/relatorios/dashboard_decisoes.xlsx"
 ```
 
----
-
-## 📋 Parâmetros principais
+Parâmetros principais:
 
 | Parâmetro | Descrição |
-|------------|------------|
-| `--raiz` | Pasta raiz a ser inventariada |
-| `--inventario` | Arquivo CSV de inventário |
-| `--duplicatas` | Arquivo CSV de duplicatas |
-| `--from-duplicatas` | Base de duplicatas para gerar modelo de decisões |
-| `--decisoes` | Arquivo CSV de decisões |
-| `--gerar-script-remocao` | Gera script de tratamento (`.sh` ou `.cmd`) |
-| `--sistema` | `linux` ou `windows` |
-| `--acao` | `quarentena` (mover) ou `remover` (excluir) |
-| `--prefixo-quarentena` | Prefixo do diretório de quarentena |
-| `--script-log-nome` | Nome do arquivo de log do script |
-| `--dashboard-duplicatas-*` | Geração de dashboards de duplicatas |
-| `--dashboard-decisoes-*` | Geração de dashboards de decisões |
+|---|---|
+| `--raiz` | Pasta a inventariar. |
+| `--inventario` | CSV de inventário. |
+| `--duplicatas` | CSV de duplicatas. |
+| `--from-duplicatas` | CSV de duplicatas usado para gerar decisões. |
+| `--decisoes` | CSV de decisões. |
+| `--gerar-script-remocao` | Caminho do script `.sh` ou `.cmd` a gerar. |
+| `--sistema` | `linux` ou `windows`. |
+| `--acao` | `quarentena` ou `remover`. |
+| `--prefixo-quarentena` | Prefixo da pasta de quarentena. |
+| `--script-log-nome` | Nome do log gerado pelo script de tratamento. |
+| `--mostrar-progresso` | Mostra progresso no inventário. |
+| `--dashboard-duplicatas-csv` | CSV de dashboard de duplicatas. |
+| `--dashboard-duplicatas-xlsx` | XLSX de dashboard de duplicatas. |
+| `--dashboard-decisoes-csv` | CSV de dashboard de decisões. |
+| `--dashboard-decisoes-xlsx` | XLSX de dashboard de decisões. |
+
+Aviso:
+
+- Revise `decisoes.csv` antes de executar qualquer script de tratamento.
+- Prefira `quarentena` antes de usar `remover`.
 
 ---
 
-## ⚠️ Observações importantes
+## `delete_duplicates_by_manifest.py`
 
-- **Nunca execute scripts de remoção diretamente em produção.**  
-  Revise sempre os caminhos e o arquivo `decisoes.csv` antes de aplicar.
-- O modo **quarentena** é **não destrutivo**, ideal para validação e testes.
-- Os scripts gerados são **auto-documentados e registram log** com `[OK]`, `[WARN]` e `[INFO]`.
-- O log é gravado tanto no terminal quanto em arquivo (`.log`).
+Apaga arquivos de uma pasta de possíveis duplicatas quando o hash SHA-256 já existe no manifesto gerado a partir de uma pasta origem.
 
+Fluxo:
 
+1. Gera `manifest-sha256.txt` da pasta origem.
+2. Percorre a pasta de possíveis duplicatas.
+3. Apaga arquivos cujo SHA-256 aparece no manifesto.
+4. Gera `relatorio_exclusao_duplicatas.csv` com arquivos apagados e espaço recuperado.
+
+Uso básico:
+
+```bash
+python scripts/delete_duplicates_by_manifest.py \
+  --origem "D:/acervo/originais" \
+  --duplicatas "D:/acervo/possiveis_duplicatas"
+```
+
+Uso com pastas de saída:
+
+```bash
+python scripts/delete_duplicates_by_manifest.py \
+  --origem "D:/acervo/originais" \
+  --duplicatas "D:/acervo/possiveis_duplicatas" \
+  --manifesto "D:/relatorios/manifesto_origem" \
+  --relatorio "D:/relatorios/exclusao_duplicatas" \
+  --progress
+```
+
+Saídas:
+
+```text
+D:/relatorios/manifesto_origem/manifest-sha256.txt
+D:/relatorios/exclusao_duplicatas/relatorio_exclusao_duplicatas.csv
+```
+
+Parâmetros:
+
+| Parâmetro | Descrição |
+|---|---|
+| `--origem` | Pasta usada como referência. Obrigatório. |
+| `--duplicatas` | Pasta a percorrer e limpar. Obrigatório. |
+| `--manifesto` | Pasta onde será gravado `manifest-sha256.txt`. |
+| `--relatorio` | Pasta onde será gravado `relatorio_exclusao_duplicatas.csv`. |
+| `--progress` | Mostra progresso. |
+
+Proteções:
+
+- Origem e duplicatas não podem ser iguais.
+- Origem e duplicatas não podem ser pastas sobrepostas.
+- O manifesto e o relatório não são varridos como candidatos de exclusão.
+
+---
+
+## `premis_converter.py`
+
+Converte registros PREMIS entre XML, CSV e JSON e pode validar XML contra XSD.
+
+Uso para validar XML:
+
+```bash
+python scripts/premis_converter.py --in "D:/premis/premis.xml" --validate
+```
+
+Converter XML para CSV:
+
+```bash
+python scripts/premis_converter.py \
+  --in "D:/premis/premis.xml" \
+  --out "D:/premis/premis.csv" \
+  --validate \
+  --schema "schemas/premis-v3-0.xsd"
+```
+
+Converter CSV para XML:
+
+```bash
+python scripts/premis_converter.py \
+  --in "D:/premis/premis.csv" \
+  --out "D:/premis/premis.xml" \
+  --schema "schemas/premis-v3-0.xsd"
+```
+
+Converter JSON para XML:
+
+```bash
+python scripts/premis_converter.py \
+  --in "D:/premis/premis.json" \
+  --out "D:/premis/premis.xml" \
+  --validate
+```
+
+Gerar exemplos:
+
+```bash
+python scripts/premis_converter.py --example
+```
+
+Parâmetros:
+
+| Parâmetro | Descrição |
+|---|---|
+| `--in` | Arquivo de entrada `.xml`, `.csv` ou `.json`. |
+| `--out` | Arquivo de saída `.xml`, `.csv` ou `.json`. |
+| `--validate` | Valida XML de entrada ou saída. |
+| `--schema` | Caminho alternativo para `premis-v3-0.xsd`. |
+| `--example` | Gera exemplos em `./examples`. |
+
+Observação para Windows:
+
+- Se `--help` falhar por encoding do console, execute em um terminal UTF-8 ou use `chcp 65001` antes do comando.
+
+---
+
+## `premis_log.py`
+
+Acrescenta um evento PREMIS simples em um arquivo JSONL.
+
+Uso básico:
+
+```bash
+python scripts/premis_log.py \
+  --arquivo-log "logs/premis_events.jsonl" \
+  --tipo "fixity check" \
+  --obj-id "D:/acervo/manifest-sha256.txt"
+```
+
+Uso completo:
+
+```bash
+python scripts/premis_log.py \
+  --arquivo-log "logs/premis_events.jsonl" \
+  --tipo "replication" \
+  --obj-id "D:/acervo" \
+  --detalhe "Cópia para E:/backup validada com manifesto" \
+  --resultado "success" \
+  --agente "Thor Arquivista"
+```
+
+Parâmetros:
+
+| Parâmetro | Descrição |
+|---|---|
+| `--arquivo-log` | Arquivo JSONL de eventos PREMIS. Obrigatório. |
+| `--tipo` | Tipo do evento. Obrigatório. |
+| `--obj-id` | Identificador do objeto. Obrigatório. |
+| `--detalhe` | Detalhe textual do evento. |
+| `--resultado` | Resultado do evento. Padrão: `success`. |
+| `--agente` | Nome do agente. Padrão: `Sistema de Preservação`. |
+
+Exemplo de linha JSONL:
+
+```json
+{"eventIdentifier":"local-...","eventType":"fixity check","eventDateTime":"...Z","eventDetail":"","eventOutcome":"success","linkingObjectIdentifier":"D:/acervo","linkingAgentName":"Thor Arquivista"}
+```
+
+---
+
+## Módulo de apoio: `pd_common.py`
+
+`pd_common.py` não é uma ferramenta de uso direto. Ele concentra funções compartilhadas por outros scripts, como:
+
+- cálculo SHA-256;
+- cópia segura;
+- iteração de arquivos;
+- leitura de configuração YAML/JSON;
+- suporte opcional a `tqdm`.
+
+Não execute este arquivo como uma tarefa de preservação.
+
+---
+
+## Boas Práticas
+
+- Use `sha256` como algoritmo padrão para preservação.
+- Sempre coloque caminhos com espaços entre aspas.
+- Faça testes em cópias antes de executar comandos que movem ou apagam arquivos.
+- Guarde manifestos e relatórios junto com a documentação da operação.
+- Para lotes grandes, use `--progress`.
+- Em Windows, se um comando exibir caracteres incorretos, tente `chcp 65001`.
+
+---
 
 ## Licença
-Este projeto, **Thor Arquivista – Caixa de Ferramentas de Preservação Digital**,  
-é licenciado sob a **GNU General Public License v3.0 (GPLv3)**.  
 
-© 2025 Carlos Eduardo Carvalho Amand.  
-Você é livre para usar, modificar e redistribuir este software,  
-desde que preserve esta licença e atribua o crédito ao autor original.  
+Este projeto é licenciado sob a GNU General Public License v3.0 (GPLv3).
 
-Mais informações: [https://www.gnu.org/licenses/gpl-3.0.html](https://www.gnu.org/licenses/gpl-3.0.html)
-
+© 2025 Carlos Eduardo Carvalho Amand.
