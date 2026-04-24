@@ -69,6 +69,7 @@ scripts/                       # scripts usados pela interface e pela CLI
 
 ---
 
+
 ## Como a Fila Funciona
 
 Os painéis não executam tarefas pesadas diretamente. Eles criam um job em `jobs_db.json`. O `Worker` lê os jobs pendentes e executa o script correspondente em `scripts/`.
