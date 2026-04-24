@@ -184,16 +184,13 @@ class MainApp(tb.Window):
         menu_tarefas.add_command(label="Verificar Fixidez", command=lambda: _open("Verificar Fixidez", panel_fixity))
         menu_tarefas.add_command(label="Gerar Pacote BagIt", command=lambda: _open("Gerar Pacote BagIt", panel_bag))
 
+        menu_tarefas.add_command(label="Copiar", command=lambda: _open("Copiar", panel_rep))
+
         submenu_duplicatas.add_command(label="Análise de Duplicatas", command=lambda: _open("Análise de Duplicatas", panel_duplicate_analysis))
         submenu_duplicatas.add_command(label="Tratamento de Duplicatas", command=lambda: _open("Tratamento de Duplicatas", panel_duplicate_treatment))
         menu_tarefas.add_cascade(label="Duplicatas", menu=submenu_duplicatas)
 
-        menu_tarefas.add_command(label="Copiar", command=lambda: _open("Copiar", panel_rep))
         menu_tarefas.add_command(label="Conversor Premis", command=lambda: _open("Conversor Premis", panel_premis_converter))
-
-        menu_tarefas.add_command(label="SIP", command=lambda: _open("SIP", panel_sip))
-        menu_tarefas.add_command(label="Identificar Formatos", command=lambda: _open("Identificar Formatos", panel_fmt))
-        menu_tarefas.add_command(label="Registrar Evento PREMIS", command=lambda: _open("Evento PREMIS", panel_premis_evt))
 
         menu_visual.add_command(label="Eventos PREMIS", command=lambda: _open("Eventos PREMIS", panel_premis_view))
         menu_visual.add_command(label="Controle do Worker", command=lambda: _open("Controle do Worker", panel_worker))

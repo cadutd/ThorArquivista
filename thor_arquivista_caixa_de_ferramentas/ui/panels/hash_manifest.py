@@ -38,7 +38,7 @@ def create_panel(app, enqueue_cb):
     raiz = StringVar(value="")
     saida = StringVar(value="")
     algo = StringVar(value="sha256")
-    show_progress = IntVar(value=0)
+    show_progress = IntVar(value=1)
     ignore_hidden = IntVar(value=1)
 
     # Pasta raiz

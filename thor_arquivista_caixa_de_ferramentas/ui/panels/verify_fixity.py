@@ -31,8 +31,8 @@ def create_panel(app, enqueue_cb):
 
     raiz = StringVar(value="")
     manifesto = StringVar(value="")
-    report_extras = IntVar(value=0)
-    show_progress = IntVar(value=0)
+    report_extras = IntVar(value=1)
+    show_progress = IntVar(value=1)
 
     r1 = ttk.Frame(page); r1.pack(fill=X, pady=5)
     ttk.Label(r1, text="Pasta Raiz").pack(side=LEFT, padx=4)

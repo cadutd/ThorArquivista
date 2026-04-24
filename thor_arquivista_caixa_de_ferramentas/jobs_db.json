@@ -1,35 +1,6 @@
 {
   "jobs": [
     {
-      "_id": "52d2b33d-5bef-4556-8a68-4b9f45fefa53",
-      "job_type": "HASH_MANIFEST",
-      "status": "done",
-      "params": {
-        "raiz": "C:\\Users\\cadut\\Desktop\\LISTAS",
-        "saida": "C:\\Users\\cadut\\Desktop\\LISTAS\\manifest-sha256.txt",
-        "algo": "sha256",
-        "progress": false,
-        "ignore_hidden": true
-      },
-      "created_at": "2025-11-07T01:00:11.649816Z",
-      "updated_at": "2025-11-07T01:00:12.468569Z",
-      "error_msg": null
-    },
-    {
-      "_id": "0ff646f0-6a74-4a47-86a0-909c706ede8e",
-      "job_type": "PREMIS_CONVERTER",
-      "status": "done",
-      "params": {
-        "entrada": "C:/Users/cadut/Downloads/premis.csv",
-        "saida": "c:/users/cadut/downloads/convertido.xml",
-        "validar": false,
-        "schema": "C:/workfolder/ThorArquivista/thor_arquivista_caixa_de_ferramentas/schemas/premis-v3-0.xsd"
-      },
-      "created_at": "2025-11-08T19:27:04.209557Z",
-      "updated_at": "2025-11-08T19:27:05.063863Z",
-      "error_msg": null
-    },
-    {
       "_id": "d2fba6e0-76e9-4662-8f57-b08f616e8f21",
       "job_type": "HASH_MANIFEST",
       "status": "canceled",
@@ -75,21 +46,6 @@
       "error_msg": null
     },
     {
-      "_id": "41f21585-4396-433b-8d9f-98bf77a2fd71",
-      "job_type": "HASH_MANIFEST",
-      "status": "done",
-      "params": {
-        "raiz": "H:\\RetroBat\\roms\\switch",
-        "saida": "C:\\Users\\cadut\\Desktop\\manifest-sha256.txt",
-        "algo": "sha256",
-        "progress": false,
-        "ignore_hidden": false
-      },
-      "created_at": "2025-11-21T20:49:39.468047Z",
-      "updated_at": "2025-11-21T20:50:39.069401Z",
-      "error_msg": null
-    },
-    {
       "_id": "a3f7214d-deea-4769-9aa5-218f1606008f",
       "job_type": "VERIFY_FIXITY",
       "status": "running",
@@ -132,117 +88,153 @@
       "error_msg": null
     },
     {
-      "_id": "11681760-39dd-47b0-8a63-38dc5a47fdfb",
-      "job_type": "VERIFY_FIXITY",
-      "status": "done",
+      "_id": "ccef7b63-8937-45c5-8221-a9629825fbe8",
+      "job_type": "BUILD_BAG",
+      "status": "error",
       "params": {
-        "raiz": "H:/RetroBat/roms/switch",
-        "manifesto": "C:/Users/cadut/Desktop/manifest-sha256.txt",
-        "report_extras": true,
-        "progress": true
-      },
-      "created_at": "2025-11-22T21:36:44.968445Z",
-      "updated_at": "2025-11-22T21:37:44.268108Z",
-      "error_msg": null
-    },
-    {
-      "_id": "b9dace73-f615-401f-8ca6-b7a6a502822c",
-      "job_type": "VERIFY_FIXITY",
-      "status": "done",
-      "params": {
-        "raiz": "H:/RetroBat/roms/switch",
-        "manifesto": "C:/Users/cadut/Desktop/manifest-sha256.txt",
-        "report_extras": true,
-        "progress": true
-      },
-      "created_at": "2025-11-23T01:11:03.680485Z",
-      "updated_at": "2025-11-23T01:12:03.893450Z",
-      "error_msg": null
-    },
-    {
-      "_id": "47fb1a01-7113-46c7-899b-4f629159786e",
-      "job_type": "HASH_MANIFEST",
-      "status": "done",
-      "params": {
-        "raiz": "C:\\Users\\cadut\\Desktop\\LISTAS",
-        "saida": "C:\\Users\\cadut\\Desktop\\LISTAS\\manifest-sha256.txt",
+        "src": "C:/Users/cadut/Desktop/LISTAS",
+        "dst": "C:/Users/cadut/Desktop",
+        "bag_name": "SIP-LISTAS",
         "algo": "sha256",
-        "progress": false,
-        "ignore_hidden": true
+        "mode": "copy",
+        "pattern": "*",
+        "include_hidden": false,
+        "follow_symlinks": false,
+        "tagmanifest": false,
+        "organization": null,
+        "source_organization": null,
+        "contact_name": null,
+        "contact_email": null,
+        "external_description": null,
+        "profile": "C:\\workfolder\\ThorArquivista\\thor_arquivista_caixa_de_ferramentas\\profiles\\apesp-profileBagit.json",
+        "profile_param": [
+          "classificacaoSigilo=Ostensivo",
+          "contadorPacote=1 de 1",
+          "generoDocumental=Textual",
+          "naturezaDigital=Original",
+          "possuiDadosPessoais=False",
+          "suporteEnvio=SSD Externo",
+          "tipoPacote=SIP"
+        ]
       },
-      "created_at": "2025-12-11T00:47:39.654887Z",
-      "updated_at": "2025-12-11T00:47:40.841739Z",
+      "created_at": "2026-03-04T03:29:30.600157Z",
+      "updated_at": "2026-03-04T03:29:31.131269Z",
+      "error_msg": "ERRO: Diretório de destino já existe e não está vazio: C:\\Users\\cadut\\Desktop\n"
+    },
+    {
+      "_id": "ccb907e2-e885-42ab-a8dd-03f375af474a",
+      "job_type": "BUILD_BAG",
+      "status": "done",
+      "params": {
+        "src": "C:/Users/cadut/Desktop/LISTAS",
+        "dst": "C:/Users/cadut/Desktop/SIP-LISTAS",
+        "bag_name": "SIP-LISTAS",
+        "algo": "sha256",
+        "mode": "copy",
+        "pattern": "*",
+        "include_hidden": false,
+        "follow_symlinks": false,
+        "tagmanifest": false,
+        "organization": null,
+        "source_organization": null,
+        "contact_name": null,
+        "contact_email": null,
+        "external_description": null,
+        "profile": "C:\\workfolder\\ThorArquivista\\thor_arquivista_caixa_de_ferramentas\\profiles\\apesp-profileBagit.json",
+        "profile_param": [
+          "classificacaoSigilo=Ostensivo",
+          "contadorPacote=1 de 1",
+          "generoDocumental=Textual",
+          "naturezaDigital=Original",
+          "possuiDadosPessoais=False",
+          "suporteEnvio=SSD Externo",
+          "tipoPacote=SIP"
+        ]
+      },
+      "created_at": "2026-03-04T03:30:31.048861Z",
+      "updated_at": "2026-03-04T03:30:32.686803Z",
       "error_msg": null
     },
     {
-      "_id": "8586d574-aa69-4c66-9fbc-d1c0b12e8687",
-      "job_type": "VERIFY_FIXITY",
-      "status": "error",
+      "_id": "a6d6bbb5-4b40-410b-9f1e-914143463b6f",
+      "job_type": "BUILD_BAG",
+      "status": "done",
       "params": {
-        "raiz": "C:/Users/cadut/Desktop/LISTAS",
-        "manifesto": "C:/Users/cadut/Desktop/manifest-sha256.txt",
-        "report_extras": false,
-        "progress": false
+        "src": "C:/Users/cadut/Desktop/LISTAS",
+        "dst": "C:/Users/cadut/Desktop/teste",
+        "bag_name": "SIP-BRANRJ-MINISTERIO_DA_JUSTICA-GT022-001_130_131-20260402T143500",
+        "algo": "sha256",
+        "mode": "copy",
+        "pattern": "*",
+        "include_hidden": false,
+        "follow_symlinks": false,
+        "tagmanifest": false,
+        "organization": "Ministerio da Justiça",
+        "source_organization": null,
+        "contact_name": "xxx@gmail.com",
+        "contact_email": null,
+        "external_description": null,
+        "profile": "C:\\workfolder\\ThorArquivista\\thor_arquivista_caixa_de_ferramentas\\profiles\\apesp-profileBagit.json",
+        "profile_param": [
+          "classificacaoSigilo=Ostensivo",
+          "codigoTDD=001_13_131",
+          "collection_name=xxxx",
+          "contadorPacote=1 de 1",
+          "dataCriacaoPacote=05-03-2026",
+          "descricaoPacote=dfasf",
+          "descricaoTDD=sadfsafds",
+          "generoDocumental=Cartografico",
+          "naturezaDigital=Original",
+          "possuiDadosPessoais=False",
+          "suporteEnvio=SSD Externo",
+          "tipoPacote=SIP"
+        ]
       },
-      "created_at": "2025-12-11T00:49:25.802355Z",
-      "updated_at": "2025-12-11T00:49:26.294191Z",
-      "error_msg": "=== Verificação de fixidez ===\nManifesto : C:\\Users\\cadut\\Desktop\\manifest-sha256.txt\nRaiz      : C:\\Users\\cadut\\Desktop\\LISTAS\nAlgoritmo : sha256\nTotal     : 168\nOK        : 167\nFaltando  : 1\nDivergências: 0\n-- Faltando --\nmanifest-sha256.txt\n"
+      "created_at": "2026-03-05T13:43:22.592061Z",
+      "updated_at": "2026-04-24T21:29:44.724859Z",
+      "error_msg": null
     },
     {
-      "_id": "8eefd8e0-e8b7-456a-8350-5d18e21ae2f7",
-      "job_type": "VERIFY_FIXITY",
+      "_id": "2215dc99-6364-43c0-9069-73b00f1be8e6",
+      "job_type": "BUILD_BAG",
       "status": "error",
       "params": {
-        "raiz": "C:/Users/cadut/Desktop/LISTAS",
-        "manifesto": "C:/Users/cadut/Desktop/LISTAS/manifest-sha256.txt",
-        "report_extras": false,
-        "progress": false
+        "src": "C:/Users/cadut/Desktop/LISTAS",
+        "dst": "C:/Users/cadut/Desktop/teste",
+        "bag_name": "SIP-BRANRJ-MINISTERIO_DA_JUSTICA-GT022-001_130_131-20260402T143500",
+        "algo": "sha256",
+        "mode": "copy",
+        "pattern": "*",
+        "include_hidden": false,
+        "follow_symlinks": false,
+        "tagmanifest": false,
+        "organization": "Ministerio da Justiça",
+        "source_organization": null,
+        "contact_name": "xxx@gmail.com",
+        "contact_email": null,
+        "external_description": null,
+        "profile": "C:\\workfolder\\ThorArquivista\\thor_arquivista_caixa_de_ferramentas\\profiles\\apesp-profileBagit.json",
+        "profile_param": [
+          "classificacaoSigilo=Ostensivo",
+          "codigoTDD=001_13_131",
+          "collection_name=xxxx",
+          "contadorPacote=1 de 1",
+          "dataCriacaoPacote=05-03-2026",
+          "descricaoPacote=dfasf",
+          "descricaoTDD=sadfsafds",
+          "generoDocumental=Cartografico",
+          "naturezaDigital=Original",
+          "possuiDadosPessoais=False",
+          "suporteEnvio=SSD Externo",
+          "tipoPacote=SIP"
+        ]
       },
-      "created_at": "2025-12-11T00:50:17.409699Z",
-      "updated_at": "2025-12-11T00:50:17.887654Z",
-      "error_msg": "=== Verificação de fixidez ===\nManifesto : C:\\Users\\cadut\\Desktop\\LISTAS\\manifest-sha256.txt\nRaiz      : C:\\Users\\cadut\\Desktop\\LISTAS\nAlgoritmo : sha256\nTotal     : 168\nOK        : 167\nFaltando  : 0\nDivergências: 1\n-- Divergências --\nmanifest-sha256.txt :: MISMATCH expected=441d10048e83d9884bce0f03380effc94dd7cc6ceff7ff0da758a8e30af551f5 got=5f746c4f31cb5112909d310a798ced1c85a31f57fa79fa406826d8216a2f3e2b\n"
+      "created_at": "2026-03-05T13:44:39.036397Z",
+      "updated_at": "2026-04-24T21:29:44.842904Z",
+      "error_msg": "ERRO: Diretório de destino já existe e não está vazio: C:\\Users\\cadut\\Desktop\\teste\n"
     }
   ],
   "logs": {
-    "52d2b33d-5bef-4556-8a68-4b9f45fefa53": [
-      {
-        "ts": "2025-11-07T01:00:11.651362Z",
-        "level": "INFO",
-        "msg": "Enfileirado HASH_MANIFEST"
-      },
-      {
-        "ts": "2025-11-07T01:00:11.981786Z",
-        "level": "INFO",
-        "msg": "Iniciando job HASH_MANIFEST"
-      },
-      {
-        "ts": "2025-11-07T01:00:12.467034Z",
-        "level": "INFO",
-        "msg": "Concluído com sucesso"
-      }
-    ],
-    "0ff646f0-6a74-4a47-86a0-909c706ede8e": [
-      {
-        "ts": "2025-11-08T19:27:04.211013Z",
-        "level": "INFO",
-        "msg": "Enfileirado PREMIS_CONVERTER"
-      },
-      {
-        "ts": "2025-11-08T19:27:04.250414Z",
-        "level": "INFO",
-        "msg": "Iniciando job PREMIS_CONVERTER"
-      },
-      {
-        "ts": "2025-11-08T19:27:05.060457Z",
-        "level": "INFO",
-        "msg": "[OK] XML PREMIS escrito em: c:\\users\\cadut\\downloads\\convertido.xml\n[AVISO] Validação pós-geração: file:/c:/users/cadut/downloads/convertido.xml:2:0:ERROR:SCHEMASV:SCHEMAV_CVC_COMPLEX_TYPE_4: Element '{http://www.loc.gov/premis/v3}premis': The attribute 'version' is required but missing.; file:/c:/users/cadut/downloads/convertido.xml:3:0:ERROR:SCHEMASV:SCHEMAV_CVC_TYPE_2: Element '{http://www.loc.gov/premis/v3}object': The type definition is abstract.; file:/c:/users/cadut/downloads/convertido.xml:10:0:ERROR:SCHEMASV:SCHEMAV_CVC_TYPE_2: Element '{http://www.loc.gov/premis/v3}object': The type definition is abstract.; file:/c:/users/cadut/downloads/convertido.xml:29:0:ERROR:SCHEMASV:SCHEMAV_CVC_TYPE_2: Element '{http://www.loc.gov/premis/v3}object': The type definition is abstract.; file:/c:/users/cadut/downloads/convertido.xml:48:0:ERROR:SCHEMASV:SCHEMAV_CVC_TYPE_2: Element '{http://www.loc.gov/premis/v3}object': The type definition is abstract.; file:/c:/users/cadut/downloads/convertido.xml:67:0:ERROR:SCHEMASV:SCHEMAV_CVC_TYPE_2: Element '{http://www.loc.gov/premis/v3}object': The type definition is abstract.; file:/c:/users/cadut/downloads/convertido.xml:86:0:ERROR:SCHEMASV:SCHEMAV_CVC_TYPE_2: Element '{http://www.loc.gov/premis/v3}object': The type definition is abstract.; file:/c:/users/cadut/downloads/convertido.xml:105:0:ERROR:SCHEMASV:SCHEMAV_CVC_TYPE_2: Element '{http://www.loc.gov/premis/v3}object': The type definition is abstract.; file:/c:/users/cadut/downloads/convertido.xml:124:0:ERROR:SCHEMASV:SCHEMAV_CVC_TYPE_2: Element '{http://www.loc.gov/premis/v3}object': The type definition is abstract.; file:/c:/users/cadut/downloads/convertido.xml:143:0:ERROR:SCHEMASV:SCHEMAV_CVC_TYPE_2: Element '{http://www.loc.gov/premis/v3}object': The type definition is abstract.; file:/c:/users/cadut/downloads/convertido.xml:162:0:ERROR:SCHEMASV:SCHEMAV_CVC_TYPE_2: Element '{http://www.loc.gov/premis/v3}object': The type definition is abstract.; file:/c:/users/cadut/downlo"
-      },
-      {
-        "ts": "2025-11-08T19:27:05.062439Z",
-        "level": "INFO",
-        "msg": "Concluído com sucesso"
-      }
-    ],
     "d2fba6e0-76e9-4662-8f57-b08f616e8f21": [
       {
         "ts": "2025-11-21T20:44:34.661371Z",
@@ -267,23 +259,6 @@
         "ts": "2025-11-21T20:48:09.015273Z",
         "level": "INFO",
         "msg": "Iniciando job HASH_MANIFEST"
-      }
-    ],
-    "41f21585-4396-433b-8d9f-98bf77a2fd71": [
-      {
-        "ts": "2025-11-21T20:49:39.469548Z",
-        "level": "INFO",
-        "msg": "Enfileirado HASH_MANIFEST"
-      },
-      {
-        "ts": "2025-11-21T20:49:39.758188Z",
-        "level": "INFO",
-        "msg": "Iniciando job HASH_MANIFEST"
-      },
-      {
-        "ts": "2025-11-21T20:50:39.067475Z",
-        "level": "INFO",
-        "msg": "Concluído com sucesso"
       }
     ],
     "a3f7214d-deea-4769-9aa5-218f1606008f": [
@@ -332,979 +307,447 @@
         "msg": "[INFO] Entradas no manifesto: 122 (algo=sha256)"
       }
     ],
-    "11681760-39dd-47b0-8a63-38dc5a47fdfb": [
+    "ccef7b63-8937-45c5-8221-a9629825fbe8": [
       {
-        "ts": "2025-11-22T21:36:44.970011Z",
+        "ts": "2026-03-04T03:29:30.601891Z",
         "level": "INFO",
-        "msg": "Enfileirado VERIFY_FIXITY"
+        "msg": "Enfileirado BUILD_BAG"
       },
       {
-        "ts": "2025-11-22T21:36:45.205839Z",
+        "ts": "2026-03-04T03:29:30.810662Z",
         "level": "INFO",
-        "msg": "Iniciando job VERIFY_FIXITY"
+        "msg": "Iniciando job BUILD_BAG"
       },
       {
-        "ts": "2025-11-22T21:36:45.207201Z",
+        "ts": "2026-03-04T03:29:30.812409Z",
         "level": "INFO",
-        "msg": "Comando: C:\\Users\\cadut\\AppData\\Local\\Programs\\Python\\Python313\\python.exe scripts\\verify_fixity.py --raiz H:/RetroBat/roms/switch --manifesto C:/Users/cadut/Desktop/manifest-sha256.txt --report-extras --progress"
+        "msg": "Comando: C:\\Users\\cadut\\AppData\\Local\\Programs\\Python\\Python313\\python.exe scripts\\build_bag.py C:/Users/cadut/Desktop/LISTAS C:/Users/cadut/Desktop --algo sha256 --mode copy --pattern * --profile C:\\workfolder\\ThorArquivista\\thor_arquivista_caixa_de_ferramentas\\profiles\\apesp-profileBagit.json --profile-param classificacaoSigilo=Ostensivo --profile-param contadorPacote=1 de 1 --profile-param generoDocumental=Textual --profile-param naturezaDigital=Original --profile-param possuiDadosPessoais=False --profile-param suporteEnvio=SSD Externo --profile-param tipoPacote=SIP"
       },
       {
-        "ts": "2025-11-22T21:36:45.296699Z",
+        "ts": "2026-03-04T03:29:31.119763Z",
         "level": "ERROR",
-        "msg": "[INFO] Entradas no manifesto: 122 (algo=sha256)"
+        "msg": "ERRO: Diretório de destino já existe e não está vazio: C:\\Users\\cadut\\Desktop"
       },
       {
-        "ts": "2025-11-22T21:37:15.339657Z",
+        "ts": "2026-03-04T03:29:31.127332Z",
         "level": "ERROR",
-        "msg": "[INFO] Progresso: 50/122"
+        "msg": "[stderr] (últimas linhas)\nERRO: Diretório de destino já existe e não está vazio: C:\\Users\\cadut\\Desktop\n"
       },
       {
-        "ts": "2025-11-22T21:37:17.159811Z",
+        "ts": "2026-03-04T03:29:31.129618Z",
         "level": "ERROR",
-        "msg": "[INFO] Progresso: 100/122"
+        "msg": "Erro (rc=2)"
+      }
+    ],
+    "ccb907e2-e885-42ab-a8dd-03f375af474a": [
+      {
+        "ts": "2026-03-04T03:30:31.051114Z",
+        "level": "INFO",
+        "msg": "Enfileirado BUILD_BAG"
       },
       {
-        "ts": "2025-11-22T21:37:44.240572Z",
+        "ts": "2026-03-04T03:30:31.394616Z",
+        "level": "INFO",
+        "msg": "Iniciando job BUILD_BAG"
+      },
+      {
+        "ts": "2026-03-04T03:30:31.396653Z",
+        "level": "INFO",
+        "msg": "Comando: C:\\Users\\cadut\\AppData\\Local\\Programs\\Python\\Python313\\python.exe scripts\\build_bag.py C:/Users/cadut/Desktop/LISTAS C:/Users/cadut/Desktop/SIP-LISTAS --algo sha256 --mode copy --pattern * --profile C:\\workfolder\\ThorArquivista\\thor_arquivista_caixa_de_ferramentas\\profiles\\apesp-profileBagit.json --profile-param classificacaoSigilo=Ostensivo --profile-param contadorPacote=1 de 1 --profile-param generoDocumental=Textual --profile-param naturezaDigital=Original --profile-param possuiDadosPessoais=False --profile-param suporteEnvio=SSD Externo --profile-param tipoPacote=SIP"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.610301Z",
         "level": "ERROR",
-        "msg": "[INFO] Progresso: 122/122"
+        "msg": "AVISO: alguns campos em bag-info.txt contêm placeholders não resolvidos {chave}:"
       },
       {
-        "ts": "2025-11-22T21:37:44.246181Z",
+        "ts": "2026-03-04T03:30:32.612478Z",
         "level": "INFO",
-        "msg": "=== Verificação de fixidez ==="
+        "msg": "[1/6] Transferindo 168 arquivo(s) (mode=copy)…"
       },
       {
-        "ts": "2025-11-22T21:37:44.247975Z",
+        "ts": "2026-03-04T03:30:32.614542Z",
+        "level": "ERROR",
+        "msg": "  - Collection-Name: {collection_name}"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.616832Z",
         "level": "INFO",
-        "msg": "Manifesto : C:\\Users\\cadut\\Desktop\\manifest-sha256.txt"
+        "msg": "  - 50/168"
       },
       {
-        "ts": "2025-11-22T21:37:44.249480Z",
+        "ts": "2026-03-04T03:30:32.618814Z",
+        "level": "ERROR",
+        "msg": "  - Nome-Produtor: {nomeProdutor}"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.621132Z",
         "level": "INFO",
-        "msg": "Raiz      : H:\\RetroBat\\roms\\switch"
+        "msg": "  - 100/168"
       },
       {
-        "ts": "2025-11-22T21:37:44.250925Z",
+        "ts": "2026-03-04T03:30:32.623360Z",
+        "level": "ERROR",
+        "msg": "  - Endereco-Produtor: {enderecoProdutor}"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.625594Z",
         "level": "INFO",
-        "msg": "Algoritmo : sha256"
+        "msg": "  - 150/168"
       },
       {
-        "ts": "2025-11-22T21:37:44.252696Z",
+        "ts": "2026-03-04T03:30:32.627734Z",
+        "level": "ERROR",
+        "msg": "  - Contato-Produtor-Nome: {nomeContatoProdutor}"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.629575Z",
         "level": "INFO",
-        "msg": "Total     : 122"
+        "msg": "  - 168/168"
       },
       {
-        "ts": "2025-11-22T21:37:44.254578Z",
+        "ts": "2026-03-04T03:30:32.631793Z",
+        "level": "ERROR",
+        "msg": "  - Contato-Produtor-Email: {emailContatoProdutor}"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.633770Z",
         "level": "INFO",
-        "msg": "OK        : 122"
+        "msg": "[2/6] Gerando manifest do payload…"
       },
       {
-        "ts": "2025-11-22T21:37:44.256427Z",
+        "ts": "2026-03-04T03:30:32.636024Z",
+        "level": "ERROR",
+        "msg": "  - Descricao-Pacote: {descricaoPacote}"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.637989Z",
         "level": "INFO",
-        "msg": "Faltando  : 0"
+        "msg": "  - 168/168"
       },
       {
-        "ts": "2025-11-22T21:37:44.258230Z",
+        "ts": "2026-03-04T03:30:32.640246Z",
+        "level": "ERROR",
+        "msg": "  - Data-Criacao-Pacote: {dataCriacaoPacote}"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.642257Z",
         "level": "INFO",
-        "msg": "Divergências: 0"
+        "msg": "[3/6] Escrevendo bagit.txt…"
       },
       {
-        "ts": "2025-11-22T21:37:44.259974Z",
+        "ts": "2026-03-04T03:30:32.644353Z",
+        "level": "ERROR",
+        "msg": "  - Identificador-Pacote-No-Produtor: {identificadorPacoteNoProdutor}"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.646457Z",
         "level": "INFO",
-        "msg": "Extras    : 0"
+        "msg": "[4/6] Escrevendo bag-info.txt…"
       },
       {
-        "ts": "2025-11-22T21:37:44.262063Z",
+        "ts": "2026-03-04T03:30:32.648455Z",
+        "level": "ERROR",
+        "msg": "  - Identificador-Grupo-Pacote: {identificadorGrupoPacote}"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.650778Z",
         "level": "INFO",
-        "msg": "[stdout] (últimas linhas)\n=== Verificação de fixidez ===\nManifesto : C:\\Users\\cadut\\Desktop\\manifest-sha256.txt\nRaiz      : H:\\RetroBat\\roms\\switch\nAlgoritmo : sha256\nTotal     : 122\nOK        : 122\nFaltando  : 0\nDivergências: 0\nExtras    : 0\n"
+        "msg": "[6/6] Bag construído em: C:\\Users\\cadut\\Desktop\\SIP-LISTAS"
       },
       {
-        "ts": "2025-11-22T21:37:44.263699Z",
+        "ts": "2026-03-04T03:30:32.652967Z",
+        "level": "ERROR",
+        "msg": "  - Unidade-Produtora: {unidadeProdutora}"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.654743Z",
+        "level": "ERROR",
+        "msg": "  - Endereco-Unidade-Produtora: {enderecoUnidadeProdutora}"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.656714Z",
+        "level": "ERROR",
+        "msg": "  - Responsavel-CADA: {responsavelCADA}"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.658431Z",
+        "level": "ERROR",
+        "msg": "  - Codigo-TDD: {codigoTDD}"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.660532Z",
+        "level": "ERROR",
+        "msg": "  - Descricao-TDD: {descricaoTDD}"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.662700Z",
+        "level": "ERROR",
+        "msg": "  - Identificador-Fundo: {identificadorFundo}"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.664328Z",
+        "level": "ERROR",
+        "msg": "  - Nome-Fundo: {nomeFundo}"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.666227Z",
+        "level": "ERROR",
+        "msg": "  - Identificador-Secao: {identificadorSecao}"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.668425Z",
+        "level": "ERROR",
+        "msg": "  - Nome-Secao: {nomeSecao}"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.670542Z",
+        "level": "ERROR",
+        "msg": "  - Identificador-Serie: {identificadorSerie}"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.672669Z",
+        "level": "ERROR",
+        "msg": "  - Nome-Serie: {nomeSerie}"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.674642Z",
+        "level": "ERROR",
+        "msg": "  - Identificador-Dossie: {identificadorDossie}"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.676610Z",
+        "level": "ERROR",
+        "msg": "  - Nome-Dossie: {nomeDossie}"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.678432Z",
+        "level": "ERROR",
+        "msg": "  - Observacoes: {observacoes}"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.680345Z",
         "level": "INFO",
-        "msg": "[stderr] (últimas linhas)\n[INFO] Entradas no manifesto: 122 (algo=sha256)\n[INFO] Progresso: 50/122\n[INFO] Progresso: 100/122\n[INFO] Progresso: 122/122\n"
+        "msg": "[stdout] (últimas linhas)\n[1/6] Transferindo 168 arquivo(s) (mode=copy)…\n  - 50/168\n  - 100/168\n  - 150/168\n  - 168/168\n[2/6] Gerando manifest do payload…\n  - 168/168\n[3/6] Escrevendo bagit.txt…\n[4/6] Escrevendo bag-info.txt…\n[6/6] Bag construído em: C:\\Users\\cadut\\Desktop\\SIP-LISTAS\n"
       },
       {
-        "ts": "2025-11-22T21:37:44.266320Z",
+        "ts": "2026-03-04T03:30:32.682201Z",
+        "level": "INFO",
+        "msg": "[stderr] (últimas linhas)\nAVISO: alguns campos em bag-info.txt contêm placeholders não resolvidos {chave}:\n  - Collection-Name: {collection_name}\n  - Nome-Produtor: {nomeProdutor}\n  - Endereco-Produtor: {enderecoProdutor}\n  - Contato-Produtor-Nome: {nomeContatoProdutor}\n  - Contato-Produtor-Email: {emailContatoProdutor}\n  - Descricao-Pacote: {descricaoPacote}\n  - Data-Criacao-Pacote: {dataCriacaoPacote}\n  - Identificador-Pacote-No-Produtor: {identificadorPacoteNoProdutor}\n  - Identificador-Grupo-Pacote: {identificadorGrupoPacote}\n  - Unidade-Produtora: {unidadeProdutora}\n  - Endereco-Unidade-Produtora: {enderecoUnidadeProdutora}\n  - Responsavel-CADA: {responsavelCADA}\n  - Codigo-TDD: {codigoTDD}\n  - Descricao-TDD: {descricaoTDD}\n  - Identificador-Fundo: {identificadorFundo}\n  - Nome-Fundo: {nomeFundo}\n  - Identificador-Secao: {identificadorSecao}\n  - Nome-Secao: {nomeSecao}\n  - Identificador-Serie: {identificadorSerie}\n  - Nome-Serie: {nomeSerie}\n  - Identificador-Dossie: {identificadorDossie}\n  - Nome-Dossie: {nomeDossie}\n  - Observacoes: {observacoes}\n"
+      },
+      {
+        "ts": "2026-03-04T03:30:32.684751Z",
         "level": "INFO",
         "msg": "Concluído com sucesso"
       }
     ],
-    "b9dace73-f615-401f-8ca6-b7a6a502822c": [
+    "a6d6bbb5-4b40-410b-9f1e-914143463b6f": [
       {
-        "ts": "2025-11-23T01:11:03.682011Z",
+        "ts": "2026-03-05T13:43:22.593816Z",
         "level": "INFO",
-        "msg": "Enfileirado VERIFY_FIXITY"
+        "msg": "Enfileirado BUILD_BAG"
       },
       {
-        "ts": "2025-11-23T01:11:04.170101Z",
+        "ts": "2026-04-24T21:29:43.932721Z",
         "level": "INFO",
-        "msg": "Iniciando job VERIFY_FIXITY"
+        "msg": "Iniciando job BUILD_BAG"
       },
       {
-        "ts": "2025-11-23T01:11:04.171519Z",
+        "ts": "2026-04-24T21:29:43.934314Z",
         "level": "INFO",
-        "msg": "Comando: C:\\Users\\cadut\\AppData\\Local\\Programs\\Python\\Python313\\python.exe scripts\\verify_fixity.py --raiz H:/RetroBat/roms/switch --manifesto C:/Users/cadut/Desktop/manifest-sha256.txt --report-extras --progress"
+        "msg": "Comando: C:\\Users\\cadut\\AppData\\Local\\Programs\\Python\\Python313\\python.exe scripts\\build_bag.py C:/Users/cadut/Desktop/LISTAS C:/Users/cadut/Desktop/teste --algo sha256 --mode copy --pattern * --organization Ministerio da Justiça --contact-name xxx@gmail.com --profile C:\\workfolder\\ThorArquivista\\thor_arquivista_caixa_de_ferramentas\\profiles\\apesp-profileBagit.json --profile-param classificacaoSigilo=Ostensivo --profile-param codigoTDD=001_13_131 --profile-param collection_name=xxxx --profile-param contadorPacote=1 de 1 --profile-param dataCriacaoPacote=05-03-2026 --profile-param descricaoPacote=dfasf --profile-param descricaoTDD=sadfsafds --profile-param generoDocumental=Cartografico --profile-param naturezaDigital=Original --profile-param possuiDadosPessoais=False --profile-param suporteEnvio=SSD Externo --profile-param tipoPacote=SIP"
       },
       {
-        "ts": "2025-11-23T01:11:04.265187Z",
+        "ts": "2026-04-24T21:29:44.672024Z",
         "level": "ERROR",
-        "msg": "[INFO] Entradas no manifesto: 122 (algo=sha256)"
+        "msg": "AVISO: alguns campos em bag-info.txt contêm placeholders não resolvidos {chave}:"
       },
       {
-        "ts": "2025-11-23T01:11:04.267066Z",
-        "level": "ERROR",
-        "msg": "[INFO] Iniciando verificação de arquivos..."
-      },
-      {
-        "ts": "2025-11-23T01:11:06.393689Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 1/122: DREDGE[v1.0.2].nsp"
-      },
-      {
-        "ts": "2025-11-23T01:11:07.028802Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 2/122: Castlevania Anniversary Collection (1.1.0).nsp"
-      },
-      {
-        "ts": "2025-11-23T01:11:12.040168Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 3/122: Aeterna Noctis (v1.1.005).nsp"
-      },
-      {
-        "ts": "2025-11-23T01:11:16.385596Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 4/122: Cuphead (1.3.7).nsp"
-      },
-      {
-        "ts": "2025-11-23T01:11:17.957549Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 5/122: Ghosts n Goblins Resurrection [0100D6200F2BA000][v0](nsw2u).nsp"
-      },
-      {
-        "ts": "2025-11-23T01:11:19.194641Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 6/122: Mega Man 11 [0100B0C0086B0000] [v65536] (1G+1U+1D).xci"
-      },
-      {
-        "ts": "2025-11-23T01:11:23.449696Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 7/122: Contra Operation Galuga [0100CF401A98E000][v0][US](nsw2u.com).nsp"
-      },
-      {
-        "ts": "2025-11-23T01:11:26.838292Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 8/122: New Super Mario Bros. U Deluxe [0100EA80032EA000][v0].xci"
-      },
-      {
-        "ts": "2025-11-23T01:11:27.007529Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 9/122: Donkey Kong Country Tropical Freeze [0100C1F0051B6000][v0].nsp"
-      },
-      {
-        "ts": "2025-11-23T01:11:27.943451Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 10/122: Metroid Dread.nsp"
-      },
-      {
-        "ts": "2025-11-23T01:11:36.060753Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 11/122: Ninja Gaiden Sigma (v1.0.2).nsp"
-      },
-      {
-        "ts": "2025-11-23T01:11:37.413790Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 12/122: Mario Kart 8 Deluxe [0100152000022000]+[v1.7.2] (nsw2u)_patched.xci"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.039261Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 13/122: Super Mario 3D World + Bowsers Fury [010028600EBDA000]+[v1.1.0] (nsw2u.com)_patched.xci"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.045637Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 14/122: gamelist.xml"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.074503Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 15/122: images/Aeterna Noctis (v1.1.005)-image.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.086490Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 16/122: images/Aeterna Noctis (v1.1.005)-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.093504Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 17/122: images/Aeterna Noctis (v1.1.005)-thumb.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.106940Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 18/122: images/Castlevania Anniversary Collection (1.1.0)-image.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.112729Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 19/122: images/Castlevania Anniversary Collection (1.1.0)-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.118387Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 20/122: images/Castlevania Anniversary Collection (1.1.0)-thumb.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.129737Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 21/122: images/Contra Operation Galuga [0100CF401A98E000][v0][US](nsw2u.com)-image.jpg"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.137982Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 22/122: images/Contra Operation Galuga [0100CF401A98E000][v0][US](nsw2u.com)-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.145445Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 23/122: images/Contra Operation Galuga [0100CF401A98E000][v0][US](nsw2u.com)-thumb.jpg"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.152452Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 24/122: images/Cuphead (1.3.7)-image.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.166095Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 25/122: images/Cuphead (1.3.7)-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.172254Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 26/122: images/Cuphead (1.3.7)-thumb.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.178700Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 27/122: images/Donkey Kong Country Tropical Freeze [0100C1F0051B6000][v0]-image.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.193104Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 28/122: images/Donkey Kong Country Tropical Freeze [0100C1F0051B6000][v0]-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.200471Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 29/122: images/Donkey Kong Country Tropical Freeze [0100C1F0051B6000][v0]-thumb.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.206706Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 30/122: images/Ghosts n Goblins Resurrection [0100D6200F2BA000][v0](nsw2u)-image.jpg"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.214995Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 31/122: images/Ghosts n Goblins Resurrection [0100D6200F2BA000][v0](nsw2u)-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.224333Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 32/122: images/Ghosts n Goblins Resurrection [0100D6200F2BA000][v0](nsw2u)-thumb.jpg"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.241366Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 33/122: images/Hyrule Warriors Definitive Edition-image.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.247261Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 34/122: images/Hyrule Warriors Definitive Edition-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.255835Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 35/122: images/Hyrule Warriors Definitive Edition-thumb.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.266363Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 36/122: images/Mario Kart 8 Deluxe [0100152000022000]+[v1.7.2] (nsw2u)_patched-image.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.273439Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 37/122: images/Mario Kart 8 Deluxe [0100152000022000]+[v1.7.2] (nsw2u)_patched-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.280597Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 38/122: images/Mario Kart 8 Deluxe [0100152000022000]+[v1.7.2] (nsw2u)_patched-thumb.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.286977Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 39/122: images/Marvel Ultimate Alliance 3 The Black Order [010060700AC50000] [v524288] (1G+1U+1D)-image.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.299650Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 40/122: images/Marvel Ultimate Alliance 3 The Black Order [010060700AC50000] [v524288] (1G+1U+1D)-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.305625Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 41/122: images/Marvel Ultimate Alliance 3 The Black Order [010060700AC50000] [v524288] (1G+1U+1D)-thumb.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.317854Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 42/122: images/Mega Man 11 [0100B0C0086B0000] [v65536] (1G+1U+1D)-image.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.324536Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 43/122: images/Mega Man 11 [0100B0C0086B0000] [v65536] (1G+1U+1D)-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.335928Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 44/122: images/Mega Man 11 [0100B0C0086B0000] [v65536] (1G+1U+1D)-thumb.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.342222Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 45/122: images/Metroid Dread-image.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.349059Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 46/122: images/Metroid Dread-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.354902Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 47/122: images/Metroid Dread-thumb.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.369930Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 48/122: images/Metroid Prime Remastered-image.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.376486Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 49/122: images/Metroid Prime Remastered-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.381052Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 50/122: Metroid Prime Remastered.nsp"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.382914Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 51/122: images/Metroid Prime Remastered-thumb.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.390162Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 52/122: images/New Super Mario Bros. U Deluxe [0100EA80032EA000][v0]-image.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.397455Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 53/122: images/New Super Mario Bros. U Deluxe [0100EA80032EA000][v0]-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.403651Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 54/122: images/New Super Mario Bros. U Deluxe [0100EA80032EA000][v0]-thumb.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.418986Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 55/122: images/Ninja Gaiden Sigma (v1.0.2)-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.420959Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 56/122: images/Ninja Gaiden Sigma (v1.0.2)-image.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.424886Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 57/122: images/Ninja Gaiden Sigma (v1.0.2)-thumb.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.427619Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 58/122: images/Princess Peach Showtime! [01007A3009184000][v0]-image.jpg"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.442989Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 59/122: images/Princess Peach Showtime! [01007A3009184000][v0]-image.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.444878Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 60/122: images/Princess Peach Showtime! [01007A3009184000][v0]-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.454867Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 61/122: images/Princess Peach Showtime! [01007A3009184000][v0]-thumb.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.456734Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 62/122: images/Princess Peach Showtime! [01007A3009184000][v0]-thumb.jpg"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.460355Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 63/122: images/Super Mario 3D World + Bowsers Fury [010028600EBDA000]+[v1.1.0] (nsw2u.com)_patched-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.462209Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 64/122: images/Super Mario 3D World + Bowsers Fury [010028600EBDA000]+[v1.1.0] (nsw2u.com)_patched-image.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.469483Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 65/122: images/Super Mario 3D World + Bowsers Fury [010028600EBDA000]+[v1.1.0] (nsw2u.com)_patched-thumb.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.474719Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 66/122: images/Super Mario Bros. Wonder [010015100B514000][v0]-image.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.476401Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 67/122: images/Super Mario Bros. Wonder [010015100B514000][v0]-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.479933Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 68/122: images/Super Mario Bros. Wonder [010015100B514000][v0]-thumb.jpg"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.486742Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 69/122: images/Super Mario Odyssey [0100000000010000][v0]-image.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.499076Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 70/122: images/Super Mario Odyssey [0100000000010000][v0]-thumb.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.501210Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 71/122: images/Super Mario Odyssey [0100000000010000][v0]-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.505356Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 72/122: images/Super Mario RPG [0100BC0018138000][v0]-image.jpg"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.507305Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 73/122: images/Super Mario RPG [0100BC0018138000][v0]-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.516375Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 74/122: images/Teenage Mutant Ninja Turtles Arcade Wrath of the Mutants [0100C7601CDAC000][v0] (2.54 GB)-image.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.518344Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 75/122: images/Super Mario RPG [0100BC0018138000][v0]-thumb.jpg"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.521653Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 76/122: images/Teenage Mutant Ninja Turtles Arcade Wrath of the Mutants [0100C7601CDAC000][v0] (2.54 GB)-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.523736Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 77/122: images/Teenage Mutant Ninja Turtles Arcade Wrath of the Mutants [0100C7601CDAC000][v0] (2.54 GB)-thumb.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.531361Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 78/122: images/Teenage Mutant Ninja Turtles Shredder's Revenge [0100FE701475A000] [v393216] (1G+1U)-image.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.533742Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 79/122: images/Teenage Mutant Ninja Turtles Shredder's Revenge [0100FE701475A000] [v393216] (1G+1U)-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.538268Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 80/122: images/Teenage Mutant Ninja Turtles Shredder's Revenge [0100FE701475A000] [v393216] (1G+1U)-thumb.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.540306Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 81/122: images/The Legend of Zelda Breath of the Wild [01007EF00011E000][v1.6.0+2DLC]-image.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.553276Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 82/122: images/The Legend of Zelda Breath of the Wild [01007EF00011E000][v1.6.0+2DLC]-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.555796Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 83/122: images/The Legend of Zelda Breath of the Wild [01007EF00011E000][v1.6.0+2DLC]-thumb.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.559036Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 84/122: images/The Legend of Zelda Echoes of Wisdom [01008CF01BAAC000][v0] (5.40 GB)-001-image.jpg"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.564944Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 85/122: images/The Legend of Zelda Echoes of Wisdom [01008CF01BAAC000][v0] (5.40 GB)-001-thumb.jpg"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.569589Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 86/122: images/The Legend of Zelda Echoes of Wisdom [01008CF01BAAC000][v0] (5.40 GB)-001-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.577062Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 87/122: images/The Legend of Zelda Links Awakening [01006BB00C6F0000][v1.0.1]-image.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.581389Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 88/122: images/The Legend of Zelda Links Awakening [01006BB00C6F0000][v1.0.1]-marquee.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.585313Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 89/122: images/The Legend of Zelda Links Awakening [01006BB00C6F0000][v1.0.1]-thumb.png"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.605848Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 90/122: videos/Aeterna Noctis (v1.1.005)-video.mp4"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.612120Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 91/122: videos/Castlevania Anniversary Collection (1.1.0)-video.mp4"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.631768Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 92/122: videos/Contra Operation Galuga [0100CF401A98E000][v0][US](nsw2u.com)-video.mp4"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.640306Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 93/122: videos/Cuphead (1.3.7)-video.mp4"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.658076Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 94/122: videos/Donkey Kong Country Tropical Freeze [0100C1F0051B6000][v0]-video.mp4"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.660540Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 95/122: videos/Ghosts n Goblins Resurrection [0100D6200F2BA000][v0](nsw2u)-video.mp4"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.679992Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 96/122: videos/Mario Kart 8 Deluxe [0100152000022000]+[v1.7.2] (nsw2u)_patched-video.mp4"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.710855Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 97/122: videos/Marvel Ultimate Alliance 3 The Black Order [010060700AC50000] [v524288] (1G+1U+1D)-video.mp4"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.716751Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 98/122: videos/Hyrule Warriors Definitive Edition-video.mp4"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.725009Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 99/122: videos/Mega Man 11 [0100B0C0086B0000] [v65536] (1G+1U+1D)-video.mp4"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.739896Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 100/122: videos/Metroid Dread-video.mp4"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.746238Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 101/122: videos/Metroid Prime Remastered-video.mp4"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.775646Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 102/122: videos/New Super Mario Bros. U Deluxe [0100EA80032EA000][v0]-video.mp4"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.780197Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 103/122: videos/Princess Peach Showtime! [01007A3009184000][v0]-video.mp4"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.810535Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 104/122: videos/Super Mario 3D World + Bowsers Fury [010028600EBDA000]+[v1.1.0] (nsw2u.com)_patched-video.mp4"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.816365Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 105/122: videos/Super Mario Bros. Wonder [010015100B514000][v0]-video.mp4"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.835296Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 106/122: videos/Super Mario Odyssey [0100000000010000][v0]-video.mp4"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.837682Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 107/122: videos/Super Mario RPG [0100BC0018138000][v0]-video.mp4"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.860449Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 108/122: videos/Teenage Mutant Ninja Turtles Arcade Wrath of the Mutants [0100C7601CDAC000][v0] (2.54 GB)-video.mp4"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.870122Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 109/122: videos/Teenage Mutant Ninja Turtles Shredder's Revenge [0100FE701475A000] [v393216] (1G+1U)-video.mp4"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.885316Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 110/122: videos/The Legend of Zelda Echoes of Wisdom [01008CF01BAAC000][v0] (5.40 GB)-001-video.mp4"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.887600Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 111/122: videos/The Legend of Zelda Breath of the Wild [01007EF00011E000][v1.6.0+2DLC]-video.mp4"
-      },
-      {
-        "ts": "2025-11-23T01:11:39.914650Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 112/122: videos/The Legend of Zelda Links Awakening [01006BB00C6F0000][v1.0.1]-video.mp4"
-      },
-      {
-        "ts": "2025-11-23T01:11:41.439711Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 113/122: Super Mario Bros. Wonder [010015100B514000][v0].nsp"
-      },
-      {
-        "ts": "2025-11-23T01:11:44.396741Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 114/122: Teenage Mutant Ninja Turtles Arcade Wrath of the Mutants [0100C7601CDAC000][v0] (2.54 GB).nsp"
-      },
-      {
-        "ts": "2025-11-23T01:11:45.750970Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 115/122: Princess Peach Showtime! [01007A3009184000][v0].xci"
-      },
-      {
-        "ts": "2025-11-23T01:11:48.226277Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 116/122: Super Mario Odyssey [0100000000010000][v0].nsp"
-      },
-      {
-        "ts": "2025-11-23T01:11:53.585808Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 117/122: Super Mario RPG [0100BC0018138000][v0].nsp"
-      },
-      {
-        "ts": "2025-11-23T01:11:53.975156Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 118/122: Hyrule Warriors Definitive Edition.xci"
-      },
-      {
-        "ts": "2025-11-23T01:11:57.349094Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 119/122: The Legend of Zelda Echoes of Wisdom [01008CF01BAAC000][v0] (5.40 GB)-001.nsp"
-      },
-      {
-        "ts": "2025-11-23T01:11:58.313565Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 120/122: The Legend of Zelda Links Awakening [01006BB00C6F0000][v1.0.1].xci"
-      },
-      {
-        "ts": "2025-11-23T01:11:58.823819Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 121/122: Marvel Ultimate Alliance 3 The Black Order [010060700AC50000] [v524288] (1G+1U+1D).xci"
-      },
-      {
-        "ts": "2025-11-23T01:12:03.869174Z",
-        "level": "ERROR",
-        "msg": "[INFO] Verificado 122/122: The Legend of Zelda Breath of the Wild [01007EF00011E000][v1.6.0+2DLC].xci"
-      },
-      {
-        "ts": "2025-11-23T01:12:03.870932Z",
-        "level": "ERROR",
-        "msg": "[INFO] Procurando arquivos extras em disco..."
-      },
-      {
-        "ts": "2025-11-23T01:12:03.872869Z",
+        "ts": "2026-04-24T21:29:44.673794Z",
         "level": "INFO",
-        "msg": "=== Verificação de fixidez ==="
+        "msg": "[1/6] Transferindo 168 arquivo(s) (mode=copy)…"
       },
       {
-        "ts": "2025-11-23T01:12:03.874382Z",
+        "ts": "2026-04-24T21:29:44.675245Z",
+        "level": "ERROR",
+        "msg": "  - Nome-Produtor: {nomeProdutor}"
+      },
+      {
+        "ts": "2026-04-24T21:29:44.676850Z",
         "level": "INFO",
-        "msg": "Manifesto : C:\\Users\\cadut\\Desktop\\manifest-sha256.txt"
+        "msg": "  - 50/168"
       },
       {
-        "ts": "2025-11-23T01:12:03.875991Z",
+        "ts": "2026-04-24T21:29:44.678419Z",
+        "level": "ERROR",
+        "msg": "  - Endereco-Produtor: {enderecoProdutor}"
+      },
+      {
+        "ts": "2026-04-24T21:29:44.680046Z",
         "level": "INFO",
-        "msg": "Raiz      : H:\\RetroBat\\roms\\switch"
+        "msg": "  - 100/168"
       },
       {
-        "ts": "2025-11-23T01:12:03.877669Z",
+        "ts": "2026-04-24T21:29:44.681706Z",
+        "level": "ERROR",
+        "msg": "  - Contato-Produtor-Nome: {nomeContatoProdutor}"
+      },
+      {
+        "ts": "2026-04-24T21:29:44.683304Z",
         "level": "INFO",
-        "msg": "Algoritmo : sha256"
+        "msg": "  - 150/168"
       },
       {
-        "ts": "2025-11-23T01:12:03.879298Z",
+        "ts": "2026-04-24T21:29:44.685024Z",
+        "level": "ERROR",
+        "msg": "  - Contato-Produtor-Email: {emailContatoProdutor}"
+      },
+      {
+        "ts": "2026-04-24T21:29:44.686659Z",
         "level": "INFO",
-        "msg": "Total     : 122"
+        "msg": "  - 168/168"
       },
       {
-        "ts": "2025-11-23T01:12:03.880993Z",
+        "ts": "2026-04-24T21:29:44.688232Z",
+        "level": "ERROR",
+        "msg": "  - Identificador-Pacote-No-Produtor: {identificadorPacoteNoProdutor}"
+      },
+      {
+        "ts": "2026-04-24T21:29:44.689958Z",
         "level": "INFO",
-        "msg": "OK        : 122"
+        "msg": "[2/6] Gerando manifest do payload…"
       },
       {
-        "ts": "2025-11-23T01:12:03.882691Z",
+        "ts": "2026-04-24T21:29:44.691496Z",
+        "level": "ERROR",
+        "msg": "  - Identificador-Grupo-Pacote: {identificadorGrupoPacote}"
+      },
+      {
+        "ts": "2026-04-24T21:29:44.693139Z",
         "level": "INFO",
-        "msg": "Faltando  : 0"
+        "msg": "  - 168/168"
       },
       {
-        "ts": "2025-11-23T01:12:03.884252Z",
+        "ts": "2026-04-24T21:29:44.694849Z",
+        "level": "ERROR",
+        "msg": "  - Unidade-Produtora: {unidadeProdutora}"
+      },
+      {
+        "ts": "2026-04-24T21:29:44.696383Z",
         "level": "INFO",
-        "msg": "Divergências: 0"
+        "msg": "[3/6] Escrevendo bagit.txt…"
       },
       {
-        "ts": "2025-11-23T01:12:03.885948Z",
+        "ts": "2026-04-24T21:29:44.698053Z",
+        "level": "ERROR",
+        "msg": "  - Endereco-Unidade-Produtora: {enderecoUnidadeProdutora}"
+      },
+      {
+        "ts": "2026-04-24T21:29:44.699800Z",
         "level": "INFO",
-        "msg": "Extras    : 0"
+        "msg": "[4/6] Escrevendo bag-info.txt…"
       },
       {
-        "ts": "2025-11-23T01:12:03.887945Z",
+        "ts": "2026-04-24T21:29:44.701470Z",
+        "level": "ERROR",
+        "msg": "  - Responsavel-CADA: {responsavelCADA}"
+      },
+      {
+        "ts": "2026-04-24T21:29:44.703069Z",
         "level": "INFO",
-        "msg": "[stdout] (últimas linhas)\n=== Verificação de fixidez ===\nManifesto : C:\\Users\\cadut\\Desktop\\manifest-sha256.txt\nRaiz      : H:\\RetroBat\\roms\\switch\nAlgoritmo : sha256\nTotal     : 122\nOK        : 122\nFaltando  : 0\nDivergências: 0\nExtras    : 0\n"
+        "msg": "[6/6] Bag construído em: C:\\Users\\cadut\\Desktop\\teste"
       },
       {
-        "ts": "2025-11-23T01:12:03.889584Z",
+        "ts": "2026-04-24T21:29:44.704555Z",
+        "level": "ERROR",
+        "msg": "  - Identificador-Fundo: {identificadorFundo}"
+      },
+      {
+        "ts": "2026-04-24T21:29:44.706074Z",
+        "level": "ERROR",
+        "msg": "  - Nome-Fundo: {nomeFundo}"
+      },
+      {
+        "ts": "2026-04-24T21:29:44.707711Z",
+        "level": "ERROR",
+        "msg": "  - Identificador-Secao: {identificadorSecao}"
+      },
+      {
+        "ts": "2026-04-24T21:29:44.709243Z",
+        "level": "ERROR",
+        "msg": "  - Nome-Secao: {nomeSecao}"
+      },
+      {
+        "ts": "2026-04-24T21:29:44.710765Z",
+        "level": "ERROR",
+        "msg": "  - Identificador-Serie: {identificadorSerie}"
+      },
+      {
+        "ts": "2026-04-24T21:29:44.712313Z",
+        "level": "ERROR",
+        "msg": "  - Nome-Serie: {nomeSerie}"
+      },
+      {
+        "ts": "2026-04-24T21:29:44.714293Z",
+        "level": "ERROR",
+        "msg": "  - Identificador-Dossie: {identificadorDossie}"
+      },
+      {
+        "ts": "2026-04-24T21:29:44.716001Z",
+        "level": "ERROR",
+        "msg": "  - Nome-Dossie: {nomeDossie}"
+      },
+      {
+        "ts": "2026-04-24T21:29:44.717690Z",
+        "level": "ERROR",
+        "msg": "  - Observacoes: {observacoes}"
+      },
+      {
+        "ts": "2026-04-24T21:29:44.719475Z",
         "level": "INFO",
-        "msg": "[stderr] (últimas linhas)\n1.6.0+2DLC]-marquee.png\n[INFO] Verificado 83/122: images/The Legend of Zelda Breath of the Wild [01007EF00011E000][v1.6.0+2DLC]-thumb.png\n[INFO] Verificado 84/122: images/The Legend of Zelda Echoes of Wisdom [01008CF01BAAC000][v0] (5.40 GB)-001-image.jpg\n[INFO] Verificado 85/122: images/The Legend of Zelda Echoes of Wisdom [01008CF01BAAC000][v0] (5.40 GB)-001-thumb.jpg\n[INFO] Verificado 86/122: images/The Legend of Zelda Echoes of Wisdom [01008CF01BAAC000][v0] (5.40 GB)-001-marquee.png\n[INFO] Verificado 87/122: images/The Legend of Zelda Links Awakening [01006BB00C6F0000][v1.0.1]-image.png\n[INFO] Verificado 88/122: images/The Legend of Zelda Links Awakening [01006BB00C6F0000][v1.0.1]-marquee.png\n[INFO] Verificado 89/122: images/The Legend of Zelda Links Awakening [01006BB00C6F0000][v1.0.1]-thumb.png\n[INFO] Verificado 90/122: videos/Aeterna Noctis (v1.1.005)-video.mp4\n[INFO] Verificado 91/122: videos/Castlevania Anniversary Collection (1.1.0)-video.mp4\n[INFO] Verificado 92/122: videos/Contra Operation Galuga [0100CF401A98E000][v0][US](nsw2u.com)-video.mp4\n[INFO] Verificado 93/122: videos/Cuphead (1.3.7)-video.mp4\n[INFO] Verificado 94/122: videos/Donkey Kong Country Tropical Freeze [0100C1F0051B6000][v0]-video.mp4\n[INFO] Verificado 95/122: videos/Ghosts n Goblins Resurrection [0100D6200F2BA000][v0](nsw2u)-video.mp4\n[INFO] Verificado 96/122: videos/Mario Kart 8 Deluxe [0100152000022000]+[v1.7.2] (nsw2u)_patched-video.mp4\n[INFO] Verificado 97/122: videos/Marvel Ultimate Alliance 3 The Black Order [010060700AC50000] [v524288] (1G+1U+1D)-video.mp4\n[INFO] Verificado 98/122: videos/Hyrule Warriors Definitive Edition-video.mp4\n[INFO] Verificado 99/122: videos/Mega Man 11 [0100B0C0086B0000] [v65536] (1G+1U+1D)-video.mp4\n[INFO] Verificado 100/122: videos/Metroid Dread-video.mp4\n[INFO] Verificado 101/122: videos/Metroid Prime Remastered-video.mp4\n[INFO] Verificado 102/122: videos/New Super Mario Bros. U Deluxe [0100EA80032EA000][v0]-video.mp4\n[INFO] Verificado 103/122: videos/P"
+        "msg": "[stdout] (últimas linhas)\n[1/6] Transferindo 168 arquivo(s) (mode=copy)…\n  - 50/168\n  - 100/168\n  - 150/168\n  - 168/168\n[2/6] Gerando manifest do payload…\n  - 168/168\n[3/6] Escrevendo bagit.txt…\n[4/6] Escrevendo bag-info.txt…\n[6/6] Bag construído em: C:\\Users\\cadut\\Desktop\\teste\n"
       },
       {
-        "ts": "2025-11-23T01:12:03.891868Z",
+        "ts": "2026-04-24T21:29:44.721237Z",
+        "level": "INFO",
+        "msg": "[stderr] (últimas linhas)\nAVISO: alguns campos em bag-info.txt contêm placeholders não resolvidos {chave}:\n  - Nome-Produtor: {nomeProdutor}\n  - Endereco-Produtor: {enderecoProdutor}\n  - Contato-Produtor-Nome: {nomeContatoProdutor}\n  - Contato-Produtor-Email: {emailContatoProdutor}\n  - Identificador-Pacote-No-Produtor: {identificadorPacoteNoProdutor}\n  - Identificador-Grupo-Pacote: {identificadorGrupoPacote}\n  - Unidade-Produtora: {unidadeProdutora}\n  - Endereco-Unidade-Produtora: {enderecoUnidadeProdutora}\n  - Responsavel-CADA: {responsavelCADA}\n  - Identificador-Fundo: {identificadorFundo}\n  - Nome-Fundo: {nomeFundo}\n  - Identificador-Secao: {identificadorSecao}\n  - Nome-Secao: {nomeSecao}\n  - Identificador-Serie: {identificadorSerie}\n  - Nome-Serie: {nomeSerie}\n  - Identificador-Dossie: {identificadorDossie}\n  - Nome-Dossie: {nomeDossie}\n  - Observacoes: {observacoes}\n"
+      },
+      {
+        "ts": "2026-04-24T21:29:44.723297Z",
         "level": "INFO",
         "msg": "Concluído com sucesso"
       }
     ],
-    "47fb1a01-7113-46c7-899b-4f629159786e": [
+    "2215dc99-6364-43c0-9069-73b00f1be8e6": [
       {
-        "ts": "2025-12-11T00:47:39.661411Z",
+        "ts": "2026-03-05T13:44:39.037944Z",
         "level": "INFO",
-        "msg": "Enfileirado HASH_MANIFEST"
+        "msg": "Enfileirado BUILD_BAG"
       },
       {
-        "ts": "2025-12-11T00:47:40.164879Z",
+        "ts": "2026-04-24T21:29:44.727994Z",
         "level": "INFO",
-        "msg": "Iniciando job HASH_MANIFEST"
+        "msg": "Iniciando job BUILD_BAG"
       },
       {
-        "ts": "2025-12-11T00:47:40.169348Z",
+        "ts": "2026-04-24T21:29:44.729788Z",
         "level": "INFO",
-        "msg": "Comando: C:\\Users\\cadut\\AppData\\Local\\Programs\\Python\\Python313\\python.exe scripts\\hash_files.py --raiz C:\\Users\\cadut\\Desktop\\LISTAS --saida C:\\Users\\cadut\\Desktop\\LISTAS\\manifest-sha256.txt --algo sha256 --ignore-hidden"
+        "msg": "Comando: C:\\Users\\cadut\\AppData\\Local\\Programs\\Python\\Python313\\python.exe scripts\\build_bag.py C:/Users/cadut/Desktop/LISTAS C:/Users/cadut/Desktop/teste --algo sha256 --mode copy --pattern * --organization Ministerio da Justiça --contact-name xxx@gmail.com --profile C:\\workfolder\\ThorArquivista\\thor_arquivista_caixa_de_ferramentas\\profiles\\apesp-profileBagit.json --profile-param classificacaoSigilo=Ostensivo --profile-param codigoTDD=001_13_131 --profile-param collection_name=xxxx --profile-param contadorPacote=1 de 1 --profile-param dataCriacaoPacote=05-03-2026 --profile-param descricaoPacote=dfasf --profile-param descricaoTDD=sadfsafds --profile-param generoDocumental=Cartografico --profile-param naturezaDigital=Original --profile-param possuiDadosPessoais=False --profile-param suporteEnvio=SSD Externo --profile-param tipoPacote=SIP"
       },
       {
-        "ts": "2025-12-11T00:47:40.835557Z",
-        "level": "INFO",
-        "msg": "Concluído com sucesso"
-      }
-    ],
-    "8586d574-aa69-4c66-9fbc-d1c0b12e8687": [
-      {
-        "ts": "2025-12-11T00:49:25.806978Z",
-        "level": "INFO",
-        "msg": "Enfileirado VERIFY_FIXITY"
-      },
-      {
-        "ts": "2025-12-11T00:49:25.940193Z",
-        "level": "INFO",
-        "msg": "Iniciando job VERIFY_FIXITY"
-      },
-      {
-        "ts": "2025-12-11T00:49:25.945993Z",
-        "level": "INFO",
-        "msg": "Comando: C:\\Users\\cadut\\AppData\\Local\\Programs\\Python\\Python313\\python.exe scripts\\verify_fixity.py --raiz C:/Users/cadut/Desktop/LISTAS --manifesto C:/Users/cadut/Desktop/manifest-sha256.txt"
-      },
-      {
-        "ts": "2025-12-11T00:49:26.230489Z",
-        "level": "INFO",
-        "msg": "=== Verificação de fixidez ==="
-      },
-      {
-        "ts": "2025-12-11T00:49:26.237759Z",
-        "level": "INFO",
-        "msg": "Manifesto : C:\\Users\\cadut\\Desktop\\manifest-sha256.txt"
-      },
-      {
-        "ts": "2025-12-11T00:49:26.244153Z",
-        "level": "INFO",
-        "msg": "Raiz      : C:\\Users\\cadut\\Desktop\\LISTAS"
-      },
-      {
-        "ts": "2025-12-11T00:49:26.250588Z",
-        "level": "INFO",
-        "msg": "Algoritmo : sha256"
-      },
-      {
-        "ts": "2025-12-11T00:49:26.255859Z",
-        "level": "INFO",
-        "msg": "Total     : 168"
-      },
-      {
-        "ts": "2025-12-11T00:49:26.260423Z",
-        "level": "INFO",
-        "msg": "OK        : 167"
-      },
-      {
-        "ts": "2025-12-11T00:49:26.265749Z",
-        "level": "INFO",
-        "msg": "Faltando  : 1"
-      },
-      {
-        "ts": "2025-12-11T00:49:26.270537Z",
-        "level": "INFO",
-        "msg": "Divergências: 0"
-      },
-      {
-        "ts": "2025-12-11T00:49:26.275323Z",
-        "level": "INFO",
-        "msg": "-- Faltando --"
-      },
-      {
-        "ts": "2025-12-11T00:49:26.280517Z",
-        "level": "INFO",
-        "msg": "manifest-sha256.txt"
-      },
-      {
-        "ts": "2025-12-11T00:49:26.285205Z",
-        "level": "INFO",
-        "msg": "[stdout] (últimas linhas)\n=== Verificação de fixidez ===\nManifesto : C:\\Users\\cadut\\Desktop\\manifest-sha256.txt\nRaiz      : C:\\Users\\cadut\\Desktop\\LISTAS\nAlgoritmo : sha256\nTotal     : 168\nOK        : 167\nFaltando  : 1\nDivergências: 0\n-- Faltando --\nmanifest-sha256.txt\n"
-      },
-      {
-        "ts": "2025-12-11T00:49:26.289915Z",
+        "ts": "2026-04-24T21:29:44.831224Z",
         "level": "ERROR",
-        "msg": "Erro (rc=1)"
-      }
-    ],
-    "8eefd8e0-e8b7-456a-8350-5d18e21ae2f7": [
-      {
-        "ts": "2025-12-11T00:50:17.415346Z",
-        "level": "INFO",
-        "msg": "Enfileirado VERIFY_FIXITY"
+        "msg": "ERRO: Diretório de destino já existe e não está vazio: C:\\Users\\cadut\\Desktop\\teste"
       },
       {
-        "ts": "2025-12-11T00:50:17.585835Z",
-        "level": "INFO",
-        "msg": "Iniciando job VERIFY_FIXITY"
-      },
-      {
-        "ts": "2025-12-11T00:50:17.590601Z",
-        "level": "INFO",
-        "msg": "Comando: C:\\Users\\cadut\\AppData\\Local\\Programs\\Python\\Python313\\python.exe scripts\\verify_fixity.py --raiz C:/Users/cadut/Desktop/LISTAS --manifesto C:/Users/cadut/Desktop/LISTAS/manifest-sha256.txt"
-      },
-      {
-        "ts": "2025-12-11T00:50:17.813184Z",
-        "level": "INFO",
-        "msg": "=== Verificação de fixidez ==="
-      },
-      {
-        "ts": "2025-12-11T00:50:17.819745Z",
-        "level": "INFO",
-        "msg": "Manifesto : C:\\Users\\cadut\\Desktop\\LISTAS\\manifest-sha256.txt"
-      },
-      {
-        "ts": "2025-12-11T00:50:17.825445Z",
-        "level": "INFO",
-        "msg": "Raiz      : C:\\Users\\cadut\\Desktop\\LISTAS"
-      },
-      {
-        "ts": "2025-12-11T00:50:17.830962Z",
-        "level": "INFO",
-        "msg": "Algoritmo : sha256"
-      },
-      {
-        "ts": "2025-12-11T00:50:17.836258Z",
-        "level": "INFO",
-        "msg": "Total     : 168"
-      },
-      {
-        "ts": "2025-12-11T00:50:17.841715Z",
-        "level": "INFO",
-        "msg": "OK        : 167"
-      },
-      {
-        "ts": "2025-12-11T00:50:17.850101Z",
-        "level": "INFO",
-        "msg": "Faltando  : 0"
-      },
-      {
-        "ts": "2025-12-11T00:50:17.856027Z",
-        "level": "INFO",
-        "msg": "Divergências: 1"
-      },
-      {
-        "ts": "2025-12-11T00:50:17.861541Z",
-        "level": "INFO",
-        "msg": "-- Divergências --"
-      },
-      {
-        "ts": "2025-12-11T00:50:17.867247Z",
-        "level": "INFO",
-        "msg": "manifest-sha256.txt :: MISMATCH expected=441d10048e83d9884bce0f03380effc94dd7cc6ceff7ff0da758a8e30af551f5 got=5f746c4f31cb5112909d310a798ced1c85a31f57fa79fa406826d8216a2f3e2b"
-      },
-      {
-        "ts": "2025-12-11T00:50:17.873988Z",
-        "level": "INFO",
-        "msg": "[stdout] (últimas linhas)\n=== Verificação de fixidez ===\nManifesto : C:\\Users\\cadut\\Desktop\\LISTAS\\manifest-sha256.txt\nRaiz      : C:\\Users\\cadut\\Desktop\\LISTAS\nAlgoritmo : sha256\nTotal     : 168\nOK        : 167\nFaltando  : 0\nDivergências: 1\n-- Divergências --\nmanifest-sha256.txt :: MISMATCH expected=441d10048e83d9884bce0f03380effc94dd7cc6ceff7ff0da758a8e30af551f5 got=5f746c4f31cb5112909d310a798ced1c85a31f57fa79fa406826d8216a2f3e2b\n"
-      },
-      {
-        "ts": "2025-12-11T00:50:17.881043Z",
+        "ts": "2026-04-24T21:29:44.839119Z",
         "level": "ERROR",
-        "msg": "Erro (rc=1)"
+        "msg": "[stderr] (últimas linhas)\nERRO: Diretório de destino já existe e não está vazio: C:\\Users\\cadut\\Desktop\\teste\n"
+      },
+      {
+        "ts": "2026-04-24T21:29:44.841360Z",
+        "level": "ERROR",
+        "msg": "Erro (rc=2)"
       }
     ]
   }
