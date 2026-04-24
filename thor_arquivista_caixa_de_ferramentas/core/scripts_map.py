@@ -258,6 +258,16 @@ def get_scripts_map() -> ScriptsMap:
             + sum([["--destino", d] for d in p.get("destinos", [])], [])
             + (["--verificar-hash"] if p.get("verificar_hash") else []),
         ),
+        "DELETE_DUPLICATES": (
+            "delete_duplicates_by_manifest.py",
+            lambda p, cfg: [
+                "--origem", p["origem"],
+                "--duplicatas", p["duplicatas"],
+                *(["--manifesto", p["manifesto"]] if p.get("manifesto") else []),
+                *(["--relatorio", p["relatorio"]] if p.get("relatorio") else []),
+                *(["--progress"] if p.get("progress") else []),
+            ],
+        ),
         "PREMIS_EVENT": (
             "premis_log.py",
             # usa cfg para default de agente

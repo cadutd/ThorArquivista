@@ -57,6 +57,7 @@ from ui.panels.premis_event import create_panel as panel_premis_evt
 from ui.panels.worker_control import create_panel as panel_worker
 from ui.panels.duplicate_analysis import create_panel as panel_duplicate_analysis
 from ui.panels.duplicate_treatment import create_panel as panel_duplicate_treatment
+from ui.panels.delete_duplicates import create_panel as panel_delete_duplicates
 from ui.panels.premis_converter import create_panel as panel_premis_converter
 
 class MainApp(tb.Window):
@@ -188,6 +189,7 @@ class MainApp(tb.Window):
 
         submenu_duplicatas.add_command(label="Análise de Duplicatas", command=lambda: _open("Análise de Duplicatas", panel_duplicate_analysis))
         submenu_duplicatas.add_command(label="Tratamento de Duplicatas", command=lambda: _open("Tratamento de Duplicatas", panel_duplicate_treatment))
+        submenu_duplicatas.add_command(label="Excluir Duplicatas por Manifesto", command=lambda: _open("Excluir Duplicatas", panel_delete_duplicates))
         menu_tarefas.add_cascade(label="Duplicatas", menu=submenu_duplicatas)
 
         menu_tarefas.add_command(label="Conversor Premis", command=lambda: _open("Conversor Premis", panel_premis_converter))
