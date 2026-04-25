@@ -17,6 +17,7 @@ type AuthContextValue = {
   isLoading: boolean;
   login: () => Promise<void>;
   logout: () => void;
+  setAuthenticatedSession: (session: AuthSession) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -47,6 +48,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await startLogin();
   }, []);
 
+  const setAuthenticatedSession = useCallback((nextSession: AuthSession) => {
+    setSession(nextSession);
+    setIsLoading(false);
+  }, []);
+
   const logout = useCallback(() => {
     const idToken = session?.idToken;
     clearStoredSession();
@@ -61,8 +67,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       login,
       logout,
+      setAuthenticatedSession,
     }),
-    [isLoading, login, logout, session],
+    [isLoading, login, logout, session, setAuthenticatedSession],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

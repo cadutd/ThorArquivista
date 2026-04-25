@@ -3,10 +3,12 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { completeLogin } from "@/lib/auth/oidc";
+import { useAuth } from "@/lib/auth/auth-provider";
 
 function CallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { setAuthenticatedSession } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const code = searchParams.get("code");
   const state = searchParams.get("state");
@@ -23,11 +25,14 @@ function CallbackContent() {
     }
 
     completeLogin(code, state)
-      .then(() => router.replace("/dashboard"))
+      .then((session) => {
+        setAuthenticatedSession(session);
+        router.replace("/dashboard");
+      })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : "Falha ao autenticar.");
       });
-  }, [code, router, state]);
+  }, [code, router, setAuthenticatedSession, state]);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-4">
