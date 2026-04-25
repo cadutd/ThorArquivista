@@ -8,6 +8,7 @@ O projeto é dividido em duas aplicações principais:
 
 - `backend/`: API em FastAPI responsável pelas regras de negócio, persistência, validação de tokens Keycloak e acesso ao PostgreSQL.
 - `frontend/`: interface administrativa em Next.js, React, TypeScript e Tailwind CSS.
+- `workers/`: área reservada para tarefas assíncronas futuras, como indexação e validações de preservação.
 
 Serviços auxiliares sobem via Docker Compose:
 
@@ -47,6 +48,7 @@ URLs locais principais:
 .
 ├── backend/              # FastAPI, SQLAlchemy, Alembic e scripts operacionais
 ├── frontend/             # Next.js, React, Tailwind CSS e autenticação OIDC
+├── workers/              # Workers assíncronos planejados
 ├── infra/keycloak/       # Scripts de configuração automática do Keycloak
 ├── pgadmin/provisioning/ # Configuração automática de servidores no pgAdmin
 ├── docker-compose.yml    # Stack local completa
@@ -174,6 +176,7 @@ Arquivos importantes:
 
 - `backend/app/main.py`: cria a aplicação FastAPI, adiciona CORS e registra as rotas.
 - `backend/app/api/v1/router.py`: agrega as rotas públicas e protegidas.
+- `backend/app/api/v1/dashboard.py`: expõe indicadores agregados do dashboard.
 - `backend/app/security/keycloak_jwt.py`: valida JWT e busca JWKS no Keycloak.
 - `backend/app/core/config.py`: configurações por variáveis de ambiente.
 - `backend/alembic/versions/`: migrations do banco.
@@ -208,6 +211,20 @@ cors_origins=["http://localhost:3000"]
 
 Rotas de domínio são protegidas por Keycloak. A rota de health é pública.
 
+Rotas principais sob `/api/v1`:
+
+| Rota | Finalidade |
+| --- | --- |
+| `/health` | Health check público |
+| `/auth/me` | Dados do usuário autenticado |
+| `/dashboard` | Totais agregados para o dashboard |
+| `/unidades-acondicionamento` | CRUD, filtros e paginação de unidades |
+| `/midias-armazenamento` | Cadastro e listagem de mídias |
+| `/unidades-acondicionamento/{id}/copias` | Cópias digitais de uma unidade |
+| `/unidades-acondicionamento/{id}/eventos-preservacao` | Eventos de preservação de uma unidade |
+
+O dashboard usa uma rota agregada própria para evitar contagens incorretas geradas por listagens paginadas.
+
 ## Frontend
 
 Stack principal:
@@ -226,11 +243,35 @@ Arquivos importantes:
 
 - `frontend/app/login/page.tsx`: tela de login com imagem institucional de arquivo digital.
 - `frontend/app/auth/callback/page.tsx`: callback OIDC.
+- `frontend/app/(app)/dashboard/page.tsx`: tela principal do sistema com indicadores.
+- `frontend/app/(app)/unidades/page.tsx`: CRUD de unidades de acondicionamento.
+- `frontend/features/unidades/unidades-table.tsx`: tabela, filtros, ações e paginação de unidades.
 - `frontend/lib/auth/oidc.ts`: início e conclusão do fluxo OIDC com PKCE.
 - `frontend/lib/auth/auth-provider.tsx`: estado de autenticação.
 - `frontend/lib/api/client.ts`: cliente HTTP com token Bearer.
+- `frontend/lib/api/domain.ts`: funções de API do domínio, incluindo `getDashboardStats`.
 - `frontend/lib/config.ts`: URLs públicas do app, API e Keycloak.
 - `frontend/public/images/login-digital-archive.png`: imagem da tela de login.
+
+Telas principais:
+
+| Tela | Rota |
+| --- | --- |
+| Login | `/login` |
+| Dashboard | `/dashboard` |
+| Unidades | `/unidades` |
+| Mídias | `/midias` |
+| Eventos | `/eventos` |
+| Administração | `/admin` |
+
+No layout autenticado, o bloco de marca à esquerda do cabeçalho/sidebar (`Thor Gestor`) aponta para `/dashboard`.
+
+O CRUD de unidades usa paginação de backend no formato:
+
+```text
+XX registros de YY | página B de C  Primeira Anterior 1 2 3 ... C Próxima Última
+Registros por página: BB
+```
 
 Rodar fora do Docker:
 
@@ -306,6 +347,12 @@ Entrar no PostgreSQL:
 docker compose exec postgres psql -U thor -d thor_db
 ```
 
+Executar seed de unidades:
+
+```bash
+docker compose exec backend python -m app.scripts.seed_test_units
+```
+
 ## Banco de Dados e Migrations
 
 O backend executa automaticamente:
@@ -339,6 +386,26 @@ A migration inicial cria:
 - O issuer esperado no token continua sendo a URL pública `http://localhost:8081/realms/thor`.
 - Assets do frontend em `frontend/public` precisam ser copiados para a imagem final. O `frontend/Dockerfile` já faz isso.
 - O script de seed usa SQL explícito para respeitar os nomes reais dos enums criados pela migration (`tipo_suporte`, `tipo_unidade`, `nivel_acesso`, `status_unidade`).
+- Os workers ainda não são iniciados pelo Compose; `workers/` está reservado para a fase de tarefas assíncronas.
+
+## Validação Local
+
+Frontend:
+
+```bash
+cd frontend
+npm run typecheck
+npm run lint
+```
+
+Backend:
+
+```bash
+cd backend
+python -m pytest app\tests
+```
+
+Se `pytest` não estiver instalado no Python local, instale as dependências do backend antes de executar os testes.
 
 ## Problemas Comuns
 
