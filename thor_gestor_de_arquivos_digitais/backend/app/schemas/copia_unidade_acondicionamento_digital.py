@@ -8,7 +8,6 @@ from app.models.enums import FuncaoCopia, StatusCopia
 class CopiaUnidadeAcondicionamentoDigitalBase(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
-    id_unidade_acondicionamento: int = Field(..., ge=1)
     id_midia_armazenamento: int = Field(..., ge=1)
 
     uri_copia: str = Field(..., max_length=1200)
@@ -37,4 +36,5 @@ class CopiaUnidadeAcondicionamentoDigitalOut(CopiaUnidadeAcondicionamentoDigital
     model_config = ConfigDict(from_attributes=True, use_enum_values=True)
 
     id: int
+    id_unidade_acondicionamento: int
     criada_em: datetime | None = None

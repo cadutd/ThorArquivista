@@ -4,11 +4,15 @@ version = "0.1.0"
 description = "Backend (FastAPI) do Thor Gestor de Arquivos Digitais"
 requires-python = ">=3.13"
 dependencies = [
-  "fastapi==0.115.6",
-  "uvicorn[standard]==0.32.1",
-  "pydantic-settings==2.6.1",
-  "SQLAlchemy==2.0.36",
-  "psycopg[binary]==3.2.3",
+  "fastapi==0.124.4",
+  "uvicorn[standard]==0.38.0",
+  "pydantic-settings==2.12.0",
+  "SQLAlchemy==2.0.45",
+  "psycopg[binary]==3.3.2",
+  "alembic==1.17.2",
+  "python-jose[cryptography]==3.3.0",
+  "httpx==0.27.2",
+  "alembic-postgresql-enum",
 ]
 
 [tool.pytest.ini_options]
