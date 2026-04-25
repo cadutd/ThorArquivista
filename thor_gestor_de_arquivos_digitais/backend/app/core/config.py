@@ -22,4 +22,6 @@ class Settings(BaseSettings):
     keycloak_client_id: str = "thor-api"
     keycloak_verify_audience: bool = True  # valida aud/azp
 
+    cors_origins: list[str] = ["http://localhost:3000"]
+
 settings = Settings()

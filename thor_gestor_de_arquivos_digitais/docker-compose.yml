@@ -96,6 +96,23 @@ services:
     ports:
       - "8081:8080"
 
+  keycloak_config:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: thor-keycloak-config
+    depends_on:
+      keycloak:
+        condition: service_started
+    environment:
+      KC_SERVER: http://keycloak:8080
+      KC_ADMIN_USER: admin
+      KC_ADMIN_PASSWORD: admin
+      KC_REALM: thor
+      KC_CLIENT_ID: thor-api
+      FRONTEND_URL: http://localhost:3000
+    volumes:
+      - ./infra/keycloak/configure-client.sh:/opt/keycloak-config/configure-client.sh:ro
+    entrypoint: ["/bin/sh", "/opt/keycloak-config/configure-client.sh"]
+
   backend:
     build:
       context: ./backend
@@ -122,6 +139,7 @@ services:
       keycloak_realm: thor
       keycloak_client_id: thor-api
       keycloak_verify_audience: "true"
+      cors_origins: '["http://localhost:3000"]'
 
     ports:
       - "8000:8000"
@@ -135,6 +153,32 @@ services:
       alembic -c alembic.ini upgrade head &&
       uvicorn app.main:app --host 0.0.0.0 --port 8000
       "
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api/v1
+        NEXT_PUBLIC_KEYCLOAK_URL: http://localhost:8081
+        NEXT_PUBLIC_KEYCLOAK_REALM: thor
+        NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: thor-api
+        NEXT_PUBLIC_APP_URL: http://localhost:3000
+    container_name: thor-frontend
+    depends_on:
+      backend:
+        condition: service_started
+      keycloak_config:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api/v1
+      NEXT_PUBLIC_KEYCLOAK_URL: http://localhost:8081
+      NEXT_PUBLIC_KEYCLOAK_REALM: thor
+      NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: thor-api
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+    ports:
+      - "3000:3000"
 
 volumes:
   thor_postgres_data:
