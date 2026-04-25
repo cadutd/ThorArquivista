@@ -36,7 +36,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-72 border-r bg-white lg:block">
-        <div className="flex h-16 items-center gap-3 border-b px-5">
+        <Link
+          href="/dashboard"
+          className="flex h-16 items-center gap-3 border-b px-5 transition-colors hover:bg-muted/60"
+        >
           <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <Database className="h-5 w-5" />
           </div>
@@ -44,7 +47,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="text-sm font-semibold">Thor Gestor</div>
             <div className="text-xs text-muted-foreground">Arquivos digitais</div>
           </div>
-        </div>
+        </Link>
         <nav className="space-y-1 p-3">
           {navigation.map((item) => {
             const Icon = item.icon;
@@ -69,10 +72,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="lg:pl-72">
         <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b bg-white/95 px-4 backdrop-blur md:px-6">
-          <div className="flex items-center gap-3 lg:hidden">
+          <Link
+            href="/dashboard"
+            className="flex items-center gap-3 rounded-md px-2 py-1 transition-colors hover:bg-muted lg:hidden"
+          >
             <Database className="h-5 w-5 text-primary" />
             <span className="text-sm font-semibold">Thor Gestor</span>
-          </div>
+          </Link>
           <div className="hidden items-center gap-2 rounded-md border bg-muted px-3 py-2 text-sm text-muted-foreground md:flex">
             <ShieldCheck className="h-4 w-4 text-primary" />
             Sessão Keycloak ativa

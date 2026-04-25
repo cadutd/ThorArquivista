@@ -8,11 +8,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { UnidadeForm } from "@/features/unidades/unidade-form";
 import { UnidadesTable } from "@/features/unidades/unidades-table";
-import { listUnidades } from "@/lib/api/domain";
+import { listUnidadesPage, type UnidadeFilters } from "@/lib/api/domain";
 
 export default function UnidadesPage() {
   const [open, setOpen] = useState(false);
-  const query = useQuery({ queryKey: ["unidades"], queryFn: listUnidades });
+  const [filters, setFilters] = useState<UnidadeFilters>({});
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
+  const query = useQuery({
+    queryKey: ["unidades", filters, pageIndex, pageSize],
+    queryFn: () =>
+      listUnidadesPage({
+        limit: pageSize,
+        offset: pageIndex * pageSize,
+        filters,
+      }),
+  });
+  const unidades = query.data?.items ?? [];
+  const total = query.data?.total ?? 0;
 
   return (
     <div className="space-y-6">
@@ -30,12 +43,12 @@ export default function UnidadesPage() {
               Nova unidade
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Nova unidade</DialogTitle>
               <DialogDescription>Informe os metadados principais.</DialogDescription>
             </DialogHeader>
-            <UnidadeForm onCreated={() => setOpen(false)} />
+            <UnidadeForm onSaved={() => setOpen(false)} />
           </DialogContent>
         </Dialog>
       </div>
@@ -44,14 +57,30 @@ export default function UnidadesPage() {
         <CardHeader>
           <CardTitle>Acervo</CardTitle>
           <CardDescription>
-            {query.isLoading ? "Carregando registros..." : `${query.data?.length ?? 0} registros listados`}
+            {query.isLoading ? "Carregando registros..." : `${total} registros encontrados`}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {query.error ? (
             <p className="text-sm text-destructive">{query.error.message}</p>
           ) : (
-            <UnidadesTable data={query.data ?? []} />
+            <UnidadesTable
+              data={unidades}
+              filters={filters}
+              onSearch={(nextFilters) => {
+                setFilters(nextFilters);
+                setPageIndex(0);
+              }}
+              pageIndex={pageIndex}
+              pageSize={pageSize}
+              total={total}
+              isLoading={query.isFetching}
+              onPageChange={setPageIndex}
+              onPageSizeChange={(nextPageSize) => {
+                setPageSize(nextPageSize);
+                setPageIndex(0);
+              }}
+            />
           )}
         </CardContent>
       </Card>

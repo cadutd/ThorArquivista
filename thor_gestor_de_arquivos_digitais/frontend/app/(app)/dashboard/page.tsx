@@ -1,32 +1,24 @@
 "use client";
 
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AlertTriangle, Archive, Database, HardDrive, ShieldCheck } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { listMidias, listUnidades } from "@/lib/api/domain";
+import { getDashboardStats } from "@/lib/api/domain";
 
 export default function DashboardPage() {
-  const unidades = useQuery({ queryKey: ["unidades"], queryFn: listUnidades });
-  const midias = useQuery({ queryKey: ["midias"], queryFn: listMidias });
-
-  const stats = useMemo(() => {
-    const unidadeRows = unidades.data ?? [];
-    const midiaRows = midias.data ?? [];
-
-    return {
-      totalUnidades: unidadeRows.length,
-      aipsDigitais: unidadeRows.filter((item) => item.tipo_unidade === "AIP").length,
-      midiasAtivas: midiaRows.filter((item) => item.ativo).length,
-      alertas: unidadeRows.filter((item) => item.status !== "ATIVA").length,
-    };
-  }, [midias.data, unidades.data]);
-
+  const dashboard = useQuery({
+    queryKey: ["dashboard"],
+    queryFn: getDashboardStats,
+  });
+  const stats = dashboard.data;
+  const supportTotals = new Map(
+    stats?.unidades_por_suporte.map((item) => [item.tipo_suporte, item.total]) ?? [],
+  );
   const chartData = [
-    { name: "Físico", total: (unidades.data ?? []).filter((item) => item.tipo_suporte === "FISICO").length },
-    { name: "Digital", total: (unidades.data ?? []).filter((item) => item.tipo_suporte === "DIGITAL").length },
-    { name: "Híbrido", total: (unidades.data ?? []).filter((item) => item.tipo_suporte === "HIBRIDO").length },
+    { name: "Físico", total: supportTotals.get("FISICO") ?? 0 },
+    { name: "Digital", total: supportTotals.get("DIGITAL") ?? 0 },
+    { name: "Híbrido", total: supportTotals.get("HIBRIDO") ?? 0 },
   ];
 
   return (
@@ -39,10 +31,10 @@ export default function DashboardPage() {
       </div>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard title="Total de unidades" value={stats.totalUnidades} icon={Archive} />
-        <MetricCard title="AIPs digitais" value={stats.aipsDigitais} icon={Database} />
-        <MetricCard title="Mídias ativas" value={stats.midiasAtivas} icon={HardDrive} />
-        <MetricCard title="Alertas" value={stats.alertas} icon={AlertTriangle} />
+        <MetricCard title="Total de unidades" value={stats?.total_unidades ?? 0} icon={Archive} />
+        <MetricCard title="AIPs digitais" value={stats?.aips_digitais ?? 0} icon={Database} />
+        <MetricCard title="Mídias ativas" value={stats?.midias_ativas ?? 0} icon={HardDrive} />
+        <MetricCard title="Alertas" value={stats?.alertas ?? 0} icon={AlertTriangle} />
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.4fr_0.8fr]">

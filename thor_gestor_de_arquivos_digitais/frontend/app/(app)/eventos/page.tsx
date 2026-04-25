@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { listEventos, listUnidades } from "@/lib/api/domain";
 
 export default function EventosPage() {
-  const unidades = useQuery({ queryKey: ["unidades"], queryFn: listUnidades });
+  const unidades = useQuery({ queryKey: ["unidades"], queryFn: () => listUnidades() });
   const [unidadeId, setUnidadeId] = useState<number | null>(null);
   const selectedId = unidadeId ?? unidades.data?.[0]?.id ?? null;
   const eventos = useQuery({

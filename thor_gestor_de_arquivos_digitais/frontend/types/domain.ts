@@ -21,6 +21,14 @@ export type UnidadeAcondicionamento = {
   id_representa?: number | null;
   criado_em?: string | null;
   atualizado_em?: string | null;
+  digital?: UnidadeAcondicionamentoDigital | null;
+  copias_digitais?: CopiaDigital[];
+};
+
+export type UnidadeAcondicionamentoDigital = {
+  id_unidade_acondicionamento: number;
+  tamanho_bytes?: number | null;
+  status_fixidez?: string | null;
 };
 
 export type MidiaArmazenamento = {

@@ -77,3 +77,12 @@ class UnidadeAcondicionamentoOut(UnidadeAcondicionamentoBase):
     # Relacionamentos do model (opcionais na resposta)
     digital: UnidadeAcondicionamentoDigitalOut | None = None
     copias_digitais: list[CopiaUnidadeAcondicionamentoDigitalOut] = Field(default_factory=list)
+
+
+class UnidadeAcondicionamentoPage(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    items: list[UnidadeAcondicionamentoOut]
+    total: int
+    limit: int
+    offset: int
