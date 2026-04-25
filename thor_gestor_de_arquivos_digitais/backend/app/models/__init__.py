@@ -11,3 +11,11 @@ from app.models.copia_unidade_acondicionamento_digital import (  # noqa: F401
     CopiaUnidadeAcondicionamentoDigital,
 )
 from app.models.evento_preservacao import EventoPreservacao  # noqa: F401
+from app.models.armazenamento import (  # noqa: F401
+    CompartimentoArmazenamento,
+    EstruturaArmazenamento,
+    LocalGuarda,
+    MovimentacaoArmazenamento,
+    PosicaoArmazenamento,
+    ZonaGuarda,
+)

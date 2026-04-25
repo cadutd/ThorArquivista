@@ -24,6 +24,7 @@ class MidiaArmazenamentoUpdate(BaseModel):
 
 class MidiaArmazenamentoOut(MidiaArmazenamentoBase):
     id: int
+    id_posicao_armazenamento: int | None = None
     criado_em: str | None = None
 
     model_config = {"from_attributes": True}

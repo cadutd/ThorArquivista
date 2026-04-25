@@ -69,6 +69,12 @@ class CopiaUnidadeAcondicionamentoDigital(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    id_posicao_armazenamento: Mapped[int | None] = mapped_column(
+        ForeignKey("posicoes_armazenamento.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     criada_em: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -85,4 +91,9 @@ class CopiaUnidadeAcondicionamentoDigital(Base):
     unidade = relationship(
         "UnidadeAcondicionamento",
         back_populates="copias_digitais",
+    )
+
+    posicao_armazenamento = relationship(
+        "PosicaoArmazenamento",
+        back_populates="copias",
     )

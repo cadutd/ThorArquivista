@@ -1,5 +1,6 @@
 import { apiRequest } from "@/lib/api/client";
 import type {
+  CopiaDigital,
   EventoPreservacao,
   MidiaArmazenamento,
   UnidadeAcondicionamento,
@@ -142,7 +143,7 @@ export function createCopiaDigital(
   unidadeId: number,
   payload: CopiaDigitalPayload,
 ) {
-  return apiRequest(`/unidades-acondicionamento/${unidadeId}/copias`, {
+  return apiRequest<CopiaDigital>(`/unidades-acondicionamento/${unidadeId}/copias`, {
     method: "POST",
     body: JSON.stringify(payload),
   });

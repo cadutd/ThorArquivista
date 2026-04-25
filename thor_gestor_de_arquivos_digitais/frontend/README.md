@@ -9,6 +9,9 @@ Interface administrativa em Next.js, React, TypeScript e Tailwind CSS para opera
 - Exibir dashboard operacional com indicadores agregados do backend.
 - Gerenciar unidades de acondicionamento com busca, filtros, paginação, criação, edição, visualização e exclusão.
 - Gerenciar mídias de armazenamento.
+- Gerenciar endereçamento de armazenamento físico e lógico.
+- Gerar topografia, consultar posições e acompanhar ocupação.
+- Atribuir posições a unidades, mídias e cópias digitais.
 - Consultar eventos de preservação.
 
 ## Stack
@@ -83,6 +86,7 @@ O Compose expõe o frontend em `http://localhost:3000`, integrado ao backend em 
 - `/dashboard`: tela principal do sistema com indicadores.
 - `/unidades`: CRUD de unidades de acondicionamento.
 - `/midias`: gestão de mídias.
+- `/enderecamento`: módulo de endereçamento de armazenamento.
 - `/eventos`: consulta de eventos por unidade.
 - `/admin`: área administrativa inicial.
 
@@ -112,6 +116,41 @@ Registros por página: BB
 ```
 
 Há uma paginação entre a busca e a tabela e outra abaixo da tabela.
+
+## Endereçamento de Armazenamento
+
+O módulo está disponível em `/enderecamento` e segue a hierarquia:
+
+```text
+Local de Guarda > Zona de Guarda > Estrutura > Compartimento > Posição
+```
+
+Telas:
+
+- `/enderecamento/locais`: cadastro e manutenção de locais de guarda.
+- `/enderecamento/zonas`: cadastro de zonas e geração de topografia.
+- `/enderecamento/estruturas`: estantes, racks, servidores, NAS, buckets e volumes.
+- `/enderecamento/compartimentos`: prateleiras, gavetas, slots, diretórios e partições.
+- `/enderecamento/posicoes`: consulta central de posições livres, ocupadas e inativas.
+- `/enderecamento/mapa`: visualização topográfica navegável por zona.
+- `/enderecamento/movimentacoes`: histórico de atribuições e movimentações.
+- `/enderecamento/ocupacao`: indicadores resumidos de ocupação.
+
+Arquivos principais:
+
+- `frontend/types/storage.ts`: tipos e enums do endereçamento.
+- `frontend/lib/api/storage-addressing.ts`: chamadas para os endpoints do backend.
+- `frontend/features/armazenamento/storage-components.tsx`: componentes reutilizáveis.
+- `frontend/features/armazenamento/storage-pages.tsx`: telas do módulo.
+- `frontend/features/armazenamento/storage-labels.ts`: labels amigáveis para enums.
+
+Os formulários de unidade e mídia incluem seletor de posição livre. Ao salvar, o frontend chama os endpoints de atribuição e atualiza as listas relacionadas.
+
+Para popular o módulo no Docker, execute:
+
+```bash
+docker compose exec backend python -m app.scripts.seed_storage_addressing
+```
 
 ## Comandos de Qualidade
 

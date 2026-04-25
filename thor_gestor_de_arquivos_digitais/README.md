@@ -1,6 +1,6 @@
 # Thor Gestor de Arquivos Digitais
 
-Manual de desenvolvimento do sistema Thor, uma aplicação para gestão de unidades de acondicionamento físicas e digitais, mídias de armazenamento, cópias digitais e eventos de preservação.
+Manual de desenvolvimento do sistema Thor, uma aplicação para gestão de unidades de acondicionamento físicas e digitais, endereçamento de armazenamento, mídias, cópias digitais e eventos de preservação.
 
 ## Visão Geral
 
@@ -160,6 +160,33 @@ Para conferir no PostgreSQL:
 docker compose exec postgres psql -U thor -d thor_db -c "select tipo_suporte, count(*) from unidades_acondicionamento where identificador like 'TEST-%' group by tipo_suporte order by tipo_suporte;"
 ```
 
+Também existe um script idempotente para criar massa de endereçamento de armazenamento:
+
+```text
+backend/app/scripts/seed_storage_addressing.py
+```
+
+Com os containers rodando:
+
+```bash
+docker compose exec backend python -m app.scripts.seed_storage_addressing
+```
+
+Essa massa cria:
+
+- `1` local de guarda: `TEST-DEP-01`;
+- `2` zonas: `ZT01` e `ZT02`;
+- `20` estantes por zona;
+- `5` prateleiras por estante;
+- `10` posições por prateleira;
+- `2.000` posições no total.
+
+Para conferir no PostgreSQL:
+
+```bash
+docker compose exec postgres psql -U thor -d thor_db -c "select lg.codigo as local, count(distinct zg.id) zonas, count(distinct ea.id) estruturas, count(distinct ca.id) compartimentos, count(pa.id) posicoes from locais_guarda lg join zonas_guarda zg on zg.id_local_guarda = lg.id join estruturas_armazenamento ea on ea.id_zona_guarda = zg.id join compartimentos_armazenamento ca on ca.id_estrutura_armazenamento = ea.id join posicoes_armazenamento pa on pa.id_compartimento_armazenamento = ca.id where lg.codigo = 'TEST-DEP-01' group by lg.codigo;"
+```
+
 ## Backend
 
 Stack principal:
@@ -177,6 +204,9 @@ Arquivos importantes:
 - `backend/app/main.py`: cria a aplicação FastAPI, adiciona CORS e registra as rotas.
 - `backend/app/api/v1/router.py`: agrega as rotas públicas e protegidas.
 - `backend/app/api/v1/dashboard.py`: expõe indicadores agregados do dashboard.
+- `backend/app/api/v1/armazenamento.py`: expõe CRUD, topografia, atribuição de posições e movimentações de armazenamento.
+- `backend/app/models/armazenamento.py`: models do endereçamento de armazenamento.
+- `backend/app/services/armazenamento_service.py`: regras de negócio de ocupação, capacidade, movimentação e geração topográfica.
 - `backend/app/security/keycloak_jwt.py`: valida JWT e busca JWKS no Keycloak.
 - `backend/app/core/config.py`: configurações por variáveis de ambiente.
 - `backend/alembic/versions/`: migrations do banco.
@@ -222,6 +252,20 @@ Rotas principais sob `/api/v1`:
 | `/midias-armazenamento` | Cadastro e listagem de mídias |
 | `/unidades-acondicionamento/{id}/copias` | Cópias digitais de uma unidade |
 | `/unidades-acondicionamento/{id}/eventos-preservacao` | Eventos de preservação de uma unidade |
+| `/locais-guarda` | CRUD de locais de guarda |
+| `/zonas-guarda` | CRUD de zonas e geração de topografia |
+| `/estruturas-armazenamento` | CRUD de estruturas |
+| `/compartimentos-armazenamento` | CRUD de compartimentos |
+| `/posicoes-armazenamento` | Consulta e CRUD de posições |
+| `/movimentacoes-armazenamento` | Histórico de movimentações |
+
+Endpoints de atribuição de posição:
+
+| Rota | Finalidade |
+| --- | --- |
+| `/unidades-acondicionamento/{id}/atribuir-posicao` | Atribui posição a uma unidade |
+| `/midias-armazenamento/{id}/atribuir-posicao` | Atribui posição a uma mídia |
+| `/copias-unidades-acondicionamento-digitais/{id}/atribuir-posicao` | Atribui posição a uma cópia digital |
 
 O dashboard usa uma rota agregada própria para evitar contagens incorretas geradas por listagens paginadas.
 
@@ -245,11 +289,14 @@ Arquivos importantes:
 - `frontend/app/auth/callback/page.tsx`: callback OIDC.
 - `frontend/app/(app)/dashboard/page.tsx`: tela principal do sistema com indicadores.
 - `frontend/app/(app)/unidades/page.tsx`: CRUD de unidades de acondicionamento.
+- `frontend/app/(app)/enderecamento/`: telas de endereçamento de armazenamento.
+- `frontend/features/armazenamento/`: componentes, páginas e labels do módulo de endereçamento.
 - `frontend/features/unidades/unidades-table.tsx`: tabela, filtros, ações e paginação de unidades.
 - `frontend/lib/auth/oidc.ts`: início e conclusão do fluxo OIDC com PKCE.
 - `frontend/lib/auth/auth-provider.tsx`: estado de autenticação.
 - `frontend/lib/api/client.ts`: cliente HTTP com token Bearer.
 - `frontend/lib/api/domain.ts`: funções de API do domínio, incluindo `getDashboardStats`.
+- `frontend/lib/api/storage-addressing.ts`: cliente de API do endereçamento de armazenamento.
 - `frontend/lib/config.ts`: URLs públicas do app, API e Keycloak.
 - `frontend/public/images/login-digital-archive.png`: imagem da tela de login.
 
@@ -261,6 +308,7 @@ Telas principais:
 | Dashboard | `/dashboard` |
 | Unidades | `/unidades` |
 | Mídias | `/midias` |
+| Endereçamento | `/enderecamento` |
 | Eventos | `/eventos` |
 | Administração | `/admin` |
 
@@ -272,6 +320,21 @@ O CRUD de unidades usa paginação de backend no formato:
 XX registros de YY | página B de C  Primeira Anterior 1 2 3 ... C Próxima Última
 Registros por página: BB
 ```
+
+Telas do módulo de endereçamento:
+
+| Tela | Rota |
+| --- | --- |
+| Locais de Guarda | `/enderecamento/locais` |
+| Zonas de Guarda | `/enderecamento/zonas` |
+| Estruturas | `/enderecamento/estruturas` |
+| Compartimentos | `/enderecamento/compartimentos` |
+| Posições | `/enderecamento/posicoes` |
+| Mapa Topográfico | `/enderecamento/mapa` |
+| Movimentações | `/enderecamento/movimentacoes` |
+| Ocupação | `/enderecamento/ocupacao` |
+
+O módulo permite cadastrar a hierarquia `Local > Zona > Estrutura > Compartimento > Posição`, gerar topografia para zonas, consultar posições livres/ocupadas, atribuir posições a unidades/mídias/cópias digitais e acompanhar movimentações.
 
 Rodar fora do Docker:
 
@@ -353,6 +416,12 @@ Executar seed de unidades:
 docker compose exec backend python -m app.scripts.seed_test_units
 ```
 
+Executar seed de endereçamento:
+
+```bash
+docker compose exec backend python -m app.scripts.seed_storage_addressing
+```
+
 ## Banco de Dados e Migrations
 
 O backend executa automaticamente:
@@ -379,6 +448,17 @@ A migration inicial cria:
 - tabela `eventos_preservacao`;
 - índices e constraints principais.
 
+A migration `000002_storage_locations` adiciona:
+
+- enums de local, zona, estrutura, compartimento e posição;
+- `locais_guarda`;
+- `zonas_guarda`;
+- `estruturas_armazenamento`;
+- `compartimentos_armazenamento`;
+- `posicoes_armazenamento`;
+- `movimentacoes_armazenamento`;
+- `id_posicao_armazenamento` em unidades, mídias e cópias digitais.
+
 ## Observações de Desenvolvimento
 
 - O frontend chama a API pelo navegador usando `http://localhost:8000/api/v1`; por isso o backend libera CORS para `http://localhost:3000`.
@@ -386,6 +466,7 @@ A migration inicial cria:
 - O issuer esperado no token continua sendo a URL pública `http://localhost:8081/realms/thor`.
 - Assets do frontend em `frontend/public` precisam ser copiados para a imagem final. O `frontend/Dockerfile` já faz isso.
 - O script de seed usa SQL explícito para respeitar os nomes reais dos enums criados pela migration (`tipo_suporte`, `tipo_unidade`, `nivel_acesso`, `status_unidade`).
+- O seed de endereçamento também usa SQL explícito para respeitar os enums PostgreSQL e é seguro para execução repetida.
 - Os workers ainda não são iniciados pelo Compose; `workers/` está reservado para a fase de tarefas assíncronas.
 
 ## Validação Local
@@ -449,6 +530,7 @@ Verifique:
 docker compose down -v
 docker compose up --build
 docker compose exec backend python -m app.scripts.seed_test_units
+docker compose exec backend python -m app.scripts.seed_storage_addressing
 ```
 
 Isso recria containers e volumes do zero.

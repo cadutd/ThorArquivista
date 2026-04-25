@@ -19,6 +19,7 @@ export type UnidadeAcondicionamento = {
   status: StatusUnidade;
   id_unidade_pai?: number | null;
   id_representa?: number | null;
+  id_posicao_armazenamento?: number | null;
   criado_em?: string | null;
   atualizado_em?: string | null;
   digital?: UnidadeAcondicionamentoDigital | null;
@@ -37,6 +38,7 @@ export type MidiaArmazenamento = {
   tipo: TipoMidiaArmazenamento;
   descricao?: string | null;
   ativo: boolean;
+  id_posicao_armazenamento?: number | null;
   criado_em?: string | null;
 };
 
@@ -44,6 +46,7 @@ export type CopiaDigital = {
   id: number;
   id_unidade_acondicionamento: number;
   id_midia_armazenamento: number;
+  id_posicao_armazenamento?: number | null;
   uri_copia: string;
   funcao_copia: FuncaoCopia;
   status_copia: StatusCopia;

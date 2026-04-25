@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.models import unidade_acondicionamento, unidade_acondicionamento_digital  # noqa: F401
 from app.models import midia_armazenamento, copia_unidade_acondicionamento_digital  # noqa: F401
 from app.models import evento_preservacao  # noqa: F401
+from app.models import armazenamento  # noqa: F401
 import alembic_postgresql_enum # noqa: F401
 
 config = context.config

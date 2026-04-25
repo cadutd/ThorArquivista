@@ -71,6 +71,7 @@ class UnidadeAcondicionamentoOut(UnidadeAcondicionamentoBase):
     model_config = ConfigDict(from_attributes=True, use_enum_values=True)
 
     id: int
+    id_posicao_armazenamento: int | None = None
     criado_em: datetime | None = None
     atualizado_em: datetime | None = None
 

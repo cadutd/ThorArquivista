@@ -8,6 +8,7 @@ import {
   Database,
   Gauge,
   HardDrive,
+  MapPinned,
   LogOut,
   Settings,
   ShieldCheck,
@@ -20,6 +21,7 @@ const navigation = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
   { href: "/unidades", label: "Unidades", icon: Archive },
   { href: "/midias", label: "Mídias", icon: HardDrive },
+  { href: "/enderecamento", label: "Endereçamento", icon: MapPinned },
   { href: "/eventos", label: "Eventos", icon: Boxes },
   { href: "/admin", label: "Administração", icon: Settings },
 ];

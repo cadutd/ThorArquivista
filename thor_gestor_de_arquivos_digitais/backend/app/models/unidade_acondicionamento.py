@@ -69,6 +69,12 @@ class UnidadeAcondicionamento(Base):
         nullable=True,
     )
 
+    id_posicao_armazenamento: Mapped[int | None] = mapped_column(
+        ForeignKey("posicoes_armazenamento.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     unidade_pai = relationship(
         "UnidadeAcondicionamento",
         remote_side=[id],
@@ -82,6 +88,10 @@ class UnidadeAcondicionamento(Base):
         foreign_keys=[id_representa],
     )
 
+    posicao_armazenamento = relationship(
+        "PosicaoArmazenamento",
+        back_populates="unidades",
+    )
 
     digital = relationship(
         "UnidadeAcondicionamentoDigital",

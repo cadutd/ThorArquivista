@@ -9,6 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  atribuirPosicaoCopia,
+  atribuirPosicaoUnidade,
+} from "@/lib/api/storage-addressing";
+import { StoragePositionPicker } from "@/features/armazenamento/storage-components";
+import {
   createCopiaDigital,
   createMidia,
   createUnidade,
@@ -28,6 +33,7 @@ const schema = z
     status: z.enum(["ATIVA", "INATIVA", "TRANSFERIDA", "ELIMINADA"]),
     id_unidade_pai: z.string().optional(),
     id_representa: z.string().optional(),
+    id_posicao_armazenamento: z.number().nullable(),
     associar_midia: z.boolean(),
     modo_midia: z.enum(["existente", "nova"]),
     id_midia_armazenamento: z.string().optional(),
@@ -40,6 +46,7 @@ const schema = z
     algoritmo_fixidez: z.string().max(32).optional(),
     hash_fixidez: z.string().max(128).optional(),
     ultima_verificacao_em: z.string().optional(),
+    id_posicao_copia: z.number().nullable(),
   })
   .superRefine((values, ctx) => {
     if (values.tipo_suporte !== "DIGITAL" || !values.associar_midia) {
@@ -83,6 +90,7 @@ const defaultValues: FormValues = {
   status: "ATIVA",
   id_unidade_pai: "",
   id_representa: "",
+  id_posicao_armazenamento: null,
   associar_midia: false,
   modo_midia: "existente",
   id_midia_armazenamento: "",
@@ -95,6 +103,7 @@ const defaultValues: FormValues = {
   algoritmo_fixidez: "",
   hash_fixidez: "",
   ultima_verificacao_em: "",
+  id_posicao_copia: null,
 };
 
 export function UnidadeForm({
@@ -134,6 +143,7 @@ export function UnidadeForm({
       status: unidade.status,
       id_unidade_pai: unidade.id_unidade_pai ? String(unidade.id_unidade_pai) : "",
       id_representa: unidade.id_representa ? String(unidade.id_representa) : "",
+      id_posicao_armazenamento: unidade.id_posicao_armazenamento ?? null,
     });
   }, [form, unidade]);
 
@@ -152,10 +162,27 @@ export function UnidadeForm({
       };
 
       if (unidade) {
-        return updateUnidade(unidade.id, payload);
+        const updated = await updateUnidade(unidade.id, payload);
+        if (
+          values.id_posicao_armazenamento &&
+          values.id_posicao_armazenamento !== unidade.id_posicao_armazenamento
+        ) {
+          await atribuirPosicaoUnidade(unidade.id, {
+            id_posicao: values.id_posicao_armazenamento,
+            motivo: "Atribuição realizada pela edição da unidade.",
+          });
+        }
+        return updated;
       }
 
       const created = await createUnidade(payload);
+
+      if (values.id_posicao_armazenamento) {
+        await atribuirPosicaoUnidade(created.id, {
+          id_posicao: values.id_posicao_armazenamento,
+          motivo: "Atribuição realizada pelo cadastro da unidade.",
+        });
+      }
 
       if (values.tipo_suporte === "DIGITAL" && values.associar_midia) {
         const midia =
@@ -168,7 +195,7 @@ export function UnidadeForm({
               })
             : null;
 
-        await createCopiaDigital(created.id, {
+        const copia = await createCopiaDigital(created.id, {
           id_midia_armazenamento:
             midia?.id ?? toOptionalNumber(values.id_midia_armazenamento) ?? 0,
           uri_copia: values.uri_copia?.trim() ?? "",
@@ -178,6 +205,13 @@ export function UnidadeForm({
           hash_fixidez: values.hash_fixidez || null,
           ultima_verificacao_em: values.ultima_verificacao_em || null,
         });
+
+        if (values.id_posicao_copia) {
+          await atribuirPosicaoCopia(copia.id, {
+            id_posicao: values.id_posicao_copia,
+            motivo: "Atribuição realizada pelo cadastro da cópia digital.",
+          });
+        }
       }
 
       return created;
@@ -248,6 +282,12 @@ export function UnidadeForm({
           <Input type="number" min={1} {...form.register("id_representa")} />
         </Field>
       </div>
+
+      <StoragePositionPicker
+        value={form.watch("id_posicao_armazenamento")}
+        onChange={(value) => form.setValue("id_posicao_armazenamento", value)}
+        label="Posição de armazenamento da unidade"
+      />
 
       {!isEditing && tipoSuporte === "DIGITAL" ? (
         <section className="space-y-4 rounded-md border p-4">
@@ -324,6 +364,11 @@ export function UnidadeForm({
                   <Input {...form.register("hash_fixidez")} />
                 </Field>
               </div>
+              <StoragePositionPicker
+                value={form.watch("id_posicao_copia")}
+                onChange={(value) => form.setValue("id_posicao_copia", value)}
+                label="Posição de armazenamento da cópia digital"
+              />
             </>
           ) : null}
         </section>

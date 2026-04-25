@@ -7,6 +7,7 @@ from app.api.v1.auth import router as auth_router
 
 from app.api.v1.aips import router as aips_router
 from app.api.v1.dashboard import router as dashboard_router
+from app.api.v1.armazenamento import router as armazenamento_router
 from app.api.v1.unidades_acondicionamento import router as unidades_router
 from app.api.v1.midias_armazenamento import router as midias_router
 from app.api.v1.copias_unidades_acondicionamento_digitais import router as copias_router
@@ -35,6 +36,12 @@ api_router.include_router(
     dashboard_router,
     prefix="/dashboard",
     tags=["dashboard"],
+    dependencies=protecoes,
+)
+
+api_router.include_router(
+    armazenamento_router,
+    tags=["armazenamento"],
     dependencies=protecoes,
 )
 

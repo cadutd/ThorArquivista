@@ -37,4 +37,5 @@ class CopiaUnidadeAcondicionamentoDigitalOut(CopiaUnidadeAcondicionamentoDigital
 
     id: int
     id_unidade_acondicionamento: int
+    id_posicao_armazenamento: int | None = None
     criada_em: datetime | None = None
