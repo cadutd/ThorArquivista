@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Edit, Eye, GitBranch, Map, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
+import { Edit, Eye, GitBranch, Loader2, Map, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -75,6 +75,7 @@ export function LocaisGuardaPage() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<LocalGuarda | null>(null);
+  const [deletingLocal, setDeletingLocal] = useState<LocalGuarda | null>(null);
   const [filters, setFilters] = useState({ q: "", tipo: "", ativo: "" });
   const locais = useQuery({ queryKey: ["locais-guarda"], queryFn: () => listarLocaisGuarda() });
   const mutation = useMutation({
@@ -86,9 +87,12 @@ export function LocaisGuardaPage() {
       setEditing(null);
     },
   });
-  const toggle = useMutation({
-    mutationFn: (local: LocalGuarda) => atualizarLocalGuarda(local.id, { ativo: !local.ativo }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["locais-guarda"] }),
+  const remove = useMutation({
+    mutationFn: (local: LocalGuarda) => excluirLocalGuarda(local.id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["locais-guarda"] });
+      setDeletingLocal(null);
+    },
   });
   const data = (locais.data ?? []).filter((item) => {
     const q = filters.q.toLowerCase();
@@ -172,7 +176,16 @@ export function LocaisGuardaPage() {
                       <Button variant="ghost" size="icon" onClick={() => { setEditing(local); setOpen(true); }}>
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => toggle.mutate(local)}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Excluir local"
+                        disabled={remove.isPending}
+                        onClick={() => {
+                          remove.reset();
+                          setDeletingLocal(local);
+                        }}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -184,6 +197,62 @@ export function LocaisGuardaPage() {
           </Table>
         </CardContent>
       </Card>
+      <Dialog
+        open={Boolean(deletingLocal)}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen && !remove.isPending) {
+            setDeletingLocal(null);
+          }
+        }}
+      >
+        <DialogContent
+          className="max-w-md"
+          onInteractOutside={(event) => {
+            if (remove.isPending) {
+              event.preventDefault();
+            }
+          }}
+          onEscapeKeyDown={(event) => {
+            if (remove.isPending) {
+              event.preventDefault();
+            }
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>{remove.isPending ? "Excluindo local" : "Confirmar exclusão"}</DialogTitle>
+            <DialogDescription>
+              {remove.isPending
+                ? "Aguarde enquanto o local de guarda e todos os endereçamentos vinculados são excluídos."
+                : "Esta ação excluirá permanentemente o local de guarda e todos os endereçamentos vinculados a ele."}
+            </DialogDescription>
+          </DialogHeader>
+          {deletingLocal ? (
+            <div className="rounded-md border p-3 text-sm">
+              <p className="font-medium">{deletingLocal.nome}</p>
+              <p className="text-muted-foreground">{deletingLocal.codigo}</p>
+            </div>
+          ) : null}
+          {remove.error ? <p className="text-sm text-destructive">{remove.error.message}</p> : null}
+          {remove.isPending ? (
+            <div className="flex items-center gap-3 rounded-md bg-muted p-3 text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Processando exclusão em cascata...
+            </div>
+          ) : (
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setDeletingLocal(null)}>
+                Cancelar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => deletingLocal && remove.mutate(deletingLocal)}
+              >
+                Excluir
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

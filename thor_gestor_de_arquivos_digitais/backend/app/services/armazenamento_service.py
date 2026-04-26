@@ -39,6 +39,7 @@ from app.schemas.armazenamento import (
     ZonaGuardaCreate,
     ZonaGuardaUpdate,
 )
+from app.services.admin_service import AdminService
 
 ModelT = TypeVar("ModelT")
 
@@ -88,7 +89,7 @@ class ArmazenamentoService:
         local = db.get(LocalGuarda, id)
         if not local:
             return False
-        local.ativo = False
+        db.delete(local)
         db.commit()
         return True
 
@@ -355,12 +356,17 @@ class ArmazenamentoService:
         estruturas_criadas = 0
         compartimentos_criados = 0
         posicoes_criadas = 0
+        digitos = AdminService.obter_configuracao_enderecamento(db).digitos_codigo_estrutura
 
         try:
             for corredor in range(1, zona.quantidade_corredores + 1):
                 for modulo in range(1, zona.quantidade_modulos_por_corredor + 1):
                     for estante in range(1, zona.quantidade_estantes_por_modulo + 1):
-                        estrutura_codigo = f"C{corredor:02d}-M{modulo:02d}-E{estante:02d}"
+                        estrutura_codigo = (
+                            f"C{corredor:0{digitos.corredor}d}-"
+                            f"M{modulo:0{digitos.modulo}d}-"
+                            f"E{estante:0{digitos.estante}d}"
+                        )
                         estrutura = EstruturaArmazenamento(
                             id_zona_guarda=zona.id,
                             codigo=estrutura_codigo,

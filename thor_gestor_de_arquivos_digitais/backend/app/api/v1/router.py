@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 from app.api.v1.health import router as health_router
 from app.api.v1.auth import router as auth_router
 
+from app.api.v1.admin import router as admin_router
 from app.api.v1.aips import router as aips_router
 from app.api.v1.dashboard import router as dashboard_router
 from app.api.v1.armazenamento import router as armazenamento_router
@@ -36,6 +37,13 @@ api_router.include_router(
     dashboard_router,
     prefix="/dashboard",
     tags=["dashboard"],
+    dependencies=protecoes,
+)
+
+api_router.include_router(
+    admin_router,
+    prefix="/admin",
+    tags=["admin"],
     dependencies=protecoes,
 )
 
