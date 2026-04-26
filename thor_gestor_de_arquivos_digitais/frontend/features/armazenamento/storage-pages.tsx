@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Edit, Eye, GitBranch, Loader2, Map, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
+import { Edit, Eye, GitBranch, Loader2, Map as MapIcon, Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -15,10 +15,8 @@ import {
   MovementTimeline,
   OccupancyCard,
   OccupancyProgressBar,
-  PositionCard,
   StoragePageHeader,
   StorageStatusBadge,
-  TopographicTree,
 } from "@/features/armazenamento/storage-components";
 import {
   storageLabel,
@@ -333,7 +331,7 @@ export function ZonasGuardaPage() {
             </Button>
             <Button asChild variant="ghost" size="icon" title="Abrir posições">
               <Link href={`/enderecamento/posicoes?id_zona_guarda=${zona.id}`}>
-                <Map className="h-4 w-4" />
+                <MapIcon className="h-4 w-4" />
               </Link>
             </Button>
           </RowActions>,
@@ -455,33 +453,77 @@ export function PosicoesPage() {
 }
 
 export function MapaTopograficoPage() {
-  const [selectedZona, setSelectedZona] = useState<number | null>(null);
+  const [selectedNode, setSelectedNode] = useState<TopographicSelection | null>(null);
   const [selected, setSelected] = useState<PosicaoArmazenamento | null>(null);
   const zonas = useQuery({ queryKey: ["zonas-guarda"], queryFn: () => listarZonasGuarda() });
+  const estruturas = useQuery({ queryKey: ["estruturas"], queryFn: () => listarEstruturas() });
+  const compartimentos = useQuery({ queryKey: ["compartimentos"], queryFn: () => listarCompartimentos() });
   const posicoes = useQuery({
-    queryKey: ["posicoes", selectedZona],
-    queryFn: () => listarPosicoes(selectedZona ? { id_zona_guarda: selectedZona } : {}),
+    queryKey: ["posicoes"],
+    queryFn: () => listarPosicoes(),
   });
-  const tree = (zonas.data ?? []).map((zona) => ({ id: zona.id, label: `${zona.codigo} - ${zona.nome}` }));
+  const firstZona = zonas.data?.[0] ?? null;
+  const activeNode = selectedNode ?? (firstZona ? { type: "zona" as const, id: firstZona.id } : null);
+  const activeZona =
+    activeNode?.type === "zona"
+      ? zonas.data?.find((zona) => zona.id === activeNode.id) ?? null
+      : null;
+  const activeEstrutura =
+    activeNode?.type === "estrutura"
+      ? estruturas.data?.find((estrutura) => estrutura.id === activeNode.id) ?? null
+      : null;
+  const activeEstruturaZona = activeEstrutura
+    ? zonas.data?.find((zona) => zona.id === activeEstrutura.id_zona_guarda) ?? null
+    : null;
 
   return (
     <div className="space-y-5">
-      <StoragePageHeader title="Mapa Topográfico" description="Navegação por zona com visualização das posições." />
-      <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
+      <StoragePageHeader title="Mapa Topográfico" description="Navegação por zona e estante com visualização topográfica." />
+      <div className="grid gap-4 lg:grid-cols-[320px_minmax(0,1fr)]">
         <Card>
-          <CardHeader><CardTitle>Zonas</CardTitle></CardHeader>
-          <CardContent><TopographicTree items={tree} selected={selectedZona} onSelect={setSelectedZona} /></CardContent>
+          <CardHeader>
+            <CardTitle>Endereçamento</CardTitle>
+            <CardDescription>Zonas e estantes geradas na topografia.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <TopographicAddressTree
+              zonas={zonas.data ?? []}
+              estruturas={estruturas.data ?? []}
+              compartimentos={compartimentos.data ?? []}
+              posicoes={posicoes.data ?? []}
+              selected={activeNode}
+              onSelect={setSelectedNode}
+            />
+          </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Posições</CardTitle>
-            <CardDescription>{selectedZona ? "Cards da zona selecionada." : "Selecione uma zona."}</CardDescription>
+            <CardTitle>{activeEstrutura?.nome ?? activeZona?.nome ?? "Topografia"}</CardTitle>
+            <CardDescription>
+              {activeEstrutura
+                ? `${activeEstrutura.codigo} - posições por prateleira.`
+                : activeZona
+                  ? `${activeZona.codigo} - estantes por corredor e módulo.`
+                  : "Selecione uma zona ou estante."}
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            {selectedZona ? (
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                {(posicoes.data ?? []).map((posicao) => <PositionCard key={posicao.id} posicao={posicao} onSelect={setSelected} />)}
-              </div>
+            {activeEstrutura ? (
+              <EstruturaTopografica
+                estrutura={activeEstrutura}
+                compartimentos={compartimentos.data ?? []}
+                posicoes={posicoes.data ?? []}
+                onSelectPosicao={setSelected}
+              />
+            ) : activeZona ? (
+              <ZonaTopografica
+                zona={activeZona}
+                estruturas={estruturas.data ?? []}
+                compartimentos={compartimentos.data ?? []}
+                posicoes={posicoes.data ?? []}
+                selectedEstruturaId={activeNode?.type === "estrutura" ? activeNode.id : null}
+                onSelectEstrutura={(estrutura) => setSelectedNode({ type: "estrutura", id: estrutura.id })}
+              />
             ) : <EmptyState message="Nenhuma zona selecionada." />}
           </CardContent>
         </Card>
@@ -489,6 +531,272 @@ export function MapaTopograficoPage() {
       <StorageDialog open={Boolean(selected)} onOpenChange={(open) => !open && setSelected(null)} title="Detalhes da posição">
         {selected ? <PositionDetails posicao={selected} /> : null}
       </StorageDialog>
+    </div>
+  );
+}
+
+type TopographicSelection =
+  | { type: "zona"; id: number }
+  | { type: "estrutura"; id: number };
+
+function TopographicAddressTree({
+  zonas,
+  estruturas,
+  compartimentos,
+  posicoes,
+  selected,
+  onSelect,
+}: {
+  zonas: ZonaGuarda[];
+  estruturas: EstruturaArmazenamento[];
+  compartimentos: CompartimentoArmazenamento[];
+  posicoes: PosicaoArmazenamento[];
+  selected: TopographicSelection | null;
+  onSelect: (selection: TopographicSelection) => void;
+}) {
+  if (!zonas.length) {
+    return <EmptyState message="Nenhuma zona cadastrada." />;
+  }
+
+  return (
+    <div className="max-h-[70vh] space-y-3 overflow-y-auto pr-1">
+      {zonas.map((zona) => {
+        const zonaEstruturas = estruturas
+          .filter((estrutura) => estrutura.id_zona_guarda === zona.id)
+          .sort(compareStructureCodes);
+        const zonaResumo = countPositionStatusForStructures(zonaEstruturas, compartimentos, posicoes);
+        const zonaSelected = selected?.type === "zona" && selected.id === zona.id;
+
+        return (
+          <div key={zona.id} className="space-y-1">
+            <Button
+              type="button"
+              variant={zonaSelected ? "secondary" : "ghost"}
+              className="h-auto w-full justify-start px-3 py-2 text-left"
+              onClick={() => onSelect({ type: "zona", id: zona.id })}
+            >
+              <span className="min-w-0">
+                <span className="block truncate font-medium">{zona.codigo} - {zona.nome}</span>
+                <span className="block text-xs text-muted-foreground">
+                  {zonaEstruturas.length} estantes - {formatPositionStatus(zonaResumo)}
+                </span>
+              </span>
+            </Button>
+            <div className="ml-4 space-y-1 border-l pl-2">
+              {zonaEstruturas.map((estrutura) => {
+                const estruturaSelected = selected?.type === "estrutura" && selected.id === estrutura.id;
+                const estruturaResumo = countPositionStatusForStructures([estrutura], compartimentos, posicoes);
+
+                return (
+                  <Button
+                    key={estrutura.id}
+                    type="button"
+                    variant={estruturaSelected ? "secondary" : "ghost"}
+                    className="h-8 w-full justify-start px-2 text-left text-xs"
+                    onClick={() => onSelect({ type: "estrutura", id: estrutura.id })}
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate">{estrutura.codigo} - {estrutura.nome}</span>
+                      <span className="block text-[11px] text-muted-foreground">{formatPositionStatus(estruturaResumo)}</span>
+                    </span>
+                  </Button>
+                );
+              })}
+              {!zonaEstruturas.length ? (
+                <p className="px-2 py-1 text-xs text-muted-foreground">Sem estantes geradas.</p>
+              ) : null}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ZonaTopografica({
+  zona,
+  estruturas,
+  compartimentos,
+  posicoes,
+  selectedEstruturaId,
+  onSelectEstrutura,
+}: {
+  zona: ZonaGuarda;
+  estruturas: EstruturaArmazenamento[];
+  compartimentos: CompartimentoArmazenamento[];
+  posicoes: PosicaoArmazenamento[];
+  selectedEstruturaId: number | null;
+  onSelectEstrutura: (estrutura: EstruturaArmazenamento) => void;
+}) {
+  const zonaEstruturas = estruturas
+    .filter((estrutura) => estrutura.id_zona_guarda === zona.id)
+    .sort(compareStructureCodes);
+  const corredores = groupStructuresByCorridor(zonaEstruturas);
+  const zonaResumo = countPositionStatusForStructures(zonaEstruturas, compartimentos, posicoes);
+
+  if (!zonaEstruturas.length) {
+    return <EmptyState message="Nenhuma estante gerada para esta zona." />;
+  }
+
+  return (
+    <div className="overflow-x-auto pb-2">
+      <div className="min-w-max space-y-4">
+        <div className="flex w-fit items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm">
+          <span className="font-medium">{zona.codigo}</span>
+          <PositionStatusPills summary={zonaResumo} />
+        </div>
+        {corredores.map(([corredor, corredorEstruturas]) => {
+          const modulos = groupStructuresByModule(corredorEstruturas);
+          const corredorResumo = countPositionStatusForStructures(corredorEstruturas, compartimentos, posicoes);
+
+          return (
+            <section key={corredor} className="space-y-2">
+              <div className="flex items-center gap-3">
+                <h3 className="text-sm font-semibold">{corredor}</h3>
+                <PositionStatusPills summary={corredorResumo} />
+                <div className="h-px flex-1 bg-border" />
+              </div>
+              <div className="flex gap-4">
+                {modulos.map(([modulo, moduloEstruturas]) => {
+                  const moduloResumo = countPositionStatusForStructures(moduloEstruturas, compartimentos, posicoes);
+
+                  return (
+                  <div key={`${corredor}-${modulo}`} className="space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs font-medium text-muted-foreground">{modulo}</p>
+                      <PositionStatusPills summary={moduloResumo} />
+                    </div>
+                    <div
+                      className="grid gap-2"
+                      style={{ gridTemplateColumns: `repeat(${moduloEstruturas.length}, minmax(150px, 1fr))` }}
+                    >
+                      {moduloEstruturas.map((estrutura) => {
+                        const estruturaResumo = countPositionStatusForStructures([estrutura], compartimentos, posicoes);
+
+                        return (
+                          <button
+                            key={estrutura.id}
+                            type="button"
+                            className={[
+                              "h-40 rounded-md border bg-background p-3 text-left shadow-sm transition-colors hover:bg-muted",
+                              selectedEstruturaId === estrutura.id ? "border-primary ring-2 ring-ring" : "",
+                            ].join(" ")}
+                            onClick={() => onSelectEstrutura(estrutura)}
+                          >
+                            <div className="flex h-full flex-col justify-between">
+                              <div>
+                                <p className="text-sm font-semibold">{estrutura.codigo}</p>
+                                <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{estrutura.nome}</p>
+                                <div className="mt-2">
+                                  <PositionStatusPills summary={estruturaResumo} />
+                                </div>
+                              </div>
+                              <div className="space-y-1">
+                                {Array.from({ length: 4 }).map((_, index) => (
+                                  <div key={index} className="h-2 rounded-sm bg-muted" />
+                                ))}
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function EstruturaTopografica({
+  estrutura,
+  compartimentos,
+  posicoes,
+  onSelectPosicao,
+}: {
+  estrutura: EstruturaArmazenamento;
+  compartimentos: CompartimentoArmazenamento[];
+  posicoes: PosicaoArmazenamento[];
+  onSelectPosicao: (posicao: PosicaoArmazenamento) => void;
+}) {
+  const estruturaCompartimentos = compartimentos
+    .filter((compartimento) => compartimento.id_estrutura_armazenamento === estrutura.id)
+    .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+  const positionsByCompartment = new Map<number, PosicaoArmazenamento[]>();
+
+  for (const posicao of posicoes) {
+    const current = positionsByCompartment.get(posicao.id_compartimento_armazenamento) ?? [];
+    current.push(posicao);
+    positionsByCompartment.set(posicao.id_compartimento_armazenamento, current);
+  }
+
+  if (!estruturaCompartimentos.length) {
+    return <EmptyState message="Nenhuma prateleira encontrada para esta estante." />;
+  }
+
+  const estruturaResumo = countPositionStatusInCompartments(estruturaCompartimentos, posicoes);
+
+  return (
+    <div className="overflow-x-auto pb-2">
+      <div className="min-w-[720px] rounded-md border bg-muted/40 p-4">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold">{estrutura.codigo}</p>
+            <p className="text-xs text-muted-foreground">{storageLabel(estrutura.tipo_estrutura)}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <PositionStatusPills summary={estruturaResumo} />
+            <StorageStatusBadge ativo={estrutura.ativo} />
+          </div>
+        </div>
+        <div className="space-y-3">
+          {estruturaCompartimentos.map((compartimento) => {
+            const compartimentoPosicoes = (positionsByCompartment.get(compartimento.id) ?? [])
+              .sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
+
+            return (
+              <div key={compartimento.id} className="rounded-md border bg-background p-3">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium">{compartimento.nome}</p>
+                  <p className="text-xs text-muted-foreground">{compartimento.codigo}</p>
+                </div>
+                <div
+                  className="grid gap-2"
+                  style={{ gridTemplateColumns: `repeat(${Math.max(compartimentoPosicoes.length, 1)}, minmax(92px, 1fr))` }}
+                >
+                  {compartimentoPosicoes.map((posicao) => (
+                    <button
+                      key={posicao.id}
+                      type="button"
+                      className={[
+                        "h-16 rounded-md border p-2 text-left text-xs transition-colors hover:bg-muted",
+                        posicao.ocupada ? "bg-amber-50" : "bg-emerald-50",
+                        posicao.ativo ? "" : "opacity-60",
+                      ].join(" ")}
+                      onClick={() => onSelectPosicao(posicao)}
+                    >
+                      <span className="block font-semibold">{posicao.codigo}</span>
+                      <span className="mt-1 block truncate text-muted-foreground">
+                        {posicao.ocupada ? "Ocupada" : "Livre"}
+                      </span>
+                    </button>
+                  ))}
+                  {!compartimentoPosicoes.length ? (
+                    <div className="h-16 rounded-md border border-dashed p-2 text-xs text-muted-foreground">
+                      Sem posições
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
@@ -654,6 +962,120 @@ function estruturaName(data: EstruturaArmazenamento[] | undefined, id: number) {
 
 function capacidadeZona(zona: Partial<ZonaGuarda>) {
   return (zona.quantidade_corredores ?? 0) * (zona.quantidade_modulos_por_corredor ?? 0) * (zona.quantidade_estantes_por_modulo ?? 0) * (zona.quantidade_prateleiras_por_estante ?? 0) * (zona.capacidade_caixas_por_prateleira ?? 0);
+}
+
+function compareStructureCodes(a: EstruturaArmazenamento, b: EstruturaArmazenamento) {
+  const parsedA = parseStructureCode(a.codigo);
+  const parsedB = parseStructureCode(b.codigo);
+
+  return (
+    parsedA.corredor - parsedB.corredor ||
+    parsedA.modulo - parsedB.modulo ||
+    parsedA.estante - parsedB.estante ||
+    a.codigo.localeCompare(b.codigo)
+  );
+}
+
+function groupStructuresByCorridor(estruturas: EstruturaArmazenamento[]) {
+  const groups = new Map<string, EstruturaArmazenamento[]>();
+
+  for (const estrutura of estruturas) {
+    const parsed = parseStructureCode(estrutura.codigo);
+    const key = parsed.corredorLabel;
+    groups.set(key, [...(groups.get(key) ?? []), estrutura]);
+  }
+
+  return Array.from(groups.entries());
+}
+
+function groupStructuresByModule(estruturas: EstruturaArmazenamento[]) {
+  const groups = new Map<string, EstruturaArmazenamento[]>();
+
+  for (const estrutura of estruturas) {
+    const parsed = parseStructureCode(estrutura.codigo);
+    const key = parsed.moduloLabel;
+    groups.set(key, [...(groups.get(key) ?? []), estrutura]);
+  }
+
+  return Array.from(groups.entries());
+}
+
+type PositionStatusSummary = {
+  livres: number;
+  ocupados: number;
+};
+
+function PositionStatusPills({ summary }: { summary: PositionStatusSummary }) {
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1">
+      <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-800">
+        {summary.livres} livres
+      </span>
+      <span className="rounded-md bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800">
+        {summary.ocupados} ocupados
+      </span>
+    </span>
+  );
+}
+
+function formatPositionStatus(summary: PositionStatusSummary) {
+  return `${summary.livres} livres / ${summary.ocupados} ocupados`;
+}
+
+function countPositionStatusForStructures(
+  estruturas: EstruturaArmazenamento[],
+  compartimentos: CompartimentoArmazenamento[],
+  posicoes: PosicaoArmazenamento[],
+) {
+  const estruturaIds = new Set(estruturas.map((estrutura) => estrutura.id));
+  const relevantCompartimentos = compartimentos.filter((compartimento) =>
+    estruturaIds.has(compartimento.id_estrutura_armazenamento),
+  );
+
+  return countPositionStatusInCompartments(relevantCompartimentos, posicoes);
+}
+
+function countPositionStatusInCompartments(
+  compartimentos: CompartimentoArmazenamento[],
+  posicoes: PosicaoArmazenamento[],
+) {
+  const compartimentoIds = new Set(compartimentos.map((compartimento) => compartimento.id));
+  const summary: PositionStatusSummary = { livres: 0, ocupados: 0 };
+
+  for (const posicao of posicoes) {
+    if (!compartimentoIds.has(posicao.id_compartimento_armazenamento) || !posicao.ativo) {
+      continue;
+    }
+
+    if (posicao.ocupada) {
+      summary.ocupados += 1;
+    } else {
+      summary.livres += 1;
+    }
+  }
+
+  return summary;
+}
+
+function parseStructureCode(codigo: string) {
+  const match = /^C(\d+)-M(\d+)-E(\d+)$/i.exec(codigo);
+  if (!match) {
+    return {
+      corredor: Number.MAX_SAFE_INTEGER,
+      modulo: Number.MAX_SAFE_INTEGER,
+      estante: Number.MAX_SAFE_INTEGER,
+      corredorLabel: "Sem corredor",
+      moduloLabel: "Sem módulo",
+    };
+  }
+
+  return {
+    corredor: Number(match[1]),
+    modulo: Number(match[2]),
+    estante: Number(match[3]),
+    corredorLabel: `Corredor ${match[1]}`,
+    moduloLabel: `Módulo ${match[2]}`,
+  };
 }
 
 function formatDateTime(value?: string | null) {

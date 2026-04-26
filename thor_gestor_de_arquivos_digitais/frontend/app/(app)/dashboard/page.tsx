@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { AlertTriangle, Archive, Database, HardDrive, ShieldCheck } from "lucide-react";
+import { AlertTriangle, Archive, Boxes, Database, HardDrive, MapPinned, PackageCheck, ShieldCheck, Warehouse } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDashboardStats } from "@/lib/api/domain";
 
@@ -20,6 +20,7 @@ export default function DashboardPage() {
     { name: "Digital", total: supportTotals.get("DIGITAL") ?? 0 },
     { name: "Híbrido", total: supportTotals.get("HIBRIDO") ?? 0 },
   ];
+  const enderecamento = stats?.enderecamento;
 
   return (
     <div className="space-y-6">
@@ -35,6 +36,27 @@ export default function DashboardPage() {
         <MetricCard title="AIPs digitais" value={stats?.aips_digitais ?? 0} icon={Database} />
         <MetricCard title="Mídias ativas" value={stats?.midias_ativas ?? 0} icon={HardDrive} />
         <MetricCard title="Alertas" value={stats?.alertas ?? 0} icon={AlertTriangle} />
+      </section>
+
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold tracking-normal">Endereçamento</h2>
+          <p className="text-sm text-muted-foreground">
+            Capacidade e ocupação dos locais de guarda.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <MetricCard title="Locais de guarda" value={enderecamento?.locais ?? 0} icon={Warehouse} />
+          <MetricCard title="Zonas" value={enderecamento?.zonas ?? 0} icon={MapPinned} />
+          <MetricCard title="Estantes" value={enderecamento?.estruturas ?? 0} icon={Boxes} />
+          <MetricCard title="Posições totais" value={enderecamento?.posicoes ?? 0} icon={PackageCheck} />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <MetricCard title="Espaços livres" value={enderecamento?.posicoes_livres ?? 0} icon={PackageCheck} />
+          <MetricCard title="Espaços ocupados" value={enderecamento?.posicoes_ocupadas ?? 0} icon={Archive} />
+          <MetricCard title="Posições inativas" value={enderecamento?.posicoes_inativas ?? 0} icon={AlertTriangle} />
+          <MetricCard title="Taxa de ocupação" value={`${(enderecamento?.taxa_ocupacao ?? 0).toFixed(2)}%`} icon={Database} />
+        </div>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.4fr_0.8fr]">
@@ -85,7 +107,7 @@ function MetricCard({
   icon: Icon,
 }: {
   title: string;
-  value: number;
+  value: number | string;
   icon: React.ElementType;
 }) {
   return (

@@ -62,6 +62,17 @@ export type DashboardStats = {
   aips_digitais: number;
   midias_ativas: number;
   alertas: number;
+  enderecamento: {
+    locais: number;
+    zonas: number;
+    estruturas: number;
+    compartimentos: number;
+    posicoes: number;
+    posicoes_livres: number;
+    posicoes_ocupadas: number;
+    posicoes_inativas: number;
+    taxa_ocupacao: number;
+  };
   unidades_por_suporte: Array<{
     tipo_suporte: string;
     total: number;

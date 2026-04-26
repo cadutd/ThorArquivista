@@ -5,10 +5,17 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import db_dep
+from app.models.armazenamento import (
+    CompartimentoArmazenamento,
+    EstruturaArmazenamento,
+    LocalGuarda,
+    PosicaoArmazenamento,
+    ZonaGuarda,
+)
 from app.models.enums import StatusUnidade, TipoUnidade
 from app.models.midia_armazenamento import MidiaArmazenamento
 from app.models.unidade_acondicionamento import UnidadeAcondicionamento
-from app.schemas.dashboard import DashboardStats, DashboardSupportCount
+from app.schemas.dashboard import DashboardAddressingStats, DashboardStats, DashboardSupportCount
 
 router = APIRouter()
 
@@ -42,6 +49,37 @@ def obter_dashboard(db: Session = Depends(db_dep)):
         .group_by(UnidadeAcondicionamento.tipo_suporte)
         .all()
     )
+    locais = db.query(func.count(LocalGuarda.id)).scalar() or 0
+    zonas = db.query(func.count(ZonaGuarda.id)).scalar() or 0
+    estruturas = db.query(func.count(EstruturaArmazenamento.id)).scalar() or 0
+    compartimentos = db.query(func.count(CompartimentoArmazenamento.id)).scalar() or 0
+    posicoes = db.query(func.count(PosicaoArmazenamento.id)).scalar() or 0
+    posicoes_livres = (
+        db.query(func.count(PosicaoArmazenamento.id))
+        .filter(
+            PosicaoArmazenamento.ativo.is_(True),
+            PosicaoArmazenamento.ocupada.is_(False),
+        )
+        .scalar()
+        or 0
+    )
+    posicoes_ocupadas = (
+        db.query(func.count(PosicaoArmazenamento.id))
+        .filter(
+            PosicaoArmazenamento.ativo.is_(True),
+            PosicaoArmazenamento.ocupada.is_(True),
+        )
+        .scalar()
+        or 0
+    )
+    posicoes_inativas = (
+        db.query(func.count(PosicaoArmazenamento.id))
+        .filter(PosicaoArmazenamento.ativo.is_(False))
+        .scalar()
+        or 0
+    )
+    posicoes_ativas = posicoes_livres + posicoes_ocupadas
+    taxa_ocupacao = (posicoes_ocupadas / posicoes_ativas * 100) if posicoes_ativas else 0
 
     return DashboardStats(
         total_unidades=total_unidades,
@@ -55,4 +93,15 @@ def obter_dashboard(db: Session = Depends(db_dep)):
             )
             for tipo_suporte, total in suporte_rows
         ],
+        enderecamento=DashboardAddressingStats(
+            locais=locais,
+            zonas=zonas,
+            estruturas=estruturas,
+            compartimentos=compartimentos,
+            posicoes=posicoes,
+            posicoes_livres=posicoes_livres,
+            posicoes_ocupadas=posicoes_ocupadas,
+            posicoes_inativas=posicoes_inativas,
+            taxa_ocupacao=round(taxa_ocupacao, 2),
+        ),
     )
