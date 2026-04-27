@@ -1,5 +1,5 @@
 import { apiRequest } from "@/lib/api/client";
-import { getStoredSession, isSessionActive } from "@/lib/auth/session";
+import { getStoredSession, isSessionActive, redirectToLoginAfterSessionLoss } from "@/lib/auth/session";
 import { config } from "@/lib/config";
 import { queryString } from "@/lib/api/storage-query";
 import type {
@@ -71,6 +71,11 @@ export async function exportarRegistroEAD2002(id: string) {
     headers: { Accept: "application/xml" },
   });
   if (!response.ok) {
+    if (response.status === 401) {
+      redirectToLoginAfterSessionLoss();
+      throw new Error("Sua sessão expirou. Entre novamente para continuar.");
+    }
+
     throw new Error(await response.text() || `Erro ${response.status} na API.`);
   }
   return response.blob();
@@ -86,6 +91,11 @@ export async function importarEAD2002(content: string) {
     body: content,
   });
   if (!response.ok) {
+    if (response.status === 401) {
+      redirectToLoginAfterSessionLoss();
+      throw new Error("Sua sessão expirou. Entre novamente para continuar.");
+    }
+
     throw new Error(await response.text() || `Erro ${response.status} na API.`);
   }
   return (await response.json()) as EAD2002ImportResult;
@@ -96,6 +106,9 @@ function authenticatedFetch(path: string, init: RequestInit) {
   const session = getStoredSession();
   if (session && isSessionActive(session)) {
     headers.set("Authorization", `Bearer ${session.accessToken}`);
+  } else {
+    redirectToLoginAfterSessionLoss();
+    throw new Error("Sua sessão expirou. Entre novamente para continuar.");
   }
   return fetch(`${config.apiBaseUrl}${path}`, { ...init, headers });
 }

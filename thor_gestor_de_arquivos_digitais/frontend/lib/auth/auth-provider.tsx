@@ -8,14 +8,20 @@ import {
   useMemo,
   useState,
 } from "react";
-import { clearStoredSession, getStoredSession, isSessionActive, type AuthSession } from "@/lib/auth/session";
+import {
+  clearStoredSession,
+  getStoredSession,
+  isSessionActive,
+  redirectToLoginAfterSessionLoss,
+  type AuthSession,
+} from "@/lib/auth/session";
 import { keycloakLogoutUrl, startLogin } from "@/lib/auth/oidc";
 
 type AuthContextValue = {
   session: AuthSession | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: () => Promise<void>;
+  login: (nextPath?: string | null) => Promise<void>;
   logout: () => void;
   setAuthenticatedSession: (session: AuthSession) => void;
 };
@@ -35,7 +41,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const stored = getStoredSession();
-      setSession(isSessionActive(stored) ? stored : null);
+      if (stored && !isSessionActive(stored)) {
+        redirectToLoginAfterSessionLoss();
+        setSession(null);
+      } else {
+        setSession(stored);
+      }
       setIsLoading(false);
     });
 
@@ -44,8 +55,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const login = useCallback(async () => {
-    await startLogin();
+  useEffect(() => {
+    if (!session) {
+      return;
+    }
+
+    const timeoutMs = Math.max(session.expiresAt - Date.now() - 30_000, 0);
+    const timeoutId = window.setTimeout(() => {
+      setSession(null);
+      redirectToLoginAfterSessionLoss();
+    }, timeoutMs);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [session]);
+
+  const login = useCallback(async (nextPath?: string | null) => {
+    await startLogin(nextPath);
   }, []);
 
   const setAuthenticatedSession = useCallback((nextSession: AuthSession) => {

@@ -1,5 +1,5 @@
 import { config } from "@/lib/config";
-import { getStoredSession, isSessionActive } from "@/lib/auth/session";
+import { getStoredSession, isSessionActive, redirectToLoginAfterSessionLoss } from "@/lib/auth/session";
 
 type ApiRequestOptions = RequestInit & {
   authenticated?: boolean;
@@ -20,6 +20,9 @@ export async function apiRequest<T>(
 
   if (options.authenticated !== false && session && isSessionActive(session)) {
     headers.set("Authorization", `Bearer ${session.accessToken}`);
+  } else if (options.authenticated !== false) {
+    redirectToLoginAfterSessionLoss();
+    throw new Error("Sua sessão expirou. Entre novamente para continuar.");
   }
 
   const response = await fetch(`${config.apiBaseUrl}${path}`, {
@@ -28,6 +31,11 @@ export async function apiRequest<T>(
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      redirectToLoginAfterSessionLoss();
+      throw new Error("Sua sessão expirou. Entre novamente para continuar.");
+    }
+
     const detail = await response.text();
     throw new Error(detail || `Erro ${response.status} na API.`);
   }

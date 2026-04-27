@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { completeLogin } from "@/lib/auth/oidc";
+import { completeLogin, consumeLoginRedirectPath } from "@/lib/auth/oidc";
 import { useAuth } from "@/lib/auth/auth-provider";
 
 function CallbackContent() {
@@ -27,7 +27,7 @@ function CallbackContent() {
     completeLogin(code, state)
       .then((session) => {
         setAuthenticatedSession(session);
-        router.replace("/dashboard");
+        router.replace(consumeLoginRedirectPath());
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : "Falha ao autenticar.");

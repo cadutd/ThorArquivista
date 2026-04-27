@@ -1,12 +1,19 @@
 "use client";
 
 import { Archive, ShieldCheck } from "lucide-react";
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth/auth-provider";
+import { SESSION_EXPIRED_REASON } from "@/lib/auth/session";
 
-export default function LoginPage() {
+function LoginContent() {
   const { login } = useAuth();
+  const searchParams = useSearchParams();
+  const nextPath = searchParams.get("next");
+  const showSessionExpiredMessage =
+    searchParams.get("motivo") === SESSION_EXPIRED_REASON;
 
   return (
     <main className="grid min-h-screen grid-cols-1 bg-background lg:grid-cols-[1.1fr_0.9fr]">
@@ -37,7 +44,12 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button className="w-full" onClick={() => void login()}>
+            {showSessionExpiredMessage ? (
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm leading-5 text-amber-900">
+                Sua sessão expirou. Entre novamente para continuar.
+              </div>
+            ) : null}
+            <Button className="w-full" onClick={() => void login(nextPath)}>
               Entrar com Keycloak
             </Button>
             <div className="rounded-md border bg-muted p-3 text-xs leading-5 text-muted-foreground">
@@ -48,5 +60,13 @@ export default function LoginPage() {
         </Card>
       </section>
     </main>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginContent />
+    </Suspense>
   );
 }

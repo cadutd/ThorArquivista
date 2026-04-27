@@ -7,6 +7,7 @@ export type AuthSession = {
 };
 
 const SESSION_KEY = "thor.auth.session";
+export const SESSION_EXPIRED_REASON = "sessao-expirada";
 
 export function getStoredSession(): AuthSession | null {
   if (typeof window === "undefined") {
@@ -32,6 +33,29 @@ export function storeSession(session: AuthSession) {
 
 export function clearStoredSession() {
   window.localStorage.removeItem(SESSION_KEY);
+}
+
+export function redirectToLoginAfterSessionLoss() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  clearStoredSession();
+
+  if (window.location.pathname === "/login") {
+    return;
+  }
+
+  const params = new URLSearchParams({
+    motivo: SESSION_EXPIRED_REASON,
+  });
+  const currentPath = `${window.location.pathname}${window.location.search}`;
+
+  if (currentPath && currentPath !== "/") {
+    params.set("next", currentPath);
+  }
+
+  window.location.replace(`/login?${params.toString()}`);
 }
 
 export function isSessionActive(session: AuthSession | null) {

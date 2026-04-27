@@ -3,6 +3,7 @@ import { decodeJwtClaims, storeSession } from "@/lib/auth/session";
 
 const AUTH_STATE_KEY = "thor.auth.state";
 const AUTH_VERIFIER_KEY = "thor.auth.verifier";
+const AUTH_NEXT_KEY = "thor.auth.next";
 
 function base64UrlEncode(buffer: ArrayBuffer) {
   const bytes = new Uint8Array(buffer);
@@ -32,13 +33,18 @@ function randomString() {
   return base64UrlEncode(bytes.buffer);
 }
 
-export async function startLogin() {
+export async function startLogin(nextPath?: string | null) {
   const state = randomString();
   const verifier = randomString();
   const challenge = base64UrlEncode(await sha256(verifier));
 
   window.sessionStorage.setItem(AUTH_STATE_KEY, state);
   window.sessionStorage.setItem(AUTH_VERIFIER_KEY, verifier);
+  if (nextPath) {
+    window.sessionStorage.setItem(AUTH_NEXT_KEY, nextPath);
+  } else {
+    window.sessionStorage.removeItem(AUTH_NEXT_KEY);
+  }
 
   const params = new URLSearchParams({
     client_id: config.keycloakClientId,
@@ -106,6 +112,14 @@ export async function completeLogin(code: string, state: string) {
   window.sessionStorage.removeItem(AUTH_VERIFIER_KEY);
 
   return session;
+}
+
+export function consumeLoginRedirectPath() {
+  const nextPath = window.sessionStorage.getItem(AUTH_NEXT_KEY);
+  window.sessionStorage.removeItem(AUTH_NEXT_KEY);
+  return nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
+    ? nextPath
+    : "/dashboard";
 }
 
 export function keycloakLogoutUrl(idToken?: string) {
