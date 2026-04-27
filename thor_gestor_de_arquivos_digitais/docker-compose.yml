@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: thor
       POSTGRES_PASSWORD: thor
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - thor_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -34,7 +34,7 @@ services:
       # ✅ força importar/substituir a cada start
       PGADMIN_REPLACE_SERVERS_ON_STARTUP: "True"      
     ports:
-      - "5050:80"
+      - "5051:80"
     volumes:
       - thor_pgadmin_data:/var/lib/pgadmin
       # Arquivo de configuração dos servidores (veja abaixo como criar)
