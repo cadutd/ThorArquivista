@@ -106,6 +106,7 @@ class ZonaGuardaRead(ZonaGuardaBase):
 
     id: int
     local_guarda_nome: str | None = None
+    topografia_gerada: bool = False
     criado_em: datetime | None = None
     atualizado_em: datetime | None = None
 

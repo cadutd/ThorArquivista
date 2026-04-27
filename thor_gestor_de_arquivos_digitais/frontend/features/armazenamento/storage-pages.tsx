@@ -275,6 +275,7 @@ export function ZonasGuardaPage() {
     mutationFn: gerarTopografiaZona,
     onSuccess: async (result) => {
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["zonas-guarda"] }),
         queryClient.invalidateQueries({ queryKey: ["estruturas"] }),
         queryClient.invalidateQueries({ queryKey: ["compartimentos"] }),
         queryClient.invalidateQueries({ queryKey: ["posicoes"] }),
@@ -320,7 +321,8 @@ export function ZonasGuardaPage() {
             <Button
               variant="ghost"
               size="icon"
-              title="Gerar topografia"
+              title={zona.topografia_gerada ? "Topografia já gerada" : "Gerar topografia"}
+              disabled={zona.topografia_gerada || topo.isPending}
               onClick={() => {
                 if (window.confirm("Esta ação criará automaticamente estruturas, compartimentos e posições para esta zona. Deseja continuar?")) {
                   topo.mutate(zona.id);

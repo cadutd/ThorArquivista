@@ -5,7 +5,7 @@ from typing import Any, TypeVar
 
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.models.armazenamento import (
     CompartimentoArmazenamento,
@@ -100,7 +100,7 @@ class ArmazenamentoService:
         limit: int = 50,
         offset: int = 0,
     ) -> list[ZonaGuarda]:
-        query = db.query(ZonaGuarda)
+        query = db.query(ZonaGuarda).options(selectinload(ZonaGuarda.estruturas))
         if id_local_guarda:
             query = query.filter(ZonaGuarda.id_local_guarda == id_local_guarda)
         return query.order_by(ZonaGuarda.id.desc()).offset(offset).limit(limit).all()
@@ -115,7 +115,12 @@ class ArmazenamentoService:
 
     @staticmethod
     def obter_zona(db: Session, id: int) -> ZonaGuarda | None:
-        return db.get(ZonaGuarda, id)
+        return (
+            db.query(ZonaGuarda)
+            .options(selectinload(ZonaGuarda.estruturas))
+            .filter(ZonaGuarda.id == id)
+            .first()
+        )
 
     @staticmethod
     def atualizar_zona(db: Session, id: int, dados: ZonaGuardaUpdate) -> ZonaGuarda | None:

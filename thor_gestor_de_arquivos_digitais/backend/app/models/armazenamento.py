@@ -113,6 +113,10 @@ class ZonaGuarda(Base):
         cascade="all, delete-orphan",
     )
 
+    @property
+    def topografia_gerada(self) -> bool:
+        return bool(self.estruturas)
+
 
 class EstruturaArmazenamento(Base):
     __tablename__ = "estruturas_armazenamento"

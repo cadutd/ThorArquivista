@@ -95,6 +95,7 @@ export type ZonaGuarda = {
   observacoes?: string | null;
   ativo: boolean;
   local_guarda_nome?: string | null;
+  topografia_gerada: boolean;
   criado_em?: string | null;
   atualizado_em?: string | null;
 };
