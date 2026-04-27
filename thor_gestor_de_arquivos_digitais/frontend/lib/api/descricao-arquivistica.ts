@@ -1,6 +1,9 @@
 import { apiRequest } from "@/lib/api/client";
+import { getStoredSession, isSessionActive } from "@/lib/auth/session";
+import { config } from "@/lib/config";
 import { queryString } from "@/lib/api/storage-query";
 import type {
+  EAD2002ImportResult,
   RegistroDescritivo,
   RegistroDescritivoPayload,
   RegistroDescritivoTreeNode,
@@ -61,4 +64,38 @@ export function criarRegistrosDescricaoLote(parentId: string, registros: Registr
     method: "POST",
     body: JSON.stringify({ parent_id: parentId, registros }),
   });
+}
+
+export async function exportarRegistroEAD2002(id: string) {
+  const response = await authenticatedFetch(`/descricao-arquivistica/registros/${id}/exportar/ead2002`, {
+    headers: { Accept: "application/xml" },
+  });
+  if (!response.ok) {
+    throw new Error(await response.text() || `Erro ${response.status} na API.`);
+  }
+  return response.blob();
+}
+
+export async function importarEAD2002(content: string) {
+  const response = await authenticatedFetch("/descricao-arquivistica/importar/ead2002", {
+    method: "POST",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/xml",
+    },
+    body: content,
+  });
+  if (!response.ok) {
+    throw new Error(await response.text() || `Erro ${response.status} na API.`);
+  }
+  return (await response.json()) as EAD2002ImportResult;
+}
+
+function authenticatedFetch(path: string, init: RequestInit) {
+  const headers = new Headers(init.headers);
+  const session = getStoredSession();
+  if (session && isSessionActive(session)) {
+    headers.set("Authorization", `Bearer ${session.accessToken}`);
+  }
+  return fetch(`${config.apiBaseUrl}${path}`, { ...init, headers });
 }

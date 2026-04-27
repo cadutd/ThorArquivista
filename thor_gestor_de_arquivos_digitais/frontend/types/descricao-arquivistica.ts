@@ -1,4 +1,4 @@
-export type NormaDescricao = "NOBRADE" | "ISAD_G";
+export type NormaDescricao = "NOBRADE" | "ISAD_G" | "EAD2002";
 export type NivelDescricao = "1" | "2" | "2.5" | "3" | "3.5" | "4" | "5";
 
 export type RegistroDescritivo = {
@@ -55,4 +55,10 @@ export type RegistroDescritivoTreeNode = {
   codigo_referencia: string;
   titulo: string;
   children: RegistroDescritivoTreeNode[];
+};
+
+export type EAD2002ImportResult = {
+  imported: number;
+  root_ids: string[];
+  warnings: string[];
 };

@@ -6,13 +6,13 @@ from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 NIVEIS_DESCRICAO = ("1", "2", "2.5", "3", "3.5", "4", "5")
-NORMAS_DESCRICAO = ("NOBRADE", "ISAD_G")
+NORMAS_DESCRICAO = ("NOBRADE", "ISAD_G", "EAD2002")
 
 
 class RegistroDescritivoBase(BaseModel):
     parent_id: uuid.UUID | None = None
     nivel: str = Field(..., pattern=r"^(1|2|2\.5|3|3\.5|4|5)$")
-    norma: str = Field(default="NOBRADE", pattern=r"^(NOBRADE|ISAD_G)$")
+    norma: str = Field(default="NOBRADE", pattern=r"^(NOBRADE|ISAD_G|EAD2002)$")
     codigo_referencia: str = Field(..., min_length=1, max_length=255)
     titulo: str = Field(..., min_length=1, max_length=500)
     data_inicial: date | None = None
@@ -59,7 +59,7 @@ class RegistroDescritivoCreate(RegistroDescritivoBase):
 class RegistroDescritivoUpdate(BaseModel):
     parent_id: uuid.UUID | None = None
     nivel: str | None = Field(default=None, pattern=r"^(1|2|2\.5|3|3\.5|4|5)$")
-    norma: str | None = Field(default=None, pattern=r"^(NOBRADE|ISAD_G)$")
+    norma: str | None = Field(default=None, pattern=r"^(NOBRADE|ISAD_G|EAD2002)$")
     codigo_referencia: str | None = Field(default=None, min_length=1, max_length=255)
     titulo: str | None = Field(default=None, min_length=1, max_length=500)
     data_inicial: date | None = None
@@ -125,3 +125,9 @@ class RegistroDescritivoDuplicate(BaseModel):
     parent_id: uuid.UUID | None = None
     titulo: str | None = Field(default=None, max_length=500)
     codigo_referencia: str | None = Field(default=None, max_length=255)
+
+
+class EAD2002ImportResult(BaseModel):
+    imported: int
+    root_ids: list[uuid.UUID] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)

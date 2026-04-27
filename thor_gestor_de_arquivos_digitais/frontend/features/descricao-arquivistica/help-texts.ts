@@ -72,6 +72,38 @@ export const helpTexts: Record<NormaDescricao, Record<string, HelpEntry>> = {
       exemplo: "Open access with personal data restrictions.",
     },
   },
+  EAD2002: {
+    codigo_referencia: {
+      oficial: "unitid",
+      finalidade: "Registrar o identificador da unidade de descrição em EAD2002.",
+      regra: "Exportado em <did><unitid> e importado como código de referência.",
+      exemplo: "BR SPAPESP EDU 001",
+    },
+    titulo: {
+      oficial: "unittitle",
+      finalidade: "Registrar o título da unidade de descrição em EAD2002.",
+      regra: "Exportado em <did><unittitle> e importado como título.",
+      exemplo: "Fundo Secretaria da Educação",
+    },
+    nivel: {
+      oficial: "@level",
+      finalidade: "Indicar o nível hierárquico EAD da unidade descrita.",
+      regra: "Mapeado para collection, subfonds, series, subseries, file e item.",
+      exemplo: "collection",
+    },
+    produtor: {
+      oficial: "origination",
+      finalidade: "Registrar o produtor da documentação.",
+      regra: "Exportado em <did><origination><corpname>.",
+      exemplo: "Secretaria da Educação do Estado de São Paulo",
+    },
+    condicoes_acesso: {
+      oficial: "accessrestrict",
+      finalidade: "Registrar restrições ou condições de acesso.",
+      regra: "Exportado como bloco textual EAD2002 com parágrafo.",
+      exemplo: "Acesso público, exceto documentos com dados pessoais.",
+    },
+  },
 };
 
 export function getHelp(norma: NormaDescricao, field: string) {

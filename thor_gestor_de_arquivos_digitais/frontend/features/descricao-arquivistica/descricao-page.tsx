@@ -1,17 +1,19 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronDown,
   ChevronRight,
   Copy,
+  Download,
   HelpCircle,
   Loader2,
   Plus,
   Save,
   Search,
   Trash2,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +27,8 @@ import {
   criarRegistrosDescricaoLote,
   duplicarRegistroDescricao,
   excluirRegistroDescricao,
+  exportarRegistroEAD2002,
+  importarEAD2002,
   listarArvoreDescricao,
   listarRegistrosDescricao,
   moverRegistroDescricao,
@@ -173,6 +177,8 @@ export function DescricaoArquivisticaPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [batchOpen, setBatchOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
+  const [eadMessage, setEadMessage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const tree = useQuery({
     queryKey: ["descricao-arquivistica", "arvore", search, levelFilter],
     queryFn: () => listarArvoreDescricao({ q: search, nivel: levelFilter }),
@@ -211,6 +217,29 @@ export function DescricaoArquivisticaPage() {
       setDraft(null);
       await invalidateDescricao(queryClient);
     },
+  });
+  const importEad = useMutation({
+    mutationFn: (content: string) => importarEAD2002(content),
+    onSuccess: async (result) => {
+      setEadMessage(`${result.imported} registro(s) importado(s) de EAD2002.`);
+      setSelectedId(result.root_ids[0] ?? null);
+      setDraft(null);
+      await invalidateDescricao(queryClient);
+    },
+  });
+  const exportEad = useMutation({
+    mutationFn: async (id: string) => {
+      const blob = await exportarRegistroEAD2002(id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `ead2002-${id}.xml`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    },
+    onSuccess: () => setEadMessage("Arquivo EAD2002 exportado."),
   });
 
   const createRoot = () => {
@@ -252,15 +281,40 @@ export function DescricaoArquivisticaPage() {
     }
   };
 
+  const handleEadFile = async (file?: File) => {
+    if (!file) return;
+    setEadMessage(null);
+    importEad.mutate(await file.text());
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-normal">Descrição Arquivística</h1>
-          <p className="text-sm text-muted-foreground">Registros descritivos multinível aderentes à NOBRADE e ISAD(G).</p>
+          <p className="text-sm text-muted-foreground">Registros descritivos multinível aderentes à NOBRADE, ISAD(G) e EAD2002.</p>
         </div>
-        <Button onClick={createRoot}><Plus className="h-4 w-4" />Novo Fundo/Coleção</Button>
+        <div className="flex flex-wrap gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xml,application/xml,text/xml"
+            className="hidden"
+            onChange={(event) => handleEadFile(event.target.files?.[0])}
+          />
+          <Button variant="outline" disabled={importEad.isPending} onClick={() => fileInputRef.current?.click()}>
+            {importEad.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            Importar EAD2002
+          </Button>
+          <Button onClick={createRoot}><Plus className="h-4 w-4" />Novo Fundo/Coleção</Button>
+        </div>
       </div>
+      {eadMessage || importEad.error || exportEad.error ? (
+        <p className={importEad.error || exportEad.error ? "text-sm text-destructive" : "text-sm text-muted-foreground"}>
+          {importEad.error?.message || exportEad.error?.message || eadMessage}
+        </p>
+      ) : null}
 
       <Tabs defaultValue="edicao">
         <TabsList>
@@ -305,6 +359,10 @@ export function DescricaoArquivisticaPage() {
                   <div className="flex flex-wrap gap-2">
                     <Button variant="outline" disabled={!selectedParent || !childLevels[selectedParent.nivel].length} onClick={createChild}><Plus className="h-4 w-4" />Filho</Button>
                     <Button variant="outline" disabled={!selectedId} onClick={() => selectedId && duplicate.mutate(selectedId)}><Copy className="h-4 w-4" />Duplicar</Button>
+                    <Button variant="outline" disabled={!selectedId || exportEad.isPending} onClick={() => selectedId && exportEad.mutate(selectedId)}>
+                      {exportEad.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                      EAD2002
+                    </Button>
                     <Button variant="outline" disabled={!selectedId} onClick={() => setMoveOpen(true)}>Mover</Button>
                     <Button variant="outline" disabled={!selectedId} onClick={() => setBatchOpen(true)}>Lote</Button>
                     <Button variant="destructive" disabled={!selectedId || remove.isPending} onClick={() => selectedId && remove.mutate({ id: selectedId, cascade: window.confirm("Excluir também todos os filhos deste registro?") })}><Trash2 className="h-4 w-4" />Excluir</Button>
@@ -398,6 +456,7 @@ function DescricaoForm({
           <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={value.norma} onChange={(event) => setField("norma", event.target.value as NormaDescricao)}>
             <option value="NOBRADE">NOBRADE</option>
             <option value="ISAD_G">ISAD(G)</option>
+            <option value="EAD2002">EAD2002</option>
           </select>
         </FieldShell>
         <FieldShell field="nivel" label="Nível de descrição" norma={value.norma}>
@@ -547,6 +606,7 @@ function DetailedSearchView({
               <option value="">Todas as normas</option>
               <option value="NOBRADE">NOBRADE</option>
               <option value="ISAD_G">ISAD(G)</option>
+              <option value="EAD2002">EAD2002</option>
             </select>
             <Input type="date" value={filters.dataInicialDe} onChange={(event) => setFilters({ ...filters, dataInicialDe: event.target.value })} />
             <Input type="date" value={filters.dataInicialAte} onChange={(event) => setFilters({ ...filters, dataInicialAte: event.target.value })} />

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import db_dep
@@ -10,12 +10,14 @@ from app.schemas.descricao_arquivistica import (
     RegistroDescritivoBatchCreate,
     RegistroDescritivoCreate,
     RegistroDescritivoDuplicate,
+    EAD2002ImportResult,
     RegistroDescritivoMove,
     RegistroDescritivoRead,
     RegistroDescritivoTreeNode,
     RegistroDescritivoUpdate,
 )
 from app.services.descricao_arquivistica_service import DescricaoArquivisticaService
+from app.services.ead2002_service import EAD2002Service
 
 router = APIRouter()
 
@@ -67,6 +69,29 @@ def obter_registro(id: uuid.UUID, db: Session = Depends(db_dep)):
     if not registro:
         raise HTTPException(status_code=404, detail="Registro descritivo não encontrado.")
     return _with_children_flag(db, registro)
+
+
+@router.get("/registros/{id}/exportar/ead2002")
+def exportar_registro_ead2002(id: uuid.UUID, db: Session = Depends(db_dep)):
+    content = EAD2002Service.exportar(db, id)
+    if content is None:
+        raise HTTPException(status_code=404, detail="Registro descritivo não encontrado.")
+    return Response(
+        content=content,
+        media_type="application/xml",
+        headers={"Content-Disposition": f'attachment; filename="ead2002-{id}.xml"'},
+    )
+
+
+@router.post("/importar/ead2002", response_model=EAD2002ImportResult, status_code=status.HTTP_201_CREATED)
+def importar_ead2002(
+    content: bytes = Body(..., media_type="application/xml"),
+    db: Session = Depends(db_dep),
+):
+    try:
+        return EAD2002Service.importar(db, content)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
 
 @router.put("/registros/{id}", response_model=RegistroDescritivoRead)
