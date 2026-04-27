@@ -19,3 +19,5 @@ from app.models.armazenamento import (  # noqa: F401
     PosicaoArmazenamento,
     ZonaGuarda,
 )
+from app.models.configuracao import ParametroSistema  # noqa: F401
+from app.models.descricao_arquivistica import RegistroDescritivo  # noqa: F401

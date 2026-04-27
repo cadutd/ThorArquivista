@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Archive,
+  BookOpenText,
   Boxes,
   Database,
   Gauge,
@@ -20,6 +21,7 @@ import { cn } from "@/lib/utils";
 const navigation = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
   { href: "/unidades", label: "Unidades", icon: Archive },
+  { href: "/descricao-arquivistica", label: "Descrição Arquivística", icon: BookOpenText },
   { href: "/midias", label: "Mídias", icon: HardDrive },
   { href: "/enderecamento", label: "Endereçamento", icon: MapPinned },
   { href: "/eventos", label: "Eventos", icon: Boxes },
