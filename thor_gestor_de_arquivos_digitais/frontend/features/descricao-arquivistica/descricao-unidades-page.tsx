@@ -211,13 +211,48 @@ function DescricaoRegistroSelector({
   selectedId: string | null;
   onSelect: (id: string) => void;
 }) {
+  const queryClient = useQueryClient();
   const [treeSearch, setTreeSearch] = useState("");
   const [levelFilter, setLevelFilter] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [treeChildren, setTreeChildren] = useState<Record<string, RegistroDescritivoTreeNode[]>>({});
+  const [loadingTreeNodes, setLoadingTreeNodes] = useState<Set<string>>(new Set());
   const tree = useQuery({
     queryKey: ["descricao-arquivistica", "arvore", treeSearch, levelFilter],
     queryFn: () => listarArvoreDescricao({ q: treeSearch, nivel: levelFilter }),
   });
+  const treeNodes = useMemo(
+    () => hydrateTreeNodes(tree.data ?? [], treeChildren),
+    [tree.data, treeChildren],
+  );
+
+  useEffect(() => {
+    setExpanded(new Set());
+    setTreeChildren({});
+    setLoadingTreeNodes(new Set());
+  }, [treeSearch, levelFilter]);
+
+  const toggleTreeNode = async (node: RegistroDescritivoTreeNode) => {
+    setExpanded((currentSet) => toggleSet(currentSet, node.id));
+    if (!node.has_children || treeChildren[node.id]) {
+      return;
+    }
+
+    setLoadingTreeNodes((currentSet) => new Set(currentSet).add(node.id));
+    try {
+      const children = await queryClient.fetchQuery({
+        queryKey: ["descricao-arquivistica", "arvore", "children", node.id],
+        queryFn: () => listarArvoreDescricao({ parent_id: node.id }),
+      });
+      setTreeChildren((current) => ({ ...current, [node.id]: children }));
+    } finally {
+      setLoadingTreeNodes((currentSet) => {
+        const next = new Set(currentSet);
+        next.delete(node.id);
+        return next;
+      });
+    }
+  };
 
   return (
     <Card>
@@ -235,14 +270,15 @@ function DescricaoRegistroSelector({
             <TreeFilters search={treeSearch} levelFilter={levelFilter} onSearch={setTreeSearch} onLevelFilter={setLevelFilter} />
             {tree.isLoading ? <LoadingLine /> : null}
             <div className="max-h-[62vh] overflow-y-auto pr-1">
-              {(tree.data ?? []).map((node) => (
+              {treeNodes.map((node) => (
                 <DescricaoTreeNode
                   key={node.id}
                   node={node}
                   level={0}
                   selectedId={selectedId}
                   expanded={expanded}
-                  onToggle={(id) => setExpanded((currentSet) => toggleSet(currentSet, id))}
+                  loadingIds={loadingTreeNodes}
+                  onToggle={toggleTreeNode}
                   onSelect={onSelect}
                 />
               ))}
@@ -428,21 +464,22 @@ function TreeFilters({
   );
 }
 
-function DescricaoTreeNode({ node, level, selectedId, expanded, onToggle, onSelect }: { node: RegistroDescritivoTreeNode; level: number; selectedId: string | null; expanded: Set<string>; onToggle: (id: string) => void; onSelect: (id: string) => void }) {
-  const hasChildren = node.children.length > 0;
+function DescricaoTreeNode({ node, level, selectedId, expanded, loadingIds, onToggle, onSelect }: { node: RegistroDescritivoTreeNode; level: number; selectedId: string | null; expanded: Set<string>; loadingIds: Set<string>; onToggle: (node: RegistroDescritivoTreeNode) => void; onSelect: (id: string) => void }) {
+  const hasChildren = node.has_children;
   const isOpen = expanded.has(node.id) || level < 1;
+  const isLoading = loadingIds.has(node.id);
   return (
     <div>
       <div className="flex items-center gap-1" style={{ paddingLeft: level * 12 }}>
-        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => hasChildren && onToggle(node.id)}>
-          {hasChildren ? (isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />) : <span className="h-4 w-4" />}
+        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => hasChildren && onToggle(node)}>
+          {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : hasChildren ? (isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />) : <span className="h-4 w-4" />}
         </Button>
         <button type="button" className={`min-w-0 flex-1 rounded-md px-2 py-1 text-left text-sm hover:bg-muted ${selectedId === node.id ? "bg-secondary text-secondary-foreground" : ""}`} onClick={() => onSelect(node.id)}>
           <span className="block truncate font-medium">{node.titulo}</span>
           <span className="block truncate text-xs text-muted-foreground">Nível {node.nivel} - {node.codigo_referencia}</span>
         </button>
       </div>
-      {hasChildren && isOpen ? node.children.map((child) => <DescricaoTreeNode key={child.id} node={child} level={level + 1} selectedId={selectedId} expanded={expanded} onToggle={onToggle} onSelect={onSelect} />) : null}
+      {hasChildren && isOpen ? node.children.map((child) => <DescricaoTreeNode key={child.id} node={child} level={level + 1} selectedId={selectedId} expanded={expanded} loadingIds={loadingIds} onToggle={onToggle} onSelect={onSelect} />) : null}
     </div>
   );
 }
@@ -660,6 +697,16 @@ function toggleSet(set: Set<string>, id: string) {
     next.add(id);
   }
   return next;
+}
+
+function hydrateTreeNodes(
+  nodes: RegistroDescritivoTreeNode[],
+  childrenByParent: Record<string, RegistroDescritivoTreeNode[]>,
+): RegistroDescritivoTreeNode[] {
+  return nodes.map((node) => ({
+    ...node,
+    children: hydrateTreeNodes(childrenByParent[node.id] ?? node.children, childrenByParent),
+  }));
 }
 
 function normalize(value: string) {

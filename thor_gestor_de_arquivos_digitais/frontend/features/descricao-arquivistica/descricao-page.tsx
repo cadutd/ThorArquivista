@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ChevronDown,
@@ -175,6 +175,8 @@ export function DescricaoArquivisticaPage() {
   const [levelFilter, setLevelFilter] = useState("");
   const [detailSelectionId, setDetailSelectionId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [treeChildren, setTreeChildren] = useState<Record<string, RegistroDescritivoTreeNode[]>>({});
+  const [loadingTreeNodes, setLoadingTreeNodes] = useState<Set<string>>(new Set());
   const [batchOpen, setBatchOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [eadMessage, setEadMessage] = useState<string | null>(null);
@@ -183,6 +185,10 @@ export function DescricaoArquivisticaPage() {
     queryKey: ["descricao-arquivistica", "arvore", search, levelFilter],
     queryFn: () => listarArvoreDescricao({ q: search, nivel: levelFilter }),
   });
+  const treeNodes = useMemo(
+    () => hydrateTreeNodes(tree.data ?? [], treeChildren),
+    [tree.data, treeChildren],
+  );
   const flatRecords = useQuery({
     queryKey: ["descricao-arquivistica", "registros"],
     queryFn: () => listarRegistrosDescricao(),
@@ -288,6 +294,34 @@ export function DescricaoArquivisticaPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  useEffect(() => {
+    setExpanded(new Set());
+    setTreeChildren({});
+    setLoadingTreeNodes(new Set());
+  }, [search, levelFilter]);
+
+  const toggleTreeNode = async (node: RegistroDescritivoTreeNode) => {
+    setExpanded((currentSet) => toggleSet(currentSet, node.id));
+    if (!node.has_children || treeChildren[node.id]) {
+      return;
+    }
+
+    setLoadingTreeNodes((currentSet) => new Set(currentSet).add(node.id));
+    try {
+      const children = await queryClient.fetchQuery({
+        queryKey: ["descricao-arquivistica", "arvore", "children", node.id],
+        queryFn: () => listarArvoreDescricao({ parent_id: node.id }),
+      });
+      setTreeChildren((current) => ({ ...current, [node.id]: children }));
+    } finally {
+      setLoadingTreeNodes((currentSet) => {
+        const next = new Set(currentSet);
+        next.delete(node.id);
+        return next;
+      });
+    }
+  };
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -333,14 +367,15 @@ export function DescricaoArquivisticaPage() {
                 <TreeFilters search={search} levelFilter={levelFilter} onSearch={setSearch} onLevelFilter={setLevelFilter} />
                 {tree.isLoading ? <LoadingLine /> : null}
                 <div className="max-h-[68vh] overflow-y-auto pr-1">
-                  {(tree.data ?? []).map((node) => (
+                  {treeNodes.map((node) => (
                     <TreeNode
                       key={node.id}
                       node={node}
                       level={0}
                       selectedId={selectedId}
                       expanded={expanded}
-                      onToggle={(id) => setExpanded((currentSet) => toggleSet(currentSet, id))}
+                      loadingIds={loadingTreeNodes}
+                      onToggle={toggleTreeNode}
                       onSelect={(id) => { setSelectedId(id); setDraft(null); }}
                     />
                   ))}
@@ -707,21 +742,22 @@ function FieldShell({ field, label, norma, inherited, children }: { field: strin
   );
 }
 
-function TreeNode({ node, level, selectedId, expanded, onToggle, onSelect }: { node: RegistroDescritivoTreeNode; level: number; selectedId: string | null; expanded: Set<string>; onToggle: (id: string) => void; onSelect: (id: string) => void }) {
-  const hasChildren = node.children.length > 0;
+function TreeNode({ node, level, selectedId, expanded, loadingIds, onToggle, onSelect }: { node: RegistroDescritivoTreeNode; level: number; selectedId: string | null; expanded: Set<string>; loadingIds: Set<string>; onToggle: (node: RegistroDescritivoTreeNode) => void; onSelect: (id: string) => void }) {
+  const hasChildren = node.has_children;
   const isOpen = expanded.has(node.id) || level < 1;
+  const isLoading = loadingIds.has(node.id);
   return (
     <div>
       <div className="flex items-center gap-1" style={{ paddingLeft: level * 12 }}>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => hasChildren && onToggle(node.id)}>
-          {hasChildren ? (isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />) : <span className="h-4 w-4" />}
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => hasChildren && onToggle(node)}>
+          {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : hasChildren ? (isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />) : <span className="h-4 w-4" />}
         </Button>
         <button type="button" className={`min-w-0 flex-1 rounded-md px-2 py-1 text-left text-sm hover:bg-muted ${selectedId === node.id ? "bg-secondary text-secondary-foreground" : ""}`} onClick={() => onSelect(node.id)}>
           <span className="block truncate font-medium">{node.titulo}</span>
           <span className="block truncate text-xs text-muted-foreground">Nível {node.nivel} - {node.codigo_referencia}</span>
         </button>
       </div>
-      {hasChildren && isOpen ? node.children.map((child) => <TreeNode key={child.id} node={child} level={level + 1} selectedId={selectedId} expanded={expanded} onToggle={onToggle} onSelect={onSelect} />) : null}
+      {hasChildren && isOpen ? node.children.map((child) => <TreeNode key={child.id} node={child} level={level + 1} selectedId={selectedId} expanded={expanded} loadingIds={loadingIds} onToggle={onToggle} onSelect={onSelect} />) : null}
     </div>
   );
 }
@@ -808,6 +844,16 @@ function toggleSet(set: Set<string>, id: string) {
   if (next.has(id)) next.delete(id);
   else next.add(id);
   return next;
+}
+
+function hydrateTreeNodes(
+  nodes: RegistroDescritivoTreeNode[],
+  childrenByParent: Record<string, RegistroDescritivoTreeNode[]>,
+): RegistroDescritivoTreeNode[] {
+  return nodes.map((node) => ({
+    ...node,
+    children: hydrateTreeNodes(childrenByParent[node.id] ?? node.children, childrenByParent),
+  }));
 }
 
 async function invalidateDescricao(queryClient: ReturnType<typeof useQueryClient>) {

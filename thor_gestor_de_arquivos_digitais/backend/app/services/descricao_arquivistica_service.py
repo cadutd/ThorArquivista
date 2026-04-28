@@ -47,22 +47,23 @@ class DescricaoArquivisticaService:
         return query.order_by(RegistroDescritivo.codigo_referencia, RegistroDescritivo.titulo).all()
 
     @staticmethod
-    def arvore(db: Session, q: str | None = None, nivel: str | None = None) -> list[RegistroDescritivoTreeNode]:
-        registros = DescricaoArquivisticaService.listar(db, q=q, nivel=nivel)
+    def arvore(
+        db: Session,
+        q: str | None = None,
+        nivel: str | None = None,
+        parent_id: uuid.UUID | None = None,
+    ) -> list[RegistroDescritivoTreeNode]:
         if q or nivel:
-            return [DescricaoArquivisticaService._node(registro, []) for registro in registros]
+            registros = DescricaoArquivisticaService.listar(db, q=q, nivel=nivel)
+        else:
+            registros = (
+                db.query(RegistroDescritivo)
+                .filter(RegistroDescritivo.parent_id == parent_id)
+                .order_by(RegistroDescritivo.codigo_referencia, RegistroDescritivo.titulo)
+                .all()
+            )
 
-        children_by_parent: dict[uuid.UUID | None, list[RegistroDescritivo]] = {}
-        for registro in registros:
-            children_by_parent.setdefault(registro.parent_id, []).append(registro)
-
-        def build(parent_id: uuid.UUID | None) -> list[RegistroDescritivoTreeNode]:
-            return [
-                DescricaoArquivisticaService._node(registro, build(registro.id))
-                for registro in children_by_parent.get(parent_id, [])
-            ]
-
-        return build(None)
+        return [DescricaoArquivisticaService._node(db, registro) for registro in registros]
 
     @staticmethod
     def obter(db: Session, id: uuid.UUID) -> RegistroDescritivo | None:
@@ -213,7 +214,7 @@ class DescricaoArquivisticaService:
                 payload[field] = getattr(parent, field)
 
     @staticmethod
-    def _node(registro: RegistroDescritivo, children: list[RegistroDescritivoTreeNode]) -> RegistroDescritivoTreeNode:
+    def _node(db: Session, registro: RegistroDescritivo) -> RegistroDescritivoTreeNode:
         return RegistroDescritivoTreeNode(
             id=registro.id,
             parent_id=registro.parent_id,
@@ -221,7 +222,12 @@ class DescricaoArquivisticaService:
             norma=registro.norma,
             codigo_referencia=registro.codigo_referencia,
             titulo=registro.titulo,
-            children=children,
+            has_children=bool(
+                db.query(RegistroDescritivo.id)
+                .filter(RegistroDescritivo.parent_id == registro.id)
+                .first()
+            ),
+            children=[],
         )
 
     @staticmethod

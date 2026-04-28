@@ -42,8 +42,9 @@ def obter_arvore(
     db: Session = Depends(db_dep),
     q: str | None = Query(default=None),
     nivel: str | None = Query(default=None),
+    parent_id: uuid.UUID | None = Query(default=None),
 ):
-    return DescricaoArquivisticaService.arvore(db, q=q, nivel=nivel)
+    return DescricaoArquivisticaService.arvore(db, q=q, nivel=nivel, parent_id=parent_id)
 
 
 @router.post("/registros", response_model=RegistroDescritivoRead, status_code=status.HTTP_201_CREATED)

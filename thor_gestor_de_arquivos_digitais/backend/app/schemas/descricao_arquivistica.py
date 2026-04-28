@@ -110,6 +110,7 @@ class RegistroDescritivoTreeNode(BaseModel):
     norma: str
     codigo_referencia: str
     titulo: str
+    has_children: bool = False
     children: list["RegistroDescritivoTreeNode"] = Field(default_factory=list)
 
 

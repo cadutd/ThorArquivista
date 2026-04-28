@@ -54,6 +54,7 @@ export type RegistroDescritivoTreeNode = {
   norma: NormaDescricao;
   codigo_referencia: string;
   titulo: string;
+  has_children: boolean;
   children: RegistroDescritivoTreeNode[];
 };
 
