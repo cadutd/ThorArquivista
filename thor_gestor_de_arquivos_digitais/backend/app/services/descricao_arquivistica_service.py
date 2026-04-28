@@ -7,6 +7,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.models.descricao_arquivistica import RegistroDescritivo
+from app.models.unidade_acondicionamento import UnidadeAcondicionamento
 from app.schemas.descricao_arquivistica import (
     RegistroDescritivoBatchCreate,
     RegistroDescritivoCreate,
@@ -66,6 +67,47 @@ class DescricaoArquivisticaService:
     @staticmethod
     def obter(db: Session, id: uuid.UUID) -> RegistroDescritivo | None:
         return db.get(RegistroDescritivo, id)
+
+    @staticmethod
+    def listar_unidades_associadas(
+        db: Session,
+        id: uuid.UUID,
+    ) -> list[UnidadeAcondicionamento] | None:
+        registro = db.get(RegistroDescritivo, id)
+        if not registro:
+            return None
+        return sorted(registro.unidades_acondicionamento, key=lambda unidade: unidade.identificador)
+
+    @staticmethod
+    def substituir_unidades_associadas(
+        db: Session,
+        id: uuid.UUID,
+        unidades_ids: list[int],
+    ) -> list[UnidadeAcondicionamento] | None:
+        registro = db.get(RegistroDescritivo, id)
+        if not registro:
+            return None
+
+        unique_ids = list(dict.fromkeys(unidades_ids))
+        unidades = (
+            db.query(UnidadeAcondicionamento)
+            .filter(UnidadeAcondicionamento.id.in_(unique_ids))
+            .all()
+            if unique_ids
+            else []
+        )
+        found_ids = {unidade.id for unidade in unidades}
+        missing_ids = [id_unidade for id_unidade in unique_ids if id_unidade not in found_ids]
+        if missing_ids:
+            raise LookupError(
+                "Unidade(s) de acondicionamento não encontrada(s): "
+                + ", ".join(str(id_unidade) for id_unidade in missing_ids)
+            )
+
+        registro.unidades_acondicionamento = unidades
+        db.commit()
+        db.refresh(registro)
+        return sorted(registro.unidades_acondicionamento, key=lambda unidade: unidade.identificador)
 
     @staticmethod
     def criar(db: Session, dados: RegistroDescritivoCreate) -> RegistroDescritivo:

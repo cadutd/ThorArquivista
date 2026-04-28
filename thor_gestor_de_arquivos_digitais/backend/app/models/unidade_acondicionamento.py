@@ -21,6 +21,7 @@ from app.models.enums import (
     NivelAcesso,
     StatusUnidade,
 )
+from app.models.descricao_arquivistica import registro_descritivo_unidade_acondicionamento
 
 
 class UnidadeAcondicionamento(Base):
@@ -104,6 +105,12 @@ class UnidadeAcondicionamento(Base):
         "CopiaUnidadeAcondicionamentoDigital",
         back_populates="unidade",
         cascade="all, delete-orphan",
+    )
+
+    registros_descritivos = relationship(
+        "RegistroDescritivo",
+        secondary=registro_descritivo_unidade_acondicionamento,
+        back_populates="unidades_acondicionamento",
     )
 
     # --------------------

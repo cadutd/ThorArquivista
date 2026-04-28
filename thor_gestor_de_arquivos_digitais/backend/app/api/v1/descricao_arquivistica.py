@@ -15,6 +15,8 @@ from app.schemas.descricao_arquivistica import (
     RegistroDescritivoRead,
     RegistroDescritivoTreeNode,
     RegistroDescritivoUpdate,
+    RegistroUnidadesAssociadasRead,
+    RegistroUnidadesAssociadasUpdate,
 )
 from app.services.descricao_arquivistica_service import DescricaoArquivisticaService
 from app.services.ead2002_service import EAD2002Service
@@ -70,6 +72,33 @@ def obter_registro(id: uuid.UUID, db: Session = Depends(db_dep)):
     if not registro:
         raise HTTPException(status_code=404, detail="Registro descritivo não encontrado.")
     return _with_children_flag(db, registro)
+
+
+@router.get("/registros/{id}/unidades", response_model=RegistroUnidadesAssociadasRead)
+def listar_unidades_associadas(id: uuid.UUID, db: Session = Depends(db_dep)):
+    unidades = DescricaoArquivisticaService.listar_unidades_associadas(db, id)
+    if unidades is None:
+        raise HTTPException(status_code=404, detail="Registro descritivo não encontrado.")
+    return {"id_registro_descritivo": id, "unidades": unidades}
+
+
+@router.put("/registros/{id}/unidades", response_model=RegistroUnidadesAssociadasRead)
+def atualizar_unidades_associadas(
+    id: uuid.UUID,
+    dados: RegistroUnidadesAssociadasUpdate,
+    db: Session = Depends(db_dep),
+):
+    try:
+        unidades = DescricaoArquivisticaService.substituir_unidades_associadas(
+            db,
+            id,
+            dados.unidades_ids,
+        )
+    except LookupError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    if unidades is None:
+        raise HTTPException(status_code=404, detail="Registro descritivo não encontrado.")
+    return {"id_registro_descritivo": id, "unidades": unidades}
 
 
 @router.get("/registros/{id}/exportar/ead2002")

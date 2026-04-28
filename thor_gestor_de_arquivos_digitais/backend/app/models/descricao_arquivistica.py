@@ -2,11 +2,28 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import Date, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import Date, DateTime, ForeignKey, String, Table, Column, Integer, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+registro_descritivo_unidade_acondicionamento = Table(
+    "registro_descritivo_unidade_acondicionamento",
+    Base.metadata,
+    Column(
+        "id_registro_descritivo",
+        UUID(as_uuid=True),
+        ForeignKey("registros_descritivos.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "id_unidade_acondicionamento",
+        Integer,
+        ForeignKey("unidades_acondicionamento.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
 
 
 class RegistroDescritivo(Base):
@@ -63,4 +80,9 @@ class RegistroDescritivo(Base):
         "RegistroDescritivo",
         back_populates="parent",
         cascade="all, delete-orphan",
+    )
+    unidades_acondicionamento = relationship(
+        "UnidadeAcondicionamento",
+        secondary=registro_descritivo_unidade_acondicionamento,
+        back_populates="registros_descritivos",
     )

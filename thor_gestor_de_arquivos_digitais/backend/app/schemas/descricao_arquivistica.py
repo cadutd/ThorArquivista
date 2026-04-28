@@ -4,6 +4,7 @@ import uuid
 from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from app.schemas.unidade_acondicionamento import UnidadeAcondicionamentoOut
 
 NIVEIS_DESCRICAO = ("1", "2", "2.5", "3", "3.5", "4", "5")
 NORMAS_DESCRICAO = ("NOBRADE", "ISAD_G", "EAD2002")
@@ -131,3 +132,12 @@ class EAD2002ImportResult(BaseModel):
     imported: int
     root_ids: list[uuid.UUID] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
+
+
+class RegistroUnidadesAssociadasUpdate(BaseModel):
+    unidades_ids: list[int] = Field(default_factory=list)
+
+
+class RegistroUnidadesAssociadasRead(BaseModel):
+    id_registro_descritivo: uuid.UUID
+    unidades: list[UnidadeAcondicionamentoOut] = Field(default_factory=list)

@@ -8,6 +8,7 @@ import type {
   RegistroDescritivoPayload,
   RegistroDescritivoTreeNode,
 } from "@/types/descricao-arquivistica";
+import type { UnidadeAcondicionamento } from "@/types/domain";
 
 export function listarArvoreDescricao(params: Record<string, string | undefined | null> = {}) {
   return apiRequest<RegistroDescritivoTreeNode[]>(
@@ -23,6 +24,23 @@ export function listarRegistrosDescricao(params: Record<string, string | undefin
 
 export function obterRegistroDescricao(id: string) {
   return apiRequest<RegistroDescritivo>(`/descricao-arquivistica/registros/${id}`);
+}
+
+export function listarUnidadesAssociadasDescricao(id: string) {
+  return apiRequest<{
+    id_registro_descritivo: string;
+    unidades: UnidadeAcondicionamento[];
+  }>(`/descricao-arquivistica/registros/${id}/unidades`);
+}
+
+export function atualizarUnidadesAssociadasDescricao(id: string, unidadesIds: number[]) {
+  return apiRequest<{
+    id_registro_descritivo: string;
+    unidades: UnidadeAcondicionamento[];
+  }>(`/descricao-arquivistica/registros/${id}/unidades`, {
+    method: "PUT",
+    body: JSON.stringify({ unidades_ids: unidadesIds }),
+  });
 }
 
 export function criarRegistroDescricao(payload: RegistroDescritivoPayload) {
