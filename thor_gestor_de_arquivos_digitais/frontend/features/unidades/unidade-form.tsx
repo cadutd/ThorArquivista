@@ -234,11 +234,11 @@ export function UnidadeForm({
       onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Identificador" error={form.formState.errors.identificador?.message}>
-          <Input {...form.register("identificador")} placeholder="AIP-2026-0001" />
+        <Field label="Identificador" error={form.formState.errors.identificador?.message} required>
+          <Input {...form.register("identificador")} placeholder="AIP-2026-0001" required />
         </Field>
-        <Field label="Título" error={form.formState.errors.titulo?.message}>
-          <Input {...form.register("titulo")} placeholder="Conjunto documental" />
+        <Field label="Título" error={form.formState.errors.titulo?.message} required>
+          <Input {...form.register("titulo")} placeholder="Conjunto documental" required />
         </Field>
       </div>
 
@@ -251,12 +251,12 @@ export function UnidadeForm({
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <SelectField label="Suporte" {...form.register("tipo_suporte")}>
+        <SelectField label="Suporte" {...form.register("tipo_suporte")} required>
           <option value="FISICO">Físico</option>
           <option value="DIGITAL">Digital</option>
           <option value="HIBRIDO">Híbrido</option>
         </SelectField>
-        <SelectField label="Tipo" {...form.register("tipo_unidade")}>
+        <SelectField label="Tipo" {...form.register("tipo_unidade")} required>
           <option value="CAIXA">Caixa</option>
           <option value="PASTA">Pasta</option>
           <option value="VOLUME">Volume</option>
@@ -264,12 +264,12 @@ export function UnidadeForm({
           <option value="SIP">SIP</option>
           <option value="DIP">DIP</option>
         </SelectField>
-        <SelectField label="Acesso" {...form.register("nivel_acesso")}>
+        <SelectField label="Acesso" {...form.register("nivel_acesso")} required>
           <option value="PUBLICO">Público</option>
           <option value="RESTRITO">Restrito</option>
           <option value="CONFIDENCIAL">Confidencial</option>
         </SelectField>
-        <SelectField label="Status" {...form.register("status")}>
+        <SelectField label="Status" {...form.register("status")} required>
           <option value="ATIVA">Ativa</option>
           <option value="INATIVA">Inativa</option>
           <option value="TRANSFERIDA">Transferida</option>
@@ -298,7 +298,7 @@ export function UnidadeForm({
 
           {associarMidia ? (
             <>
-              <SelectField label="Mídia" {...form.register("modo_midia")}>
+              <SelectField label="Mídia" {...form.register("modo_midia")} required>
                 <option value="existente">Usar mídia existente</option>
                 <option value="nova">Criar nova mídia</option>
               </SelectField>
@@ -308,6 +308,7 @@ export function UnidadeForm({
                   label="Mídia existente"
                   error={form.formState.errors.id_midia_armazenamento?.message}
                   {...form.register("id_midia_armazenamento")}
+                  required
                 >
                   <option value="">Selecione</option>
                   {(midias.data ?? []).map((midia) => (
@@ -321,10 +322,11 @@ export function UnidadeForm({
                   <Field
                     label="Nome da mídia"
                     error={form.formState.errors.nova_midia_nome?.message}
+                    required
                   >
-                    <Input {...form.register("nova_midia_nome")} />
+                    <Input {...form.register("nova_midia_nome")} required />
                   </Field>
-                  <SelectField label="Tipo da mídia" {...form.register("nova_midia_tipo")}>
+                  <SelectField label="Tipo da mídia" {...form.register("nova_midia_tipo")} required>
                     <option value="FILESYSTEM">Filesystem</option>
                     <option value="NAS">NAS</option>
                     <option value="NFS">NFS</option>
@@ -339,16 +341,16 @@ export function UnidadeForm({
               )}
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="URI da cópia" error={form.formState.errors.uri_copia?.message}>
-                  <Input {...form.register("uri_copia")} placeholder="s3://bucket/aip" />
+                <Field label="URI da cópia" error={form.formState.errors.uri_copia?.message} required>
+                  <Input {...form.register("uri_copia")} placeholder="s3://bucket/aip" required />
                 </Field>
-                <SelectField label="Função da cópia" {...form.register("funcao_copia")}>
+                <SelectField label="Função da cópia" {...form.register("funcao_copia")} required>
                   <option value="PRESERVACAO">Preservação</option>
                   <option value="BACKUP">Backup</option>
                   <option value="ACESSO">Acesso</option>
                   <option value="QUARENTENA">Quarentena</option>
                 </SelectField>
-                <SelectField label="Status da cópia" {...form.register("status_copia")}>
+                <SelectField label="Status da cópia" {...form.register("status_copia")} required>
                   <option value="ATIVA">Ativa</option>
                   <option value="INDISPONIVEL">Indisponível</option>
                   <option value="CORROMPIDA">Corrompida</option>
@@ -393,17 +395,38 @@ function Field({
   label,
   error,
   children,
+  required,
 }: {
   label: string;
   error?: string;
   children: React.ReactNode;
+  required?: boolean;
 }) {
   return (
     <div className="space-y-2">
-      <Label>{label}</Label>
+      <RequiredLabel required={required}>{label}</RequiredLabel>
       {children}
       {error ? <p className="text-xs text-destructive">{error}</p> : null}
     </div>
+  );
+}
+
+function RequiredLabel({
+  children,
+  required,
+}: {
+  children: React.ReactNode;
+  required?: boolean;
+}) {
+  return (
+    <Label>
+      {children}
+      {required ? (
+        <span className="ml-1 text-destructive" aria-label="obrigatório">
+          *
+        </span>
+      ) : null}
+    </Label>
   );
 }
 
@@ -422,7 +445,7 @@ function SelectField({
 }) {
   return (
     <div className="space-y-2">
-      <Label>{label}</Label>
+      <RequiredLabel required={props.required}>{label}</RequiredLabel>
       <select
         className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
         {...props}

@@ -18,6 +18,7 @@ from app.schemas.descricao_arquivistica import (
 )
 from app.services.descricao_arquivistica_service import DescricaoArquivisticaService
 from app.services.ead2002_service import EAD2002Service
+from app.models.descricao_arquivistica import RegistroDescritivo
 
 router = APIRouter()
 
@@ -150,8 +151,8 @@ def mover_registro(id: uuid.UUID, dados: RegistroDescritivoMove, db: Session = D
 
 def _with_children_flag(db: Session, registro):
     registro.has_children = bool(
-        db.query(1)
-        .filter_by(parent_id=registro.id)
+        db.query(RegistroDescritivo.id)
+        .filter(RegistroDescritivo.parent_id == registro.id)
         .first()
     )
     return registro
