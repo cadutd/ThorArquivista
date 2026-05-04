@@ -12,6 +12,7 @@ from app.models import midia_armazenamento, copia_unidade_acondicionamento_digit
 from app.models import evento_preservacao  # noqa: F401
 from app.models import armazenamento  # noqa: F401
 from app.models import descricao_arquivistica  # noqa: F401
+from app.models import instrumento_pesquisa  # noqa: F401
 import alembic_postgresql_enum # noqa: F401
 
 config = context.config

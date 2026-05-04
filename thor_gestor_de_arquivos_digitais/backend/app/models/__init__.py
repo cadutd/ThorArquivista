@@ -21,3 +21,4 @@ from app.models.armazenamento import (  # noqa: F401
 )
 from app.models.configuracao import ParametroSistema  # noqa: F401
 from app.models.descricao_arquivistica import RegistroDescritivo  # noqa: F401
+from app.models.instrumento_pesquisa import InstrumentoCampo, InstrumentoPesquisa  # noqa: F401

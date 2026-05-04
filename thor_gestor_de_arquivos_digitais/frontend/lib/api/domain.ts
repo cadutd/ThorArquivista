@@ -2,8 +2,15 @@ import { apiRequest } from "@/lib/api/client";
 import type {
   CopiaDigital,
   EventoPreservacao,
+  InstrumentoCampo,
+  InstrumentoPesquisaSchema,
+  InstrumentoPesquisa,
   MidiaArmazenamento,
+  StatusInstrumentoPesquisa,
+  TipoCampoInstrumento,
+  TipoInstrumentoPesquisa,
   UnidadeAcondicionamento,
+  VisibilidadeInstrumentoPesquisa,
 } from "@/types/domain";
 
 export type UnidadePayload = {
@@ -40,6 +47,40 @@ export type MidiaPayload = {
   ativo: boolean;
 };
 
+export type InstrumentoPesquisaPayload = {
+  nome: string;
+  tipo: TipoInstrumentoPesquisa;
+  descricao?: string | null;
+  status: StatusInstrumentoPesquisa;
+  visibilidade: VisibilidadeInstrumentoPesquisa;
+  responsavel?: string | null;
+};
+
+export type InstrumentoPesquisaFilters = Partial<{
+  tipo: TipoInstrumentoPesquisa;
+  status: StatusInstrumentoPesquisa;
+}>;
+
+export type InstrumentoCampoPayload = {
+  nome: string;
+  chave: string;
+  tipo: TipoCampoInstrumento;
+  ordem: number;
+  obrigatorio: boolean;
+  multiplo: boolean;
+  valor_padrao?: string | null;
+  placeholder?: string | null;
+  ajuda?: string | null;
+  aparece_cadastro: boolean;
+  aparece_listagem: boolean;
+  aparece_busca: boolean;
+  filtro_avancado: boolean;
+  facetavel: boolean;
+  ordenavel: boolean;
+  opcoes?: unknown;
+  validacoes?: unknown;
+};
+
 export type CopiaDigitalPayload = {
   id_midia_armazenamento: number;
   uri_copia: string;
@@ -52,6 +93,13 @@ export type CopiaDigitalPayload = {
 
 export type UnidadePage = {
   items: UnidadeAcondicionamento[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export type InstrumentoPesquisaPage = {
+  items: InstrumentoPesquisa[];
   total: number;
   limit: number;
   offset: number;
@@ -133,6 +181,75 @@ export function deleteUnidade(id: number) {
   return apiRequest<void>(`/unidades-acondicionamento/${id}`, {
     method: "DELETE",
   });
+}
+
+export function listInstrumentosPesquisa({
+  limit = 100,
+  offset = 0,
+  filters = {},
+}: {
+  limit?: number;
+  offset?: number;
+  filters?: InstrumentoPesquisaFilters;
+} = {}) {
+  return apiRequest<InstrumentoPesquisaPage>(
+    `/instrumentos-pesquisa${queryString({ limit, offset, ...filters })}`,
+  );
+}
+
+export function createInstrumentoPesquisa(payload: InstrumentoPesquisaPayload) {
+  return apiRequest<InstrumentoPesquisa>("/instrumentos-pesquisa", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateInstrumentoPesquisa(id: string, payload: Partial<InstrumentoPesquisaPayload>) {
+  return apiRequest<InstrumentoPesquisa>(`/instrumentos-pesquisa/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteInstrumentoPesquisa(id: string) {
+  return apiRequest<void>(`/instrumentos-pesquisa/${id}`, {
+    method: "DELETE",
+  });
+}
+
+export function listInstrumentoCampos(instrumentoId: string) {
+  return apiRequest<InstrumentoCampo[]>(`/instrumentos-pesquisa/${instrumentoId}/campos`);
+}
+
+export function createInstrumentoCampo(instrumentoId: string, payload: InstrumentoCampoPayload) {
+  return apiRequest<InstrumentoCampo>(`/instrumentos-pesquisa/${instrumentoId}/campos`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateInstrumentoCampo(instrumentoId: string, campoId: string, payload: Partial<InstrumentoCampoPayload>) {
+  return apiRequest<InstrumentoCampo>(`/instrumentos-pesquisa/${instrumentoId}/campos/${campoId}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteInstrumentoCampo(instrumentoId: string, campoId: string) {
+  return apiRequest<void>(`/instrumentos-pesquisa/${instrumentoId}/campos/${campoId}`, {
+    method: "DELETE",
+  });
+}
+
+export function reorderInstrumentoCampos(instrumentoId: string, campos: Array<{ id: string; ordem: number }>) {
+  return apiRequest<InstrumentoCampo[]>(`/instrumentos-pesquisa/${instrumentoId}/campos/reordenar`, {
+    method: "PATCH",
+    body: JSON.stringify({ campos }),
+  });
+}
+
+export function getInstrumentoPesquisaSchema(instrumentoId: string) {
+  return apiRequest<InstrumentoPesquisaSchema>(`/instrumentos-pesquisa/${instrumentoId}/schema`);
 }
 
 export function listMidias() {

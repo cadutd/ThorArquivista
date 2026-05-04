@@ -70,6 +70,46 @@ class ResultadoEventoPreservacao(str, Enum):
     INDETERMINADO = "INDETERMINADO"
 
 
+class TipoInstrumentoPesquisa(str, Enum):
+    GUIA = "GUIA"
+    INVENTARIO = "INVENTARIO"
+    CATALOGO = "CATALOGO"
+    INDICE = "INDICE"
+    BASE_TEMATICA = "BASE_TEMATICA"
+    EXPOSICAO = "EXPOSICAO"
+    OUTRO = "OUTRO"
+
+
+class StatusInstrumentoPesquisa(str, Enum):
+    RASCUNHO = "RASCUNHO"
+    PUBLICADO = "PUBLICADO"
+    ARQUIVADO = "ARQUIVADO"
+
+
+class VisibilidadeInstrumentoPesquisa(str, Enum):
+    INTERNO = "INTERNO"
+    PUBLICO = "PUBLICO"
+    RESTRITO = "RESTRITO"
+
+
+class TipoCampoInstrumento(str, Enum):
+    TEXTO_CURTO = "TEXTO_CURTO"
+    TEXTO_LONGO = "TEXTO_LONGO"
+    NUMERO = "NUMERO"
+    DATA = "DATA"
+    PERIODO = "PERIODO"
+    BOOLEANO = "BOOLEANO"
+    LISTA_SIMPLES = "LISTA_SIMPLES"
+    LISTA_MULTIPLA = "LISTA_MULTIPLA"
+    VOCABULARIO = "VOCABULARIO"
+    UNIDADE_ACONDICIONAMENTO = "UNIDADE_ACONDICIONAMENTO"
+    REGISTRO_DESCRITIVO = "REGISTRO_DESCRITIVO"
+    URL = "URL"
+    ARQUIVO = "ARQUIVO"
+    IMAGEM = "IMAGEM"
+    CAMPO_CALCULADO = "CAMPO_CALCULADO"
+
+
 class TipoLocalGuarda(str, Enum):
     DEPOSITO = "DEPOSITO"
     SALA_COFRE = "SALA_COFRE"

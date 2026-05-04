@@ -7,6 +7,10 @@ export type FuncaoCopia = "PRESERVACAO" | "BACKUP" | "ACESSO" | "QUARENTENA";
 export type StatusCopia = "ATIVA" | "INDISPONIVEL" | "CORROMPIDA" | "EM_VERIFICACAO";
 export type TipoEventoPreservacao = "INGESTAO" | "VALIDACAO" | "FIXIDEZ" | "REPLICACAO" | "MIGRACAO" | "ACESSO" | "MOVIMENTACAO" | "OUTRO";
 export type ResultadoEventoPreservacao = "SUCESSO" | "FALHA" | "ALERTA" | "INDETERMINADO";
+export type TipoInstrumentoPesquisa = "GUIA" | "INVENTARIO" | "CATALOGO" | "INDICE" | "BASE_TEMATICA" | "EXPOSICAO" | "OUTRO";
+export type StatusInstrumentoPesquisa = "RASCUNHO" | "PUBLICADO" | "ARQUIVADO";
+export type VisibilidadeInstrumentoPesquisa = "INTERNO" | "PUBLICO" | "RESTRITO";
+export type TipoCampoInstrumento = "TEXTO_CURTO" | "TEXTO_LONGO" | "NUMERO" | "DATA" | "PERIODO" | "BOOLEANO" | "LISTA_SIMPLES" | "LISTA_MULTIPLA" | "VOCABULARIO" | "UNIDADE_ACONDICIONAMENTO" | "REGISTRO_DESCRITIVO" | "URL" | "ARQUIVO" | "IMAGEM" | "CAMPO_CALCULADO";
 
 export type UnidadeAcondicionamento = {
   id: number;
@@ -65,4 +69,69 @@ export type EventoPreservacao = {
   agente?: string | null;
   correlacao?: string | null;
   criado_em?: string | null;
+};
+
+export type InstrumentoPesquisa = {
+  id: string;
+  nome: string;
+  tipo: TipoInstrumentoPesquisa;
+  descricao?: string | null;
+  status: StatusInstrumentoPesquisa;
+  visibilidade: VisibilidadeInstrumentoPesquisa;
+  responsavel?: string | null;
+  criado_em: string;
+  atualizado_em: string;
+};
+
+export type InstrumentoCampo = {
+  id: string;
+  instrumento_id: string;
+  nome: string;
+  chave: string;
+  tipo: TipoCampoInstrumento;
+  ordem: number;
+  obrigatorio: boolean;
+  multiplo: boolean;
+  valor_padrao?: string | null;
+  placeholder?: string | null;
+  ajuda?: string | null;
+  aparece_cadastro: boolean;
+  aparece_listagem: boolean;
+  aparece_busca: boolean;
+  filtro_avancado: boolean;
+  facetavel: boolean;
+  ordenavel: boolean;
+  opcoes?: unknown;
+  validacoes?: unknown;
+  criado_em: string;
+  atualizado_em: string;
+};
+
+export type InstrumentoCampoSchema = Pick<
+  InstrumentoCampo,
+  | "id"
+  | "nome"
+  | "chave"
+  | "tipo"
+  | "ordem"
+  | "obrigatorio"
+  | "multiplo"
+  | "placeholder"
+  | "ajuda"
+  | "opcoes"
+  | "validacoes"
+  | "aparece_cadastro"
+  | "aparece_listagem"
+  | "aparece_busca"
+  | "filtro_avancado"
+>;
+
+export type InstrumentoPesquisaSchema = {
+  instrumento: {
+    id: string;
+    nome: string;
+    tipo: TipoInstrumentoPesquisa;
+    status: StatusInstrumentoPesquisa;
+  };
+  campos: InstrumentoCampoSchema[];
 };

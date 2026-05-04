@@ -7,3 +7,4 @@ alembic==1.17.2
 python-jose[cryptography]==3.3.0
 httpx==0.27.2
 alembic-postgresql-enum
+pytest==9.0.3
