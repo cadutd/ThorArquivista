@@ -12,6 +12,9 @@ API do Thor Gestor de Arquivos Digitais, implementada em FastAPI com PostgreSQL,
 - Gerar topografia de armazenamento.
 - Atribuir posições a unidades, mídias e cópias digitais.
 - Registrar movimentações de armazenamento.
+- Gerenciar instrumentos de pesquisa, campos configuráveis e registros dinâmicos.
+- Executar busca simples inicial nos registros dinâmicos.
+- Publicar eventos de indexação assíncrona para o worker Celery.
 - Expor indicadores agregados para o dashboard.
 - Validar tokens JWT emitidos pelo Keycloak nas rotas protegidas.
 
@@ -22,6 +25,9 @@ API do Thor Gestor de Arquivos Digitais, implementada em FastAPI com PostgreSQL,
 - SQLAlchemy
 - Alembic
 - PostgreSQL via `psycopg`
+- MongoDB via `pymongo`
+- Redis e Celery
+- Meilisearch
 - Pydantic Settings
 - `python-jose` para validação JWT
 
@@ -39,6 +45,8 @@ backend/
 │   ├── scripts/             # Scripts operacionais
 │   ├── security/            # Dependências e validação Keycloak
 │   ├── services/            # Regras de negócio
+│   ├── tasks/               # Tarefas Celery
+│   ├── worker.py            # Aplicação Celery
 │   └── main.py              # Aplicação FastAPI
 ├── app/tests/               # Testes automatizados
 ├── alembic.ini
@@ -66,8 +74,18 @@ Todas as rotas abaixo ficam sob `/api/v1`.
 | Compartimentos | `/compartimentos-armazenamento` | CRUD de prateleiras, gavetas, slots, diretórios etc. |
 | Posições | `/posicoes-armazenamento` | Consulta, posições livres/ocupadas e CRUD |
 | Movimentações | `/movimentacoes-armazenamento` | Histórico de movimentação |
+| Instrumentos de pesquisa | `/instrumentos-pesquisa` | Instrumentos, campos, registros dinâmicos e busca |
 
 O endpoint `/dashboard` calcula os totais diretamente no banco, evitando contagens incorretas causadas por listagens paginadas.
+
+Rotas principais de instrumentos de pesquisa:
+
+| Rota | Finalidade |
+| --- | --- |
+| `/instrumentos-pesquisa/{instrumento_id}/campos` | Campos dinâmicos do instrumento |
+| `/instrumentos-pesquisa/{instrumento_id}/schema` | Schema usado pelo formulário e listagem dinâmica |
+| `/instrumentos-pesquisa/{instrumento_id}/registros` | CRUD e listagem por cursor dos registros no MongoDB |
+| `/instrumentos-pesquisa/{instrumento_id}/buscar` | Busca simples inicial por regex nos campos com `aparece_busca` |
 
 Endpoints de atribuição:
 
@@ -121,6 +139,14 @@ O container do backend:
 - executa `alembic -c alembic.ini upgrade head`;
 - inicia `uvicorn app.main:app --host 0.0.0.0 --port 8000`.
 
+O serviço `index_worker` usa a mesma imagem do backend e inicia:
+
+```bash
+celery -A app.worker.celery_app worker --loglevel=INFO --queues=indexacao --concurrency=1
+```
+
+Ele consome eventos no Redis e indexa registros dinâmicos no Meilisearch em segundo plano.
+
 API local:
 
 ```text
@@ -139,6 +165,9 @@ Pré-requisitos:
 
 - Python 3.13 ou superior.
 - PostgreSQL acessível.
+- MongoDB acessível para registros dinâmicos.
+- Redis acessível para filas Celery.
+- Meilisearch acessível para indexação e busca dedicada.
 - Keycloak acessível para rotas protegidas.
 
 ```bash
@@ -161,6 +190,7 @@ app_env=dev
 app_name=Thor Gestor de Arquivos Digitais
 database_url=postgresql+psycopg://thor:thor@localhost:5432/thor_db
 redis_url=redis://localhost:6379/0
+mongodb_url=mongodb://localhost:27017/thor_db
 meili_url=http://localhost:7700
 meili_master_key=dev-meili-key
 keycloak_url=http://localhost:8081
@@ -171,7 +201,7 @@ keycloak_verify_audience=true
 cors_origins=["http://localhost:3000"]
 ```
 
-Dentro do Docker, `database_url`, `redis_url`, `meili_url` e `keycloak_internal_url` usam os nomes dos serviços da rede Compose.
+Dentro do Docker, `database_url`, `redis_url`, `mongodb_url`, `meili_url` e `keycloak_internal_url` usam os nomes dos serviços da rede Compose.
 
 ## Banco e Migrações
 
@@ -236,6 +266,29 @@ Conferência rápida:
 ```bash
 docker compose exec postgres psql -U thor -d thor_db -c "select lg.codigo as local, count(distinct zg.id) zonas, count(distinct ea.id) estruturas, count(distinct ca.id) compartimentos, count(pa.id) posicoes from locais_guarda lg join zonas_guarda zg on zg.id_local_guarda = lg.id join estruturas_armazenamento ea on ea.id_zona_guarda = zg.id join compartimentos_armazenamento ca on ca.id_estrutura_armazenamento = ea.id join posicoes_armazenamento pa on pa.id_compartimento_armazenamento = ca.id where lg.codigo = 'TEST-DEP-01' group by lg.codigo;"
 ```
+
+Massa de instrumentos de pesquisa:
+
+```bash
+docker compose exec backend python -m app.scripts.seed_instrumentos_pesquisa
+docker compose exec backend python -m app.scripts.seed_instrumento_campos
+docker compose exec backend python -m app.scripts.seed_instrumento_registros
+```
+
+Os scripts criam instrumentos, campos configuráveis e registros dinâmicos. O seed de registros grava no MongoDB e publica eventos Celery para o `index_worker` indexar os documentos no Meilisearch.
+
+Reindexar manualmente um instrumento:
+
+```bash
+docker compose exec backend python -c "from app.services.instrumento_indexing_events import InstrumentoIndexingEventPublisher; InstrumentoIndexingEventPublisher.reindexar_instrumento('UUID_DO_INSTRUMENTO')"
+```
+
+Eventos de indexação suportados:
+
+- `REGISTRO_CRIADO`
+- `REGISTRO_ATUALIZADO`
+- `REGISTRO_EXCLUIDO`
+- `REINDEXAR_INSTRUMENTO`
 
 ## Testes e Validação
 

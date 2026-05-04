@@ -165,6 +165,42 @@ services:
       uvicorn app.main:app --host 0.0.0.0 --port 8000
       "
 
+  index_worker:
+    build:
+      context: ./backend
+    container_name: thor-index-worker
+    depends_on:
+      redis:
+        condition: service_started
+      meilisearch:
+        condition: service_started
+      mongo:
+        condition: service_started
+      backend:
+        condition: service_started
+    environment:
+      app_env: dev
+      app_name: "Thor Gestor de Arquivos Digitais"
+      database_url: postgresql+psycopg://thor:thor@postgres:5432/thor_db
+      redis_url: redis://redis:6379/0
+      mongodb_url: mongodb://mongo:27017/thor_db
+      meili_url: http://meilisearch:7700
+      meili_master_key: dev-meili-key
+      keycloak_url: http://localhost:8081
+      keycloak_internal_url: http://keycloak:8080
+      keycloak_realm: thor
+      keycloak_client_id: thor-api
+      keycloak_verify_audience: "true"
+      cors_origins: '["http://localhost:3000"]'
+    command: >
+      sh -c "
+      cd /app &&
+      celery -A app.worker.celery_app worker
+      --loglevel=INFO
+      --queues=indexacao
+      --concurrency=1
+      "
+
   frontend:
     build:
       context: ./frontend

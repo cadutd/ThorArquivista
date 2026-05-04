@@ -14,6 +14,7 @@ class Settings(BaseSettings):
 
     #DB
     database_url: str = "postgresql+psycopg://thor:thor@localhost:5432/thor_db"
+    redis_url: str = "redis://localhost:6379/0"
     mongodb_url: str = "mongodb://localhost:27017/thor_db"
     meili_url: str = "http://localhost:7700"
     meili_master_key: str = "dev-meili-key"

@@ -8,15 +8,15 @@ O projeto é dividido em duas aplicações principais:
 
 - `backend/`: API em FastAPI responsável pelas regras de negócio, persistência, validação de tokens Keycloak e acesso ao PostgreSQL.
 - `frontend/`: interface administrativa em Next.js, React, TypeScript e Tailwind CSS.
-- `workers/`: área reservada para tarefas assíncronas futuras, como indexação e validações de preservação.
+- `workers/`: documenta os workers assíncronos. O worker ativo de indexação roda pelo serviço `index_worker` no Docker Compose.
 
 Serviços auxiliares sobem via Docker Compose:
 
 - PostgreSQL principal: banco da aplicação.
 - PostgreSQL do Keycloak: banco separado para identidade.
 - Keycloak: provedor OIDC usado no login do frontend e na validação de tokens do backend.
-- Redis: infraestrutura de cache/fila para uso operacional.
-- Meilisearch: motor de busca local.
+- Redis: infraestrutura de fila para Celery e coordenação operacional.
+- Meilisearch: motor de busca local usado pelos registros dinâmicos dos instrumentos de pesquisa.
 - pgAdmin: administração visual do PostgreSQL.
 
 ## Arquitetura
@@ -29,7 +29,10 @@ Fluxo principal:
 4. O frontend troca o `code` por tokens e guarda a sessão no navegador.
 5. Chamadas ao backend usam `Authorization: Bearer <access_token>`.
 6. O backend valida o JWT usando o JWKS do Keycloak pela URL interna Docker `http://keycloak:8080`.
-7. A API persiste e consulta dados no PostgreSQL em `postgres:5432`.
+7. A API persiste metadados relacionais no PostgreSQL em `postgres:5432`.
+8. Registros dinâmicos de instrumentos de pesquisa são salvos no MongoDB.
+9. A API publica eventos de indexação no Redis e o `index_worker` processa esses eventos em segundo plano.
+10. O worker envia documentos indexáveis ao Meilisearch, usando um índice por instrumento.
 
 URLs locais principais:
 
@@ -39,7 +42,7 @@ URLs locais principais:
 | Backend API | `http://localhost:8000` |
 | Backend docs | `http://localhost:8000/docs` |
 | Keycloak | `http://localhost:8081` |
-| pgAdmin | `http://localhost:5050` |
+| pgAdmin | `http://localhost:5051` |
 | Meilisearch | `http://localhost:7700` |
 
 ## Estrutura do Repositório
@@ -48,7 +51,7 @@ URLs locais principais:
 .
 ├── backend/              # FastAPI, SQLAlchemy, Alembic e scripts operacionais
 ├── frontend/             # Next.js, React, Tailwind CSS e autenticação OIDC
-├── workers/              # Workers assíncronos planejados
+├── workers/              # Documentação de workers assíncronos
 ├── infra/keycloak/       # Scripts de configuração automática do Keycloak
 ├── pgadmin/provisioning/ # Configuração automática de servidores no pgAdmin
 ├── docker-compose.yml    # Stack local completa
@@ -60,7 +63,7 @@ URLs locais principais:
 Para rodar com Docker:
 
 - Docker Desktop ou Docker Engine com Compose.
-- Portas livres: `3000`, `5050`, `5432`, `6379`, `7700`, `8000`, `8081`.
+- Portas livres: `3000`, `5051`, `5433`, `6379`, `7700`, `8000`, `8081`, `27017`.
 
 Para rodar fora do Docker:
 
@@ -81,7 +84,7 @@ Esse comando:
 
 - constrói o backend;
 - constrói o frontend;
-- sobe PostgreSQL, Redis, Meilisearch, Keycloak e pgAdmin;
+- sobe PostgreSQL, MongoDB, Redis, Meilisearch, Keycloak, pgAdmin e o worker de indexação;
 - executa migrations Alembic no backend antes de iniciar a API;
 - executa `keycloak_config`, que ajusta o client `thor-api` para aceitar o callback do frontend.
 
@@ -187,6 +190,23 @@ Para conferir no PostgreSQL:
 docker compose exec postgres psql -U thor -d thor_db -c "select lg.codigo as local, count(distinct zg.id) zonas, count(distinct ea.id) estruturas, count(distinct ca.id) compartimentos, count(pa.id) posicoes from locais_guarda lg join zonas_guarda zg on zg.id_local_guarda = lg.id join estruturas_armazenamento ea on ea.id_zona_guarda = zg.id join compartimentos_armazenamento ca on ca.id_estrutura_armazenamento = ea.id join posicoes_armazenamento pa on pa.id_compartimento_armazenamento = ca.id where lg.codigo = 'TEST-DEP-01' group by lg.codigo;"
 ```
 
+Massa de instrumentos de pesquisa:
+
+```bash
+docker compose exec backend python -m app.scripts.seed_instrumentos_pesquisa
+docker compose exec backend python -m app.scripts.seed_instrumento_campos
+docker compose exec backend python -m app.scripts.seed_instrumento_registros
+```
+
+Esses scripts são idempotentes e criam:
+
+- instrumentos de pesquisa de teste;
+- campos dinâmicos por instrumento;
+- registros dinâmicos no MongoDB;
+- eventos Celery para indexação assíncrona no Meilisearch.
+
+O seed de registros gera 35 registros por instrumento e publica eventos na fila `indexacao`. O `index_worker` deve estar rodando para que a massa também seja indexada no Meilisearch.
+
 ## Backend
 
 Stack principal:
@@ -196,6 +216,9 @@ Stack principal:
 - SQLAlchemy
 - Alembic
 - PostgreSQL via `psycopg`
+- MongoDB via `pymongo`
+- Redis e Celery para eventos assíncronos
+- Meilisearch para busca dedicada dos registros dinâmicos
 - Keycloak JWT validation via `python-jose`
 - Pydantic Settings
 
@@ -207,6 +230,10 @@ Arquivos importantes:
 - `backend/app/api/v1/armazenamento.py`: expõe CRUD, topografia, atribuição de posições e movimentações de armazenamento.
 - `backend/app/models/armazenamento.py`: models do endereçamento de armazenamento.
 - `backend/app/services/armazenamento_service.py`: regras de negócio de ocupação, capacidade, movimentação e geração topográfica.
+- `backend/app/services/instrumento_registro_service.py`: cadastro, listagem, busca simples e publicação de eventos de indexação dos registros dinâmicos.
+- `backend/app/services/instrumento_search_service.py`: montagem dos documentos indexáveis e comunicação com Meilisearch.
+- `backend/app/tasks/instrumento_indexacao.py`: tarefas Celery para indexação assíncrona.
+- `backend/app/worker.py`: aplicação Celery usada pelo serviço `index_worker`.
 - `backend/app/security/keycloak_jwt.py`: valida JWT e busca JWKS no Keycloak.
 - `backend/app/core/config.py`: configurações por variáveis de ambiente.
 - `backend/alembic/versions/`: migrations do banco.
@@ -258,6 +285,9 @@ Rotas principais sob `/api/v1`:
 | `/compartimentos-armazenamento` | CRUD de compartimentos |
 | `/posicoes-armazenamento` | Consulta e CRUD de posições |
 | `/movimentacoes-armazenamento` | Histórico de movimentações |
+| `/instrumentos-pesquisa` | Cadastro de instrumentos, campos e registros dinâmicos |
+| `/instrumentos-pesquisa/{id}/registros` | Listagem dinâmica por cursor |
+| `/instrumentos-pesquisa/{id}/buscar` | Busca simples inicial no MongoDB, usando campos `aparece_busca` |
 
 Endpoints de atribuição de posição:
 
@@ -388,12 +418,13 @@ Parar e remover volumes:
 docker compose down -v
 ```
 
-Use `down -v` com cuidado: isso remove os dados do PostgreSQL principal, Keycloak, Redis, Meilisearch e pgAdmin.
+Use `down -v` com cuidado: isso remove os dados do PostgreSQL principal, Keycloak, MongoDB, Redis, Meilisearch e pgAdmin.
 
 Ver logs:
 
 ```bash
 docker compose logs -f backend
+docker compose logs -f index_worker
 docker compose logs -f frontend
 docker compose logs -f keycloak
 ```
@@ -420,6 +451,20 @@ Executar seed de endereçamento:
 
 ```bash
 docker compose exec backend python -m app.scripts.seed_storage_addressing
+```
+
+Executar seeds de instrumentos, campos e registros dinâmicos:
+
+```bash
+docker compose exec backend python -m app.scripts.seed_instrumentos_pesquisa
+docker compose exec backend python -m app.scripts.seed_instrumento_campos
+docker compose exec backend python -m app.scripts.seed_instrumento_registros
+```
+
+Reindexar um instrumento manualmente pela fila Celery:
+
+```bash
+docker compose exec backend python -c "from app.services.instrumento_indexing_events import InstrumentoIndexingEventPublisher; InstrumentoIndexingEventPublisher.reindexar_instrumento('UUID_DO_INSTRUMENTO')"
 ```
 
 ## Banco de Dados e Migrations
@@ -467,7 +512,8 @@ A migration `000002_storage_locations` adiciona:
 - Assets do frontend em `frontend/public` precisam ser copiados para a imagem final. O `frontend/Dockerfile` já faz isso.
 - O script de seed usa SQL explícito para respeitar os nomes reais dos enums criados pela migration (`tipo_suporte`, `tipo_unidade`, `nivel_acesso`, `status_unidade`).
 - O seed de endereçamento também usa SQL explícito para respeitar os enums PostgreSQL e é seguro para execução repetida.
-- Os workers ainda não são iniciados pelo Compose; `workers/` está reservado para a fase de tarefas assíncronas.
+- O worker de indexação é iniciado pelo Compose como `index_worker` e consome a fila Celery `indexacao` no Redis.
+- A API não espera o Meilisearch ao cadastrar registros dinâmicos; ela salva no MongoDB e publica um evento para processamento em segundo plano.
 
 ## Validação Local
 

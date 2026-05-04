@@ -22,7 +22,7 @@ from app.schemas.instrumento_registro import (
     InstrumentoRegistroUpdate,
     StatusInstrumentoRegistro,
 )
-from app.services.instrumento_search_service import InstrumentoSearchService
+from app.services.instrumento_indexing_events import InstrumentoIndexingEventPublisher
 
 
 class InstrumentoRegistroService:
@@ -49,13 +49,8 @@ class InstrumentoRegistroService:
             "atualizado_em": now,
         }
 
-        target_collection = InstrumentoRegistroService._collection(collection)
-        target_collection.insert_one(documento)
-        try:
-            InstrumentoSearchService.indexar_registro(documento)
-        except Exception:
-            target_collection.delete_one({"_id": documento["_id"]})
-            raise
+        InstrumentoRegistroService._collection(collection).insert_one(documento)
+        InstrumentoIndexingEventPublisher.registro_criado(instrumento_id, documento["_id"])
         return InstrumentoRegistroService._to_out(documento)
 
     @staticmethod
@@ -207,7 +202,7 @@ class InstrumentoRegistroService:
             return_document=ReturnDocument.AFTER,
         )
         if result:
-            InstrumentoSearchService.indexar_registro(result)
+            InstrumentoIndexingEventPublisher.registro_atualizado(instrumento_id, registro_id)
         return InstrumentoRegistroService._to_out(result) if result else None
 
     @staticmethod
@@ -231,7 +226,7 @@ class InstrumentoRegistroService:
             },
         )
         if result.matched_count:
-            InstrumentoSearchService.remover_registro(instrumento_id, registro_id)
+            InstrumentoIndexingEventPublisher.registro_excluido(instrumento_id, registro_id)
         return result.matched_count > 0
 
     @staticmethod
