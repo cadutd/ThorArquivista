@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
+import { ClipboardList } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { DynamicInstrumentForm } from "@/features/instrumentos-pesquisa/dynamic-instrument-form";
 import { createInstrumentoRegistro, getInstrumentoPesquisaSchema } from "@/lib/api/domain";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,11 +36,19 @@ export function DynamicInstrumentCadastroPage({ instrumentoId }: { instrumentoId
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-normal">{schema.instrumento.nome}</h1>
-        <p className="text-sm text-muted-foreground">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-normal">{schema.instrumento.nome}</h1>
+          <p className="text-sm text-muted-foreground">
           Cadastro dinâmico montado a partir dos campos configurados no instrumento.
-        </p>
+          </p>
+        </div>
+        <Button asChild variant="outline">
+          <Link href={`/instrumentos-pesquisa/${instrumentoId}/registros`}>
+            <ClipboardList className="h-4 w-4" />
+            Ver listagem
+          </Link>
+        </Button>
       </div>
       <Card>
         <CardHeader>
