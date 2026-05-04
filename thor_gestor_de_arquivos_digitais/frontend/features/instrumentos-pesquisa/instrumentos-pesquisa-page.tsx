@@ -289,7 +289,7 @@ function InstrumentosTable({
                   <Edit className="h-4 w-4" />
                 </Button>
                 <Button asChild variant="ghost" size="icon" title="Cadastro dinâmico">
-                  <Link href={`/instrumentos-pesquisa/${instrumento.id}/cadastro`}>
+                  <Link href={`/instrumentos-pesquisa/${instrumento.id}/registros`}>
                     <FileInput className="h-4 w-4" />
                   </Link>
                 </Button>

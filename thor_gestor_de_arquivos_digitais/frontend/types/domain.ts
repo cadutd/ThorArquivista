@@ -135,3 +135,24 @@ export type InstrumentoPesquisaSchema = {
   };
   campos: InstrumentoCampoSchema[];
 };
+
+export type StatusInstrumentoRegistro = "ATIVO" | "INATIVO" | "EXCLUIDO";
+
+export type InstrumentoRegistro = {
+  id: string;
+  instrumento_id: string;
+  schema_version: number;
+  dados: Record<string, unknown>;
+  unidade_acondicionamento_ids: number[];
+  registro_descritivo_ids: string[];
+  status: StatusInstrumentoRegistro;
+  criado_em: string;
+  atualizado_em: string;
+};
+
+export type InstrumentoRegistroPage = {
+  items: InstrumentoRegistro[];
+  page_size: number;
+  next_cursor?: string | null;
+  has_more: boolean;
+};

@@ -1,23 +1,33 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CircleHelp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { InstrumentoCampoSchema, InstrumentoPesquisaSchema } from "@/types/domain";
 
-type DynamicValue = string | number | boolean | string[];
-type DynamicValues = Record<string, DynamicValue>;
+export type DynamicValue = string | number | boolean | string[];
+export type DynamicValues = Record<string, DynamicValue>;
 
 export function DynamicInstrumentForm({
   schema,
+  initialValues,
+  submitLabel = "Salvar registro",
+  isSaving,
   onSubmit,
 }: {
   schema: InstrumentoPesquisaSchema;
+  initialValues?: Record<string, unknown>;
+  submitLabel?: string;
+  isSaving?: boolean;
   onSubmit?: (values: DynamicValues) => void;
 }) {
-  const initialValues = useMemo(() => buildInitialValues(schema.campos), [schema.campos]);
-  const [values, setValues] = useState<DynamicValues>(initialValues);
+  const normalizedInitialValues = useMemo(
+    () => buildInitialValues(schema.campos, initialValues),
+    [schema.campos, initialValues],
+  );
+  const [values, setValues] = useState<DynamicValues>(normalizedInitialValues);
 
   return (
     <form
@@ -36,9 +46,11 @@ export function DynamicInstrumentForm({
             value={values[campo.chave]}
             onChange={(value) => setValues((current) => ({ ...current, [campo.chave]: value }))}
           />
-        ))}
+      ))}
       <div className="sm:col-span-2">
-        <Button type="submit">Salvar registro</Button>
+        <Button type="submit" disabled={isSaving}>
+          {isSaving ? "Salvando..." : submitLabel}
+        </Button>
       </div>
     </form>
   );
@@ -94,7 +106,7 @@ function DynamicField({
           {...common}
           type={inputType(campo)}
           value={String(value ?? "")}
-          onChange={(event) => onChange(campo.tipo === "NUMERO" ? Number(event.target.value) : event.target.value)}
+          onChange={(event) => onChange(campo.tipo === "NUMERO" && event.target.value !== "" ? Number(event.target.value) : event.target.value)}
         />
       )}
     </div>
@@ -102,12 +114,19 @@ function DynamicField({
 }
 
 function FieldText({ campo }: { campo: InstrumentoCampoSchema }) {
+  const help = contextualHelp(campo);
+
   return (
     <div className="space-y-1">
-      <Label htmlFor={campo.chave}>
-        {campo.nome}
-        {campo.obrigatorio ? <span className="ml-1 text-destructive">*</span> : null}
-      </Label>
+      <div className="flex items-center gap-2">
+        <Label htmlFor={campo.chave}>
+          {campo.nome}
+          {campo.obrigatorio ? <span className="ml-1 text-destructive">*</span> : null}
+        </Label>
+        <span title={help}>
+          <CircleHelp className="h-4 w-4 text-muted-foreground" aria-label={help} />
+        </span>
+      </div>
       {campo.ajuda ? <p className="text-xs text-muted-foreground">{campo.ajuda}</p> : null}
     </div>
   );
@@ -179,11 +198,18 @@ function inputType(campo: InstrumentoCampoSchema) {
   return "text";
 }
 
-function buildInitialValues(campos: InstrumentoCampoSchema[]): DynamicValues {
+function buildInitialValues(campos: InstrumentoCampoSchema[], values?: Record<string, unknown>): DynamicValues {
   return campos.reduce<DynamicValues>((acc, campo) => {
-    acc[campo.chave] = campo.tipo === "BOOLEANO" ? false : campo.tipo === "LISTA_MULTIPLA" ? [] : "";
+    acc[campo.chave] = normalizeValue(campo, values?.[campo.chave]);
     return acc;
   }, {});
+}
+
+function normalizeValue(campo: InstrumentoCampoSchema, value: unknown): DynamicValue {
+  if (campo.tipo === "BOOLEANO") return typeof value === "boolean" ? value : false;
+  if (campo.tipo === "LISTA_MULTIPLA") return Array.isArray(value) ? value.map(String) : [];
+  if (campo.tipo === "NUMERO") return typeof value === "number" ? value : "";
+  return typeof value === "string" ? value : "";
 }
 
 function optionsFrom(campo: InstrumentoCampoSchema) {
@@ -201,4 +227,15 @@ function optionsFrom(campo: InstrumentoCampoSchema) {
       return null;
     })
     .filter((option): option is { value: string; label: string } => Boolean(option));
+}
+
+function contextualHelp(campo: InstrumentoCampoSchema) {
+  return [
+    campo.ajuda,
+    campo.placeholder ? `Placeholder: ${campo.placeholder}` : null,
+    `Tipo de dado: ${campo.tipo}`,
+    campo.obrigatorio ? "Obrigatório" : "Opcional",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }

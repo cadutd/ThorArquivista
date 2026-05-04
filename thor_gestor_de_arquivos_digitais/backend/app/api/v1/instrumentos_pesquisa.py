@@ -20,8 +20,16 @@ from app.schemas.instrumento_pesquisa import (
     InstrumentoPesquisaSchema,
     InstrumentoPesquisaUpdate,
 )
+from app.schemas.instrumento_registro import (
+    InstrumentoRegistroCreate,
+    InstrumentoRegistroOut,
+    InstrumentoRegistroPage,
+    InstrumentoRegistroUpdate,
+    StatusInstrumentoRegistro,
+)
 from app.services.instrumento_campo_service import InstrumentoCampoService
 from app.services.instrumento_pesquisa_service import InstrumentoPesquisaService
+from app.services.instrumento_registro_service import InstrumentoRegistroService
 
 router = APIRouter()
 
@@ -73,6 +81,109 @@ def obter_schema_instrumento(
             detail="Instrumento de pesquisa não encontrado.",
         )
     return schema
+
+
+@router.post(
+    "/{instrumento_id}/registros",
+    response_model=InstrumentoRegistroOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def criar_registro_instrumento(
+    instrumento_id: uuid.UUID,
+    dados: InstrumentoRegistroCreate,
+    db: Session = Depends(db_dep),
+):
+    try:
+        return InstrumentoRegistroService.criar(db, instrumento_id, dados)
+    except LookupError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+
+
+@router.get(
+    "/{instrumento_id}/registros",
+    response_model=InstrumentoRegistroPage,
+)
+def listar_registros_instrumento(
+    instrumento_id: uuid.UUID,
+    db: Session = Depends(db_dep),
+    page_size: int = Query(default=50, ge=1, le=100),
+    cursor: str | None = Query(default=None),
+    status_registro: StatusInstrumentoRegistro | None = Query(default=None, alias="status"),
+):
+    try:
+        return InstrumentoRegistroService.listar(
+            db,
+            instrumento_id,
+            status=status_registro,
+            page_size=page_size,
+            cursor=cursor,
+        )
+    except LookupError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+
+
+@router.get(
+    "/{instrumento_id}/registros/{registro_id}",
+    response_model=InstrumentoRegistroOut,
+)
+def obter_registro_instrumento(
+    instrumento_id: uuid.UUID,
+    registro_id: str,
+    db: Session = Depends(db_dep),
+):
+    try:
+        registro = InstrumentoRegistroService.obter(db, instrumento_id, registro_id)
+    except LookupError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+    if not registro:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registro do instrumento não encontrado.")
+    return registro
+
+
+@router.put(
+    "/{instrumento_id}/registros/{registro_id}",
+    response_model=InstrumentoRegistroOut,
+)
+def atualizar_registro_instrumento(
+    instrumento_id: uuid.UUID,
+    registro_id: str,
+    dados: InstrumentoRegistroUpdate,
+    db: Session = Depends(db_dep),
+):
+    try:
+        registro = InstrumentoRegistroService.atualizar(db, instrumento_id, registro_id, dados)
+    except LookupError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+
+    if not registro:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registro do instrumento não encontrado.")
+    return registro
+
+
+@router.delete(
+    "/{instrumento_id}/registros/{registro_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+def excluir_registro_instrumento(
+    instrumento_id: uuid.UUID,
+    registro_id: str,
+    db: Session = Depends(db_dep),
+):
+    try:
+        excluido = InstrumentoRegistroService.excluir(db, instrumento_id, registro_id)
+    except LookupError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+    if not excluido:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Registro do instrumento não encontrado.")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.post(

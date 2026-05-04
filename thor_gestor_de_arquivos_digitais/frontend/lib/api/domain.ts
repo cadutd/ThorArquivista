@@ -5,6 +5,9 @@ import type {
   InstrumentoCampo,
   InstrumentoPesquisaSchema,
   InstrumentoPesquisa,
+  InstrumentoRegistro,
+  InstrumentoRegistroPage,
+  StatusInstrumentoRegistro,
   MidiaArmazenamento,
   StatusInstrumentoPesquisa,
   TipoCampoInstrumento,
@@ -250,6 +253,72 @@ export function reorderInstrumentoCampos(instrumentoId: string, campos: Array<{ 
 
 export function getInstrumentoPesquisaSchema(instrumentoId: string) {
   return apiRequest<InstrumentoPesquisaSchema>(`/instrumentos-pesquisa/${instrumentoId}/schema`);
+}
+
+export type InstrumentoRegistroPayload = {
+  dados: Record<string, unknown>;
+  unidade_acondicionamento_ids?: number[];
+  registro_descritivo_ids?: string[];
+  status?: StatusInstrumentoRegistro;
+};
+
+export type InstrumentoRegistroFilters = Partial<{
+  status: StatusInstrumentoRegistro;
+}>;
+
+export function createInstrumentoRegistro(instrumentoId: string, payload: InstrumentoRegistroPayload) {
+  return apiRequest<InstrumentoRegistro>(`/instrumentos-pesquisa/${instrumentoId}/registros`, {
+    method: "POST",
+    body: JSON.stringify({
+      unidade_acondicionamento_ids: [],
+      registro_descritivo_ids: [],
+      status: "ATIVO",
+      ...payload,
+    }),
+  });
+}
+
+export function listInstrumentoRegistros(
+  instrumentoId: string,
+  {
+    pageSize = 25,
+    cursor,
+    filters = {},
+  }: {
+    pageSize?: number;
+    cursor?: string | null;
+    filters?: InstrumentoRegistroFilters;
+  } = {},
+) {
+  return apiRequest<InstrumentoRegistroPage>(
+    `/instrumentos-pesquisa/${instrumentoId}/registros${queryString({
+      page_size: pageSize,
+      cursor,
+      ...filters,
+    })}`,
+  );
+}
+
+export function getInstrumentoRegistro(instrumentoId: string, registroId: string) {
+  return apiRequest<InstrumentoRegistro>(`/instrumentos-pesquisa/${instrumentoId}/registros/${registroId}`);
+}
+
+export function updateInstrumentoRegistro(instrumentoId: string, registroId: string, payload: InstrumentoRegistroPayload) {
+  return apiRequest<InstrumentoRegistro>(`/instrumentos-pesquisa/${instrumentoId}/registros/${registroId}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      unidade_acondicionamento_ids: [],
+      registro_descritivo_ids: [],
+      status: "ATIVO",
+      ...payload,
+    }),
+  });
+}
+
+export function deleteInstrumentoRegistro(instrumentoId: string, registroId: string) {
+  return apiRequest<void>(`/instrumentos-pesquisa/${instrumentoId}/registros/${registroId}`, {
+    method: "DELETE",
+  });
 }
 
 export function listMidias() {

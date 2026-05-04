@@ -60,6 +60,14 @@ services:
     volumes:
       - thor_meili_data:/meili_data
 
+  mongo:
+    image: mongo:7
+    container_name: thor-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - thor_mongo_data:/data/db
+
   keycloak_db:
     image: postgres:16-alpine
     container_name: thor-keycloak-db
@@ -124,6 +132,8 @@ services:
         condition: service_started
       meilisearch:
         condition: service_started
+      mongo:
+        condition: service_started
       keycloak:
         condition: service_started
     environment:
@@ -132,6 +142,7 @@ services:
       database_url: postgresql+psycopg://thor:thor@postgres:5432/thor_db
 
       redis_url: redis://redis:6379/0
+      mongodb_url: mongodb://mongo:27017/thor_db
       meili_url: http://meilisearch:7700
       meili_master_key: dev-meili-key
       keycloak_url: http://localhost:8081
@@ -185,4 +196,5 @@ volumes:
   thor_pgadmin_data:
   thor_redis_data:
   thor_meili_data:
+  thor_mongo_data:
   thor_keycloak_db_data:

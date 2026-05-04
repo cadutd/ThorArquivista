@@ -14,6 +14,7 @@ class Settings(BaseSettings):
 
     #DB
     database_url: str = "postgresql+psycopg://thor:thor@localhost:5432/thor_db"
+    mongodb_url: str = "mongodb://localhost:27017/thor_db"
 
     # Keycloak
     keycloak_url: str = "http://localhost:8081"  # host (browser)
