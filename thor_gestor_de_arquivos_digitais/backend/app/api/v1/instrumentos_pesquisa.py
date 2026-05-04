@@ -24,6 +24,7 @@ from app.schemas.instrumento_registro import (
     InstrumentoRegistroCreate,
     InstrumentoRegistroOut,
     InstrumentoRegistroPage,
+    InstrumentoRegistroSearch,
     InstrumentoRegistroUpdate,
     StatusInstrumentoRegistro,
 )
@@ -119,6 +120,29 @@ def listar_registros_instrumento(
             status=status_registro,
             page_size=page_size,
             cursor=cursor,
+        )
+    except LookupError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+
+
+@router.post(
+    "/{instrumento_id}/buscar",
+    response_model=InstrumentoRegistroPage,
+)
+def buscar_registros_instrumento(
+    instrumento_id: uuid.UUID,
+    dados: InstrumentoRegistroSearch,
+    db: Session = Depends(db_dep),
+):
+    try:
+        return InstrumentoRegistroService.buscar(
+            db,
+            instrumento_id,
+            q=dados.q,
+            page_size=dados.page_size,
+            cursor=dados.cursor,
         )
     except LookupError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))

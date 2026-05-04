@@ -41,3 +41,9 @@ class InstrumentoRegistroPage(BaseModel):
     page_size: int
     next_cursor: str | None = None
     has_more: bool = False
+
+
+class InstrumentoRegistroSearch(BaseModel):
+    q: str = Field(..., min_length=1)
+    page_size: int = Field(default=50, ge=1, le=100)
+    cursor: str | None = None

@@ -10,6 +10,7 @@ from app.db.mongo import get_instrumento_registros_collection
 from app.db.session import SessionLocal
 from app.models.enums import TipoCampoInstrumento
 from app.models.instrumento_pesquisa import InstrumentoCampo, InstrumentoPesquisa
+from app.services.instrumento_search_service import InstrumentoSearchService
 
 SEED_NAMESPACE = uuid.UUID("f0e4b5af-2c26-4fb7-923e-743693e3a96e")
 REGISTROS_POR_INSTRUMENTO = 35
@@ -41,6 +42,7 @@ def seed_instrumento_registros() -> tuple[int, int, int]:
                     {"$set": documento},
                     upsert=True,
                 )
+                InstrumentoSearchService.indexar_registro(documento)
                 if result.upserted_id:
                     created += 1
                 else:

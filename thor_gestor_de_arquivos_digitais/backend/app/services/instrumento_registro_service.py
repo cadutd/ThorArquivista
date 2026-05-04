@@ -5,6 +5,7 @@ from base64 import urlsafe_b64decode, urlsafe_b64encode
 from binascii import Error as BinasciiError
 from datetime import UTC, datetime
 import json
+import re
 from typing import Any
 
 from pymongo import ReturnDocument
@@ -21,6 +22,7 @@ from app.schemas.instrumento_registro import (
     InstrumentoRegistroUpdate,
     StatusInstrumentoRegistro,
 )
+from app.services.instrumento_search_service import InstrumentoSearchService
 
 
 class InstrumentoRegistroService:
@@ -47,7 +49,13 @@ class InstrumentoRegistroService:
             "atualizado_em": now,
         }
 
-        InstrumentoRegistroService._collection(collection).insert_one(documento)
+        target_collection = InstrumentoRegistroService._collection(collection)
+        target_collection.insert_one(documento)
+        try:
+            InstrumentoSearchService.indexar_registro(documento)
+        except Exception:
+            target_collection.delete_one({"_id": documento["_id"]})
+            raise
         return InstrumentoRegistroService._to_out(documento)
 
     @staticmethod
@@ -74,6 +82,65 @@ class InstrumentoRegistroService:
             ]
 
         safe_page_size = min(max(page_size, 1), 100)
+        documentos = list(
+            InstrumentoRegistroService._collection(collection)
+            .find(filtro)
+            .sort([("criado_em", -1), ("_id", -1)])
+            .limit(safe_page_size + 1)
+        )
+        has_more = len(documentos) > safe_page_size
+        page_documents = documentos[:safe_page_size]
+        next_cursor = (
+            InstrumentoRegistroService._encode_cursor(page_documents[-1])
+            if has_more and page_documents
+            else None
+        )
+        return InstrumentoRegistroPage(
+            items=[InstrumentoRegistroService._to_out(documento) for documento in page_documents],
+            page_size=safe_page_size,
+            next_cursor=next_cursor,
+            has_more=has_more,
+        )
+
+    @staticmethod
+    def buscar(
+        db: Session,
+        instrumento_id: uuid.UUID,
+        q: str,
+        page_size: int = 50,
+        cursor: str | None = None,
+        collection: Collection | None = None,
+    ) -> InstrumentoRegistroPage:
+        campos = InstrumentoRegistroService._schema_campos(db, instrumento_id)
+        campos_busca = [campo for campo in campos if campo.aparece_busca]
+        termo = q.strip()
+        safe_page_size = min(max(page_size, 1), 100)
+
+        filtro: dict[str, Any] = {
+            "instrumento_id": str(instrumento_id),
+            "status": {"$ne": StatusInstrumentoRegistro.EXCLUIDO.value},
+        }
+
+        if termo and campos_busca:
+            escaped = re.escape(termo)
+            filtro["$or"] = [
+                {f"dados.{campo.chave}": {"$regex": escaped, "$options": "i"}}
+                for campo in campos_busca
+            ]
+        elif termo:
+            return InstrumentoRegistroPage(items=[], page_size=safe_page_size)
+
+        if cursor:
+            cursor_data = InstrumentoRegistroService._decode_cursor(cursor)
+            cursor_filter = [
+                {"criado_em": {"$lt": cursor_data["criado_em"]}},
+                {"criado_em": cursor_data["criado_em"], "_id": {"$lt": cursor_data["id"]}},
+            ]
+            if "$or" in filtro:
+                filtro["$and"] = [{"$or": filtro.pop("$or")}, {"$or": cursor_filter}]
+            else:
+                filtro["$or"] = cursor_filter
+
         documentos = list(
             InstrumentoRegistroService._collection(collection)
             .find(filtro)
@@ -139,6 +206,8 @@ class InstrumentoRegistroService:
             },
             return_document=ReturnDocument.AFTER,
         )
+        if result:
+            InstrumentoSearchService.indexar_registro(result)
         return InstrumentoRegistroService._to_out(result) if result else None
 
     @staticmethod
@@ -161,6 +230,8 @@ class InstrumentoRegistroService:
                 }
             },
         )
+        if result.matched_count:
+            InstrumentoSearchService.remover_registro(instrumento_id, registro_id)
         return result.matched_count > 0
 
     @staticmethod

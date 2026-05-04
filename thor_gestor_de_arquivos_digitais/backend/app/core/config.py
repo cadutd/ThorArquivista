@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     #DB
     database_url: str = "postgresql+psycopg://thor:thor@localhost:5432/thor_db"
     mongodb_url: str = "mongodb://localhost:27017/thor_db"
+    meili_url: str = "http://localhost:7700"
+    meili_master_key: str = "dev-meili-key"
 
     # Keycloak
     keycloak_url: str = "http://localhost:8081"  # host (browser)

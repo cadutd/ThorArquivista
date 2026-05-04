@@ -6,11 +6,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Edit, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   deleteInstrumentoRegistro,
   getInstrumentoPesquisaSchema,
   listInstrumentoRegistros,
+  searchInstrumentoRegistros,
 } from "@/lib/api/domain";
 import type { InstrumentoCampoSchema, InstrumentoRegistro, StatusInstrumentoRegistro } from "@/types/domain";
 
@@ -20,19 +22,36 @@ export function InstrumentoRegistrosPage({ instrumentoId }: { instrumentoId: str
   const queryClient = useQueryClient();
   const [cursorStack, setCursorStack] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<StatusInstrumentoRegistro | "">("");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const currentCursor = cursorStack.at(-1) ?? null;
+  const isSearching = searchTerm.trim().length > 0;
   const schemaQuery = useQuery({
     queryKey: ["instrumentos-pesquisa", instrumentoId, "schema"],
     queryFn: () => getInstrumentoPesquisaSchema(instrumentoId),
   });
   const registrosQuery = useQuery({
-    queryKey: ["instrumentos-pesquisa", instrumentoId, "registros", { pageSize: PAGE_SIZE, cursor: currentCursor, status: statusFilter }],
-    queryFn: () =>
-      listInstrumentoRegistros(instrumentoId, {
+    queryKey: [
+      "instrumentos-pesquisa",
+      instrumentoId,
+      "registros",
+      { pageSize: PAGE_SIZE, cursor: currentCursor, status: statusFilter, q: searchTerm },
+    ],
+    queryFn: () => {
+      if (isSearching) {
+        return searchInstrumentoRegistros(instrumentoId, {
+          q: searchTerm,
+          pageSize: PAGE_SIZE,
+          cursor: currentCursor,
+        });
+      }
+
+      return listInstrumentoRegistros(instrumentoId, {
         pageSize: PAGE_SIZE,
         cursor: currentCursor,
         filters: statusFilter ? { status: statusFilter } : {},
-      }),
+      });
+    },
   });
   const remove = useMutation({
     mutationFn: (registroId: string) => deleteInstrumentoRegistro(instrumentoId, registroId),
@@ -85,11 +104,45 @@ export function InstrumentoRegistrosPage({ instrumentoId }: { instrumentoId: str
                 {registros.length} registros nesta página, conforme campos marcados para listagem.
               </CardDescription>
             </div>
-            <label className="flex items-center gap-2 text-sm">
+            <div className="flex flex-col gap-2 sm:items-end">
+              <form
+                className="flex w-full gap-2 sm:w-auto"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  setCursorStack([]);
+                  setSearchTerm(searchInput.trim());
+                }}
+              >
+                <Input
+                  value={searchInput}
+                  placeholder="Buscar registros"
+                  className="h-9 sm:w-64"
+                  onChange={(event) => setSearchInput(event.target.value)}
+                />
+                <Button type="submit" size="sm">
+                  Buscar
+                </Button>
+                {isSearching ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setCursorStack([]);
+                      setSearchInput("");
+                      setSearchTerm("");
+                    }}
+                  >
+                    Limpar
+                  </Button>
+                ) : null}
+              </form>
+              <label className="flex items-center gap-2 text-sm">
               <span className="text-muted-foreground">Status</span>
               <select
                 className="h-9 rounded-md border bg-background px-3 text-sm"
                 value={statusFilter}
+                disabled={isSearching}
                 onChange={(event) => {
                   setCursorStack([]);
                   setStatusFilter(event.target.value as StatusInstrumentoRegistro | "");
@@ -100,7 +153,8 @@ export function InstrumentoRegistrosPage({ instrumentoId }: { instrumentoId: str
                 <option value="INATIVO">Inativo</option>
                 <option value="EXCLUIDO">Excluido</option>
               </select>
-            </label>
+              </label>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="overflow-x-auto p-0">

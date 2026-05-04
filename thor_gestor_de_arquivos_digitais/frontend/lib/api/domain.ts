@@ -299,6 +299,28 @@ export function listInstrumentoRegistros(
   );
 }
 
+export function searchInstrumentoRegistros(
+  instrumentoId: string,
+  {
+    q,
+    pageSize = 25,
+    cursor,
+  }: {
+    q: string;
+    pageSize?: number;
+    cursor?: string | null;
+  },
+) {
+  return apiRequest<InstrumentoRegistroPage>(`/instrumentos-pesquisa/${instrumentoId}/buscar`, {
+    method: "POST",
+    body: JSON.stringify({
+      q,
+      page_size: pageSize,
+      cursor: cursor ?? null,
+    }),
+  });
+}
+
 export function getInstrumentoRegistro(instrumentoId: string, registroId: string) {
   return apiRequest<InstrumentoRegistro>(`/instrumentos-pesquisa/${instrumentoId}/registros/${registroId}`);
 }
