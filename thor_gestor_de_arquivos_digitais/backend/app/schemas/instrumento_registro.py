@@ -41,6 +41,7 @@ class InstrumentoRegistroPage(BaseModel):
     page_size: int
     next_cursor: str | None = None
     has_more: bool = False
+    total: int | None = None
 
 
 class InstrumentoRegistroSearch(BaseModel):
@@ -55,6 +56,7 @@ class InstrumentoRegistroAdvancedSearch(BaseModel):
     sort: list[dict[str, str]] = Field(default_factory=list)
     page_size: int = Field(default=50, ge=1, le=100)
     cursor: str | None = None
+    offset: int | None = Field(default=None, ge=0)
 
 
 class InstrumentoRegistroFacetValue(BaseModel):

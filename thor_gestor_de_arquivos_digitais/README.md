@@ -207,6 +207,14 @@ Esses scripts são idempotentes e criam:
 
 O seed de registros gera 35 registros por instrumento e publica eventos na fila `indexacao`. O `index_worker` deve estar rodando para que a massa também seja indexada no Meilisearch.
 
+Massa de mídias de armazenamento:
+
+```bash
+docker compose exec backend python -m app.scripts.seed_midias_armazenamento
+```
+
+O script é idempotente e cria/atualiza 72 mídias de teste, com tipos variados (`FILESYSTEM`, `NAS`, `NFS`, `LTO`, `S3`, `CLOUD`) e status ativo/inativo. Essa massa permite validar busca, filtros por metadado, paginação e lazy load na tela `/midias`.
+
 ## Backend
 
 Stack principal:
@@ -276,7 +284,7 @@ Rotas principais sob `/api/v1`:
 | `/auth/me` | Dados do usuário autenticado |
 | `/dashboard` | Totais agregados para o dashboard |
 | `/unidades-acondicionamento` | CRUD, filtros e paginação de unidades |
-| `/midias-armazenamento` | Cadastro e listagem de mídias |
+| `/midias-armazenamento` | Cadastro, filtros e paginação de mídias |
 | `/unidades-acondicionamento/{id}/copias` | Cópias digitais de uma unidade |
 | `/unidades-acondicionamento/{id}/eventos-preservacao` | Eventos de preservação de uma unidade |
 | `/locais-guarda` | CRUD de locais de guarda |
@@ -288,6 +296,8 @@ Rotas principais sob `/api/v1`:
 | `/instrumentos-pesquisa` | Cadastro de instrumentos, campos e registros dinâmicos |
 | `/instrumentos-pesquisa/{id}/registros` | Listagem dinâmica por cursor |
 | `/instrumentos-pesquisa/{id}/buscar` | Busca simples inicial no MongoDB, usando campos `aparece_busca` |
+| `/instrumentos-pesquisa/{id}/buscar-avancado` | Busca avançada dinâmica no Meilisearch |
+| `/instrumentos-pesquisa/{id}/facetas` | Valores facetados dinâmicos a partir do índice de busca |
 
 Endpoints de atribuição de posição:
 
@@ -344,7 +354,7 @@ Telas principais:
 
 No layout autenticado, o bloco de marca à esquerda do cabeçalho/sidebar (`Thor Gestor`) aponta para `/dashboard`.
 
-O CRUD de unidades usa paginação de backend no formato:
+As telas de unidades, mídias, instrumentos de pesquisa e busca avançada de registros usam paginação de backend no formato:
 
 ```text
 XX registros de YY | página B de C  Primeira Anterior 1 2 3 ... C Próxima Última
@@ -461,6 +471,12 @@ docker compose exec backend python -m app.scripts.seed_instrumento_campos
 docker compose exec backend python -m app.scripts.seed_instrumento_registros
 ```
 
+Executar seed de mídias de armazenamento:
+
+```bash
+docker compose exec backend python -m app.scripts.seed_midias_armazenamento
+```
+
 Reindexar um instrumento manualmente pela fila Celery:
 
 ```bash
@@ -512,6 +528,7 @@ A migration `000002_storage_locations` adiciona:
 - Assets do frontend em `frontend/public` precisam ser copiados para a imagem final. O `frontend/Dockerfile` já faz isso.
 - O script de seed usa SQL explícito para respeitar os nomes reais dos enums criados pela migration (`tipo_suporte`, `tipo_unidade`, `nivel_acesso`, `status_unidade`).
 - O seed de endereçamento também usa SQL explícito para respeitar os enums PostgreSQL e é seguro para execução repetida.
+- O model de mídias usa explicitamente o enum PostgreSQL `tipo_midia_armazenamento`, criado pela migration inicial.
 - O worker de indexação é iniciado pelo Compose como `index_worker` e consome a fila Celery `indexacao` no Redis.
 - A API não espera o Meilisearch ao cadastrar registros dinâmicos; ela salva no MongoDB e publica um evento para processamento em segundo plano.
 

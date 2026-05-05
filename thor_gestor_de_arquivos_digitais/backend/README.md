@@ -65,7 +65,7 @@ Todas as rotas abaixo ficam sob `/api/v1`.
 | Usuário autenticado | `/auth/me` | Protegida |
 | Dashboard | `/dashboard` | Indicadores agregados |
 | Unidades | `/unidades-acondicionamento` | CRUD, filtros e paginação |
-| Mídias | `/midias-armazenamento` | Cadastro e listagem |
+| Mídias | `/midias-armazenamento` | Cadastro, filtros e paginação |
 | Cópias digitais | `/unidades-acondicionamento/{id}/copias` | Cópias por unidade |
 | Eventos | `/unidades-acondicionamento/{id}/eventos-preservacao` | Eventos por unidade |
 | Locais de guarda | `/locais-guarda` | CRUD lógico com exclusão por inativação |
@@ -86,6 +86,8 @@ Rotas principais de instrumentos de pesquisa:
 | `/instrumentos-pesquisa/{instrumento_id}/schema` | Schema usado pelo formulário e listagem dinâmica |
 | `/instrumentos-pesquisa/{instrumento_id}/registros` | CRUD e listagem por cursor dos registros no MongoDB |
 | `/instrumentos-pesquisa/{instrumento_id}/buscar` | Busca simples inicial por regex nos campos com `aparece_busca` |
+| `/instrumentos-pesquisa/{instrumento_id}/buscar-avancado` | Busca avançada dinâmica no Meilisearch |
+| `/instrumentos-pesquisa/{instrumento_id}/facetas` | Distribuição de facetas dos campos configurados como facetáveis |
 
 Endpoints de atribuição:
 
@@ -266,6 +268,14 @@ Conferência rápida:
 ```bash
 docker compose exec postgres psql -U thor -d thor_db -c "select lg.codigo as local, count(distinct zg.id) zonas, count(distinct ea.id) estruturas, count(distinct ca.id) compartimentos, count(pa.id) posicoes from locais_guarda lg join zonas_guarda zg on zg.id_local_guarda = lg.id join estruturas_armazenamento ea on ea.id_zona_guarda = zg.id join compartimentos_armazenamento ca on ca.id_estrutura_armazenamento = ea.id join posicoes_armazenamento pa on pa.id_compartimento_armazenamento = ca.id where lg.codigo = 'TEST-DEP-01' group by lg.codigo;"
 ```
+
+Massa de mídias de armazenamento:
+
+```bash
+docker compose exec backend python -m app.scripts.seed_midias_armazenamento
+```
+
+O script é idempotente e cria/atualiza 72 mídias de teste, distribuídas entre os tipos `FILESYSTEM`, `NAS`, `NFS`, `LTO`, `S3` e `CLOUD`, com status ativo/inativo. Ele serve para validar filtros, paginação e lazy load em `/midias`.
 
 Massa de instrumentos de pesquisa:
 

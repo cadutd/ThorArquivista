@@ -15,7 +15,12 @@ class MidiaArmazenamento(Base):
 
     nome: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     tipo: Mapped[TipoMidiaArmazenamento] = mapped_column(
-        SAEnum(TipoMidiaArmazenamento), index=True
+        SAEnum(
+            TipoMidiaArmazenamento,
+            name="tipo_midia_armazenamento",
+            create_type=False,
+        ),
+        index=True,
     )
 
     descricao: Mapped[str | None] = mapped_column(String(2000))

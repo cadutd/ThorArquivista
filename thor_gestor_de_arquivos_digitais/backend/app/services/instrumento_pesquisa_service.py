@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import uuid
 
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.models.enums import StatusInstrumentoPesquisa, TipoInstrumentoPesquisa
+from app.models.enums import StatusInstrumentoPesquisa, TipoInstrumentoPesquisa, VisibilidadeInstrumentoPesquisa
 from app.models.instrumento_pesquisa import InstrumentoCampo, InstrumentoPesquisa
 from app.schemas.instrumento_pesquisa import (
     InstrumentoPesquisaCreate,
@@ -32,15 +33,28 @@ class InstrumentoPesquisaService:
         db: Session,
         limit: int = 50,
         offset: int = 0,
+        q: str | None = None,
         tipo: TipoInstrumentoPesquisa | None = None,
         status: StatusInstrumentoPesquisa | None = None,
+        visibilidade: VisibilidadeInstrumentoPesquisa | None = None,
     ) -> tuple[list[InstrumentoPesquisa], int]:
         query = db.query(InstrumentoPesquisa)
 
+        if q:
+            termo = f"%{q.strip()}%"
+            query = query.filter(
+                or_(
+                    InstrumentoPesquisa.nome.ilike(termo),
+                    InstrumentoPesquisa.descricao.ilike(termo),
+                    InstrumentoPesquisa.responsavel.ilike(termo),
+                )
+            )
         if tipo:
             query = query.filter(InstrumentoPesquisa.tipo == tipo)
         if status:
             query = query.filter(InstrumentoPesquisa.status == status)
+        if visibilidade:
+            query = query.filter(InstrumentoPesquisa.visibilidade == visibilidade)
 
         total = query.count()
         items = (

@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, ClipboardList, Edit, FileInput, Loader2, Plus, Search, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ClipboardList, Edit, FileInput, Filter, Loader2, Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -22,6 +22,7 @@ import {
   updateInstrumentoCampo,
   updateInstrumentoPesquisa,
   type InstrumentoCampoPayload,
+  type InstrumentoPesquisaFilters,
   type InstrumentoPesquisaPayload,
 } from "@/lib/api/domain";
 import type {
@@ -73,24 +74,26 @@ const campoTipoOptions: Array<[TipoCampoInstrumento, string]> = [
   ["CAMPO_CALCULADO", "Campo calculado"],
 ];
 
+const DEFAULT_PAGE_SIZE = 20;
+
 export function InstrumentosPesquisaPage() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<InstrumentoPesquisa | null>(null);
   const [deleting, setDeleting] = useState<InstrumentoPesquisa | null>(null);
-  const [filters, setFilters] = useState<{ tipo: "" | TipoInstrumentoPesquisa; status: "" | StatusInstrumentoPesquisa }>({
-    tipo: "",
-    status: "",
-  });
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [draftFilters, setDraftFilters] = useState<InstrumentoPesquisaFilters>({});
+  const [filters, setFilters] = useState<InstrumentoPesquisaFilters>({});
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const query = useQuery({
-    queryKey: ["instrumentos-pesquisa", filters],
+    queryKey: ["instrumentos-pesquisa", filters, pageIndex, pageSize],
     queryFn: () =>
       listInstrumentosPesquisa({
-        filters: {
-          tipo: filters.tipo || undefined,
-          status: filters.status || undefined,
-        },
+        limit: pageSize,
+        offset: pageIndex * pageSize,
+        filters,
       }),
   });
 
@@ -112,11 +115,21 @@ export function InstrumentosPesquisaPage() {
     },
   });
 
-  const countLabel = useMemo(() => {
-    if (query.isLoading) return "Carregando registros...";
-    const total = query.data?.total ?? 0;
-    return `${total} ${total === 1 ? "registro listado" : "registros listados"}`;
-  }, [query.data?.total, query.isLoading]);
+  const total = query.data?.total ?? 0;
+  const data = query.data?.items ?? [];
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const currentPage = Math.min(pageIndex + 1, totalPages);
+
+  function submitSearch(nextFilters = draftFilters) {
+    setPageIndex(0);
+    setFilters(cleanInstrumentoFilters(nextFilters));
+  }
+
+  function clearFilters() {
+    setDraftFilters({});
+    setPageIndex(0);
+    setFilters({});
+  }
 
   return (
     <div className="space-y-6">
@@ -139,34 +152,84 @@ export function InstrumentosPesquisaPage() {
         </Button>
       </div>
 
-      <div className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-end">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <div className="relative w-full lg:w-80">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            className="pl-9"
+            placeholder="Buscar instrumento"
+            value={draftFilters.q ?? ""}
+            onChange={(event) => setDraftFilters((current) => ({ ...current, q: event.target.value }))}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") submitSearch();
+            }}
+          />
+        </div>
+        <Button type="button" onClick={() => submitSearch()}>
+          <Search className="h-4 w-4" />
+          Pesquisar
+        </Button>
+        <Button type="button" variant="outline" onClick={() => setShowAdvanced((value) => !value)}>
+          <Filter className="h-4 w-4" />
+          Busca por metadado
+        </Button>
+      </div>
+
+      <PaginationControls
+        currentPage={currentPage}
+        totalPages={totalPages}
+        pageSize={pageSize}
+        displayedCount={data.length}
+        total={total}
+        isLoading={query.isFetching}
+        onPageChange={setPageIndex}
+        onPageSizeChange={(nextPageSize) => {
+          setPageSize(nextPageSize);
+          setPageIndex(0);
+        }}
+      />
+
+      {showAdvanced ? (
+      <div className="grid gap-3 rounded-md border p-4 md:grid-cols-2 xl:grid-cols-4">
         <SelectField
           label="Tipo"
-          value={filters.tipo}
+          value={draftFilters.tipo ?? ""}
           options={tipoOptions}
           includeEmpty
-          onChange={(tipo) => setFilters((current) => ({ ...current, tipo: tipo as typeof current.tipo }))}
+          onChange={(tipo) => setDraftFilters((current) => ({ ...current, tipo: tipo ? tipo as TipoInstrumentoPesquisa : undefined }))}
         />
         <SelectField
           label="Status"
-          value={filters.status}
+          value={draftFilters.status ?? ""}
           options={statusOptions}
           includeEmpty
-          onChange={(status) => setFilters((current) => ({ ...current, status: status as typeof current.status }))}
+          onChange={(status) => setDraftFilters((current) => ({ ...current, status: status ? status as StatusInstrumentoPesquisa : undefined }))}
         />
+        <SelectField
+          label="Visibilidade"
+          value={draftFilters.visibilidade ?? ""}
+          options={visibilidadeOptions}
+          includeEmpty
+          onChange={(visibilidade) => setDraftFilters((current) => ({ ...current, visibilidade: visibilidade ? visibilidade as VisibilidadeInstrumentoPesquisa : undefined }))}
+        />
+        <div className="flex items-end gap-2">
+          <Button type="button" onClick={() => submitSearch()}>
+            <Search className="h-4 w-4" />
+            Pesquisar
+          </Button>
+          <Button type="button" variant="outline" onClick={clearFilters}>
+            Limpar filtros
+          </Button>
+        </div>
       </div>
+      ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Cadastro de instrumentos</CardTitle>
-          <CardDescription>{countLabel}</CardDescription>
-        </CardHeader>
-        <CardContent className="overflow-x-auto p-0">
+      <div className="overflow-hidden rounded-md border">
           {query.error ? (
             <p className="p-6 text-sm text-destructive">{query.error.message}</p>
           ) : (
             <InstrumentosTable
-              data={query.data?.items ?? []}
+              data={data}
               onEdit={(instrumento) => {
                 mutation.reset();
                 setEditing(instrumento);
@@ -178,8 +241,21 @@ export function InstrumentosPesquisaPage() {
               }}
             />
           )}
-        </CardContent>
-      </Card>
+      </div>
+
+      <PaginationControls
+        currentPage={currentPage}
+        totalPages={totalPages}
+        pageSize={pageSize}
+        displayedCount={data.length}
+        total={total}
+        isLoading={query.isFetching}
+        onPageChange={setPageIndex}
+        onPageSizeChange={(nextPageSize) => {
+          setPageSize(nextPageSize);
+          setPageIndex(0);
+        }}
+      />
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[90vh] max-w-5xl overflow-y-auto">
@@ -248,6 +324,99 @@ export function InstrumentosPesquisaPage() {
       </Dialog>
     </div>
   );
+}
+
+function PaginationControls({
+  currentPage,
+  totalPages,
+  pageSize,
+  displayedCount,
+  total,
+  isLoading,
+  onPageChange,
+  onPageSizeChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  pageSize: number;
+  displayedCount: number;
+  total: number;
+  isLoading: boolean;
+  onPageChange: (pageIndex: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
+}) {
+  const pages = getPaginationItems(currentPage, totalPages);
+
+  return (
+    <div className="flex flex-col gap-3 rounded-md border px-3 py-2">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <p className="text-sm text-muted-foreground">
+          {displayedCount} registros de {total} | pagina {currentPage} de {totalPages}
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage <= 1} onClick={() => onPageChange(0)}>
+            Primeira
+          </Button>
+          <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage <= 1} onClick={() => onPageChange(currentPage - 2)}>
+            Anterior
+          </Button>
+          {pages.map((page, index) =>
+            page === "ellipsis" ? (
+              <span key={`ellipsis-${index}`} className="flex h-9 min-w-9 items-center justify-center px-2 text-sm text-muted-foreground">
+                ...
+              </span>
+            ) : (
+              <Button key={page} type="button" variant={page === currentPage ? "default" : "outline"} size="sm" className="min-w-9 px-2" disabled={isLoading || page === currentPage} onClick={() => onPageChange(page - 1)}>
+                {page}
+              </Button>
+            ),
+          )}
+          <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage >= totalPages} onClick={() => onPageChange(currentPage)}>
+            Proxima
+          </Button>
+          <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage >= totalPages} onClick={() => onPageChange(totalPages - 1)}>
+            Ultima
+          </Button>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        <Label htmlFor="instrumentos-page-size" className="text-sm text-muted-foreground">
+          Registros por pagina:
+        </Label>
+        <select
+          id="instrumentos-page-size"
+          className="h-9 rounded-md border bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          value={pageSize}
+          onChange={(event) => onPageSizeChange(Number(event.target.value))}
+        >
+          <option value={20}>20</option>
+          <option value={50}>50</option>
+          <option value={100}>100</option>
+        </select>
+      </div>
+    </div>
+  );
+}
+
+function getPaginationItems(currentPage: number, totalPages: number) {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
+
+  const pages = new Set([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
+  const sortedPages = Array.from(pages)
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((left, right) => left - right);
+
+  return sortedPages.flatMap((page, index) => {
+    const previousPage = sortedPages[index - 1];
+    if (previousPage && page - previousPage > 1) return ["ellipsis" as const, page];
+    return [page];
+  });
+}
+
+function cleanInstrumentoFilters(filters: InstrumentoPesquisaFilters): InstrumentoPesquisaFilters {
+  return Object.fromEntries(
+    Object.entries(filters).filter(([, value]) => value !== undefined && value !== null && value !== ""),
+  ) as InstrumentoPesquisaFilters;
 }
 
 function InstrumentosTable({

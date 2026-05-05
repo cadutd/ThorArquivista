@@ -166,6 +166,7 @@ class InstrumentoRegistroService:
         sort: list[dict[str, str]] | None = None,
         page_size: int = 50,
         cursor: str | None = None,
+        offset: int | None = None,
     ) -> InstrumentoRegistroPage:
         campos = InstrumentoRegistroService._schema_campos(db, instrumento_id)
         filtros_por_chave = {campo.chave: campo for campo in campos if campo.filtro_avancado}
@@ -200,6 +201,7 @@ class InstrumentoRegistroService:
             sort=meili_sort,
             page_size=safe_page_size,
             cursor=cursor,
+            offset=offset,
         )
 
         return InstrumentoRegistroPage(
@@ -207,6 +209,7 @@ class InstrumentoRegistroService:
             page_size=safe_page_size,
             next_cursor=result["next_cursor"],
             has_more=result["has_more"],
+            total=result["total"],
         )
 
     @staticmethod

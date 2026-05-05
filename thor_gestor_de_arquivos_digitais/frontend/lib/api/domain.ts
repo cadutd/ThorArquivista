@@ -12,6 +12,7 @@ import type {
   StatusInstrumentoPesquisa,
   TipoCampoInstrumento,
   TipoInstrumentoPesquisa,
+  TipoMidiaArmazenamento,
   UnidadeAcondicionamento,
   VisibilidadeInstrumentoPesquisa,
 } from "@/types/domain";
@@ -45,10 +46,16 @@ export type UnidadeFilters = Partial<{
 
 export type MidiaPayload = {
   nome: string;
-  tipo: string;
+  tipo: TipoMidiaArmazenamento;
   descricao?: string | null;
-  ativo: boolean;
+  ativo?: boolean;
 };
+
+export type MidiaFilters = Partial<{
+  q: string;
+  tipo: TipoMidiaArmazenamento;
+  ativo: boolean;
+}>;
 
 export type InstrumentoPesquisaPayload = {
   nome: string;
@@ -60,8 +67,10 @@ export type InstrumentoPesquisaPayload = {
 };
 
 export type InstrumentoPesquisaFilters = Partial<{
+  q: string;
   tipo: TipoInstrumentoPesquisa;
   status: StatusInstrumentoPesquisa;
+  visibilidade: VisibilidadeInstrumentoPesquisa;
 }>;
 
 export type InstrumentoCampoPayload = {
@@ -103,6 +112,13 @@ export type UnidadePage = {
 
 export type InstrumentoPesquisaPage = {
   items: InstrumentoPesquisa[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export type MidiaPage = {
+  items: MidiaArmazenamento[];
   total: number;
   limit: number;
   offset: number;
@@ -327,6 +343,7 @@ export type InstrumentoAdvancedSearchPayload = {
   sort?: Array<Record<string, "asc" | "desc">>;
   page_size?: number;
   cursor?: string | null;
+  offset?: number | null;
 };
 
 export function advancedSearchInstrumentoRegistros(
@@ -341,6 +358,7 @@ export function advancedSearchInstrumentoRegistros(
       sort: [],
       page_size: 25,
       cursor: null,
+      offset: null,
       ...payload,
     }),
   });
@@ -386,8 +404,29 @@ export function deleteInstrumentoRegistro(instrumentoId: string, registroId: str
   });
 }
 
-export function listMidias() {
-  return apiRequest<MidiaArmazenamento[]>("/midias-armazenamento");
+export function listMidiasPage({
+  limit = 50,
+  offset = 0,
+  filters = {},
+}: {
+  limit?: number;
+  offset?: number;
+  filters?: MidiaFilters;
+} = {}) {
+  return apiRequest<MidiaPage>(
+    `/midias-armazenamento${queryString({
+      limit,
+      offset,
+      q: filters.q,
+      tipo: filters.tipo,
+      ativo: filters.ativo === undefined ? undefined : String(filters.ativo),
+    })}`,
+  );
+}
+
+export async function listMidias() {
+  const page = await listMidiasPage({ limit: 100 });
+  return page.items;
 }
 
 export function getDashboardStats() {

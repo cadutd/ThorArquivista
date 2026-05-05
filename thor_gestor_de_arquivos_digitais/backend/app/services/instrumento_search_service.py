@@ -46,14 +46,15 @@ class InstrumentoSearchService:
         sort: list[str],
         page_size: int,
         cursor: str | None,
+        offset: int | None = None,
     ) -> dict[str, Any]:
         index_uid = InstrumentoSearchService.index_uid(str(instrumento_id))
-        offset = InstrumentoSearchService.decode_offset(cursor)
+        current_offset = max(offset, 0) if offset is not None else InstrumentoSearchService.decode_offset(cursor)
 
         payload: dict[str, Any] = {
             "q": q or "",
             "limit": page_size,
-            "offset": offset,
+            "offset": current_offset,
             "filter": filtros,
         }
         if sort:
@@ -64,10 +65,11 @@ class InstrumentoSearchService:
             response.raise_for_status()
             data = response.json()
 
-        next_offset = offset + len(data.get("hits", []))
+        next_offset = current_offset + len(data.get("hits", []))
         estimated_total = data.get("estimatedTotalHits") or 0
         return {
             "hits": data.get("hits", []),
+            "total": estimated_total,
             "next_cursor": (
                 InstrumentoSearchService.encode_offset(next_offset)
                 if next_offset < estimated_total

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 from app.models.enums import TipoMidiaArmazenamento
 
@@ -25,6 +27,13 @@ class MidiaArmazenamentoUpdate(BaseModel):
 class MidiaArmazenamentoOut(MidiaArmazenamentoBase):
     id: int
     id_posicao_armazenamento: int | None = None
-    criado_em: str | None = None
+    criado_em: datetime | None = None
 
     model_config = {"from_attributes": True}
+
+
+class MidiaArmazenamentoPage(BaseModel):
+    items: list[MidiaArmazenamentoOut]
+    total: int
+    limit: int
+    offset: int

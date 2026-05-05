@@ -157,4 +157,5 @@ export type InstrumentoRegistroPage = {
   page_size: number;
   next_cursor?: string | null;
   has_more: boolean;
+  total?: number | null;
 };

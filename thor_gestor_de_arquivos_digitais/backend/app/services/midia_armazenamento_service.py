@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.models.enums import TipoMidiaArmazenamento
 from app.models.midia_armazenamento import MidiaArmazenamento
 from app.schemas.midia_armazenamento import MidiaArmazenamentoCreate
 
@@ -31,11 +33,30 @@ class MidiaArmazenamentoService:
         db: Session,
         limit: int = 50,
         offset: int = 0,
-    ) -> list[MidiaArmazenamento]:
-        return (
-            db.query(MidiaArmazenamento)
-            .order_by(MidiaArmazenamento.id.desc())
-            .offset(offset)
-            .limit(limit)
+        q: str | None = None,
+        tipo: TipoMidiaArmazenamento | None = None,
+        ativo: bool | None = None,
+    ) -> tuple[list[MidiaArmazenamento], int]:
+        query = db.query(MidiaArmazenamento)
+
+        if q:
+            termo = f"%{q.strip()}%"
+            query = query.filter(
+                or_(
+                    MidiaArmazenamento.nome.ilike(termo),
+                    MidiaArmazenamento.descricao.ilike(termo),
+                )
+            )
+        if tipo:
+            query = query.filter(MidiaArmazenamento.tipo == tipo)
+        if ativo is not None:
+            query = query.filter(MidiaArmazenamento.ativo.is_(ativo))
+
+        total = query.count()
+        items = (
+            query.order_by(MidiaArmazenamento.id.desc())
+            .offset(max(offset, 0))
+            .limit(min(max(limit, 1), 100))
             .all()
         )
+        return items, total

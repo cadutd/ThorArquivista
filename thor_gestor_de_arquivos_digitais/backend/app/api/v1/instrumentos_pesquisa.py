@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import db_dep
-from app.models.enums import StatusInstrumentoPesquisa, TipoInstrumentoPesquisa
+from app.models.enums import StatusInstrumentoPesquisa, TipoInstrumentoPesquisa, VisibilidadeInstrumentoPesquisa
 from app.schemas.instrumento_campo import (
     InstrumentoCampoCreate,
     InstrumentoCampoOut,
@@ -54,15 +54,19 @@ def listar_instrumentos_pesquisa(
     db: Session = Depends(db_dep),
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
+    q: str | None = Query(default=None),
     tipo: TipoInstrumentoPesquisa | None = None,
     status_instrumento: StatusInstrumentoPesquisa | None = Query(default=None, alias="status"),
+    visibilidade: VisibilidadeInstrumentoPesquisa | None = None,
 ):
     items, total = InstrumentoPesquisaService.listar(
         db,
         limit=limit,
         offset=offset,
+        q=q,
         tipo=tipo,
         status=status_instrumento,
+        visibilidade=visibilidade,
     )
     return InstrumentoPesquisaPage(
         items=items,
@@ -170,6 +174,7 @@ def buscar_registros_instrumento_avancado(
             sort=dados.sort,
             page_size=dados.page_size,
             cursor=dados.cursor,
+            offset=dados.offset,
         )
     except LookupError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
