@@ -102,6 +102,8 @@ def value_for_campo(
     if tipo == TipoCampoInstrumento.TEXTO_LONGO:
         return f"Resumo de teste {index:03d} para {instrumento.nome}."
     if tipo == TipoCampoInstrumento.NUMERO:
+        if "ano" in campo.chave:
+            return 1900 + index
         return 100 + index
     if tipo == TipoCampoInstrumento.DATA:
         return (datetime(2026, 1, 1, tzinfo=UTC) + timedelta(days=index)).date().isoformat()

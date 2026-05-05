@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, ClipboardList, Edit, FileInput, Loader2, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ClipboardList, Edit, FileInput, Loader2, Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -296,6 +296,11 @@ function InstrumentosTable({
                 <Button asChild variant="ghost" size="icon" title="Listagem dinâmica de registros">
                   <Link href={`/instrumentos-pesquisa/${instrumento.id}/registros`}>
                     <ClipboardList className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button asChild variant="ghost" size="icon" title="Busca avançada">
+                  <Link href={`/instrumentos-pesquisa/${instrumento.id}/busca-avancada`}>
+                    <Search className="h-4 w-4" />
                   </Link>
                 </Button>
                 <Button variant="ghost" size="icon" title="Excluir instrumento" onClick={() => onDelete(instrumento)}>

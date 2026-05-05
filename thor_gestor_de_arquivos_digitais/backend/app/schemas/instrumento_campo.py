@@ -80,6 +80,8 @@ class InstrumentoCampoSchema(BaseModel):
     aparece_listagem: bool
     aparece_busca: bool
     filtro_avancado: bool
+    facetavel: bool
+    ordenavel: bool
 
 
 class InstrumentoCampoReordenarItem(BaseModel):

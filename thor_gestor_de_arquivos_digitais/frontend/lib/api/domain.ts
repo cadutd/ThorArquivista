@@ -321,6 +321,49 @@ export function searchInstrumentoRegistros(
   });
 }
 
+export type InstrumentoAdvancedSearchPayload = {
+  q?: string;
+  filters?: Record<string, unknown>;
+  sort?: Array<Record<string, "asc" | "desc">>;
+  page_size?: number;
+  cursor?: string | null;
+};
+
+export function advancedSearchInstrumentoRegistros(
+  instrumentoId: string,
+  payload: InstrumentoAdvancedSearchPayload,
+) {
+  return apiRequest<InstrumentoRegistroPage>(`/instrumentos-pesquisa/${instrumentoId}/buscar-avancado`, {
+    method: "POST",
+    body: JSON.stringify({
+      q: "",
+      filters: {},
+      sort: [],
+      page_size: 25,
+      cursor: null,
+      ...payload,
+    }),
+  });
+}
+
+export type InstrumentoFacetValue = {
+  value: string;
+  count: number;
+};
+
+export type InstrumentoFacetField = {
+  campo: string;
+  values: InstrumentoFacetValue[];
+};
+
+export type InstrumentoFacetsResponse = {
+  facets: InstrumentoFacetField[];
+};
+
+export function getInstrumentoRegistroFacets(instrumentoId: string) {
+  return apiRequest<InstrumentoFacetsResponse>(`/instrumentos-pesquisa/${instrumentoId}/facetas`);
+}
+
 export function getInstrumentoRegistro(instrumentoId: string, registroId: string) {
   return apiRequest<InstrumentoRegistro>(`/instrumentos-pesquisa/${instrumentoId}/registros/${registroId}`);
 }

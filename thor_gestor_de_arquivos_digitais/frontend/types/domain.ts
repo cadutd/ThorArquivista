@@ -124,6 +124,8 @@ export type InstrumentoCampoSchema = Pick<
   | "aparece_listagem"
   | "aparece_busca"
   | "filtro_avancado"
+  | "facetavel"
+  | "ordenavel"
 >;
 
 export type InstrumentoPesquisaSchema = {

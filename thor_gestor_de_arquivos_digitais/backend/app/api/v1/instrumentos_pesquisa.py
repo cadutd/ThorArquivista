@@ -22,6 +22,8 @@ from app.schemas.instrumento_pesquisa import (
 )
 from app.schemas.instrumento_registro import (
     InstrumentoRegistroCreate,
+    InstrumentoRegistroAdvancedSearch,
+    InstrumentoRegistroFacets,
     InstrumentoRegistroOut,
     InstrumentoRegistroPage,
     InstrumentoRegistroSearch,
@@ -144,6 +146,47 @@ def buscar_registros_instrumento(
             page_size=dados.page_size,
             cursor=dados.cursor,
         )
+    except LookupError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+
+
+@router.post(
+    "/{instrumento_id}/buscar-avancado",
+    response_model=InstrumentoRegistroPage,
+)
+def buscar_registros_instrumento_avancado(
+    instrumento_id: uuid.UUID,
+    dados: InstrumentoRegistroAdvancedSearch,
+    db: Session = Depends(db_dep),
+):
+    try:
+        return InstrumentoRegistroService.buscar_avancado(
+            db,
+            instrumento_id,
+            q=dados.q,
+            filters=dados.filters,
+            sort=dados.sort,
+            page_size=dados.page_size,
+            cursor=dados.cursor,
+        )
+    except LookupError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+
+
+@router.get(
+    "/{instrumento_id}/facetas",
+    response_model=InstrumentoRegistroFacets,
+)
+def listar_facetas_instrumento(
+    instrumento_id: uuid.UUID,
+    db: Session = Depends(db_dep),
+):
+    try:
+        return {"facets": InstrumentoRegistroService.listar_facetas(db, instrumento_id)}
     except LookupError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValueError as e:

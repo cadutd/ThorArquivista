@@ -23,6 +23,7 @@ from app.schemas.instrumento_registro import (
     StatusInstrumentoRegistro,
 )
 from app.services.instrumento_indexing_events import InstrumentoIndexingEventPublisher
+from app.services.instrumento_search_service import InstrumentoSearchService
 
 
 class InstrumentoRegistroService:
@@ -157,6 +158,97 @@ class InstrumentoRegistroService:
         )
 
     @staticmethod
+    def buscar_avancado(
+        db: Session,
+        instrumento_id: uuid.UUID,
+        q: str | None = "",
+        filters: dict[str, Any] | None = None,
+        sort: list[dict[str, str]] | None = None,
+        page_size: int = 50,
+        cursor: str | None = None,
+    ) -> InstrumentoRegistroPage:
+        campos = InstrumentoRegistroService._schema_campos(db, instrumento_id)
+        filtros_por_chave = {campo.chave: campo for campo in campos if campo.filtro_avancado}
+        ordenaveis = {campo.chave for campo in campos if campo.ordenavel}
+
+        meili_filters = ["status != EXCLUIDO"]
+        for chave, valor in (filters or {}).items():
+            if chave not in filtros_por_chave:
+                raise ValueError(f"O campo '{chave}' não está configurado para filtro avançado.")
+            meili_filters.append(InstrumentoRegistroService._advanced_filter(filtros_por_chave[chave], valor))
+
+        meili_sort: list[str] = []
+        for item in sort or []:
+            for chave, direction in item.items():
+                if chave not in ordenaveis:
+                    raise ValueError(f"O campo '{chave}' não está configurado para ordenação.")
+                normalized_direction = direction.lower()
+                if normalized_direction not in {"asc", "desc"}:
+                    raise ValueError("A ordenação deve usar 'asc' ou 'desc'.")
+                meili_sort.append(f"dados.{chave}:{normalized_direction}")
+
+        safe_page_size = min(max(page_size, 1), 100)
+        InstrumentoSearchService.configure_dynamic_fields(
+            instrumento_id,
+            filterable_fields=list(filtros_por_chave.keys()),
+            sortable_fields=list(ordenaveis),
+        )
+        result = InstrumentoSearchService.buscar_avancado(
+            instrumento_id,
+            q=q,
+            filtros=meili_filters,
+            sort=meili_sort,
+            page_size=safe_page_size,
+            cursor=cursor,
+        )
+
+        return InstrumentoRegistroPage(
+            items=[InstrumentoRegistroService._indexed_hit_to_out(hit) for hit in result["hits"]],
+            page_size=safe_page_size,
+            next_cursor=result["next_cursor"],
+            has_more=result["has_more"],
+        )
+
+    @staticmethod
+    def listar_facetas(
+        db: Session,
+        instrumento_id: uuid.UUID,
+    ) -> list[dict[str, Any]]:
+        campos = InstrumentoRegistroService._schema_campos(db, instrumento_id)
+        facet_fields = [
+            campo.chave
+            for campo in campos
+            if campo.filtro_avancado and campo.facetavel
+        ]
+        sortable_fields = [campo.chave for campo in campos if campo.ordenavel]
+        if not facet_fields:
+            return []
+
+        InstrumentoSearchService.configure_dynamic_fields(
+            instrumento_id,
+            filterable_fields=[
+                campo.chave
+                for campo in campos
+                if campo.filtro_avancado
+            ],
+            sortable_fields=sortable_fields,
+        )
+        distribution = InstrumentoSearchService.facet_distribution(instrumento_id, facet_fields)
+        return [
+            {
+                "campo": field,
+                "values": [
+                    {"value": str(value), "count": int(count)}
+                    for value, count in sorted(
+                        distribution.get(field, {}).items(),
+                        key=lambda item: str(item[0]).lower(),
+                    )
+                ],
+            }
+            for field in facet_fields
+        ]
+
+    @staticmethod
     def obter(
         db: Session,
         instrumento_id: uuid.UUID,
@@ -288,6 +380,51 @@ class InstrumentoRegistroService:
                 raise ValueError(f"O campo '{campo.nome}' deve conter uma lista de opções.")
 
     @staticmethod
+    def _advanced_filter(campo: InstrumentoCampo, valor: Any) -> str:
+        chave = campo.chave
+        attr = f"dados.{chave}"
+        if isinstance(valor, list):
+            values = [
+                InstrumentoRegistroService._meili_value_for_campo(campo, item)
+                for item in valor
+                if item not in (None, "")
+            ]
+            if not values:
+                raise ValueError(f"O filtro '{chave}' não possui valores.")
+            return "(" + " OR ".join(f"{attr} = {item}" for item in values) + ")"
+
+        if isinstance(valor, dict):
+            parts = []
+            if valor.get("gte") not in (None, ""):
+                parts.append(f"{attr} >= {InstrumentoRegistroService._meili_value_for_campo(campo, valor['gte'])}")
+            if valor.get("lte") not in (None, ""):
+                parts.append(f"{attr} <= {InstrumentoRegistroService._meili_value_for_campo(campo, valor['lte'])}")
+            if not parts:
+                raise ValueError(f"O filtro '{chave}' não possui limites.")
+            return " AND ".join(parts)
+
+        return f"{attr} = {InstrumentoRegistroService._meili_value_for_campo(campo, valor)}"
+
+    @staticmethod
+    def _meili_value_for_campo(campo: InstrumentoCampo, value: Any) -> str:
+        if campo.tipo == TipoCampoInstrumento.NUMERO and isinstance(value, str):
+            try:
+                number = float(value) if "." in value else int(value)
+            except ValueError:
+                raise ValueError(f"O filtro '{campo.nome}' deve ser numÃ©rico.") from None
+            return InstrumentoRegistroService._meili_value(number)
+        return InstrumentoRegistroService._meili_value(value)
+
+    @staticmethod
+    def _meili_value(value: Any) -> str:
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        if isinstance(value, int | float) and not isinstance(value, bool):
+            return str(value)
+        escaped = str(value).replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{escaped}"'
+
+    @staticmethod
     def _is_empty(valor: Any) -> bool:
         return valor is None or valor == "" or valor == []
 
@@ -307,6 +444,22 @@ class InstrumentoRegistroService:
             status=documento.get("status", StatusInstrumentoRegistro.ATIVO.value),
             criado_em=documento["criado_em"],
             atualizado_em=documento["atualizado_em"],
+        )
+
+    @staticmethod
+    def _indexed_hit_to_out(hit: dict[str, Any]) -> InstrumentoRegistroOut:
+        return InstrumentoRegistroOut(
+            id=hit["id"],
+            instrumento_id=hit["instrumento_id"],
+            schema_version=hit.get("schema_version", 1),
+            dados=hit.get("dados", {}),
+            unidade_acondicionamento_ids=hit.get("unidade_acondicionamento_ids", []),
+            registro_descritivo_ids=hit.get("registro_descritivo_ids", []),
+            status=hit.get("status", StatusInstrumentoRegistro.ATIVO.value),
+            criado_em=datetime.fromisoformat(hit["criado_em"].replace("Z", "+00:00")),
+            atualizado_em=datetime.fromisoformat(
+                hit.get("atualizado_em", hit["criado_em"]).replace("Z", "+00:00")
+            ),
         )
 
     @staticmethod

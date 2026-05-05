@@ -47,3 +47,25 @@ class InstrumentoRegistroSearch(BaseModel):
     q: str = Field(..., min_length=1)
     page_size: int = Field(default=50, ge=1, le=100)
     cursor: str | None = None
+
+
+class InstrumentoRegistroAdvancedSearch(BaseModel):
+    q: str | None = ""
+    filters: dict[str, Any] = Field(default_factory=dict)
+    sort: list[dict[str, str]] = Field(default_factory=list)
+    page_size: int = Field(default=50, ge=1, le=100)
+    cursor: str | None = None
+
+
+class InstrumentoRegistroFacetValue(BaseModel):
+    value: str
+    count: int
+
+
+class InstrumentoRegistroFacetField(BaseModel):
+    campo: str
+    values: list[InstrumentoRegistroFacetValue]
+
+
+class InstrumentoRegistroFacets(BaseModel):
+    facets: list[InstrumentoRegistroFacetField]

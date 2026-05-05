@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from base64 import urlsafe_b64decode, urlsafe_b64encode
+import json
 import time
 from typing import Any
 import uuid
@@ -37,6 +39,74 @@ class InstrumentoSearchService:
                 InstrumentoSearchService.wait_task(client, response.json().get("taskUid"))
 
     @staticmethod
+    def buscar_avancado(
+        instrumento_id: uuid.UUID | str,
+        q: str | None,
+        filtros: list[str],
+        sort: list[str],
+        page_size: int,
+        cursor: str | None,
+    ) -> dict[str, Any]:
+        index_uid = InstrumentoSearchService.index_uid(str(instrumento_id))
+        offset = InstrumentoSearchService.decode_offset(cursor)
+
+        payload: dict[str, Any] = {
+            "q": q or "",
+            "limit": page_size,
+            "offset": offset,
+            "filter": filtros,
+        }
+        if sort:
+            payload["sort"] = sort
+
+        with InstrumentoSearchService.client() as client:
+            response = client.post(f"/indexes/{index_uid}/search", json=payload)
+            response.raise_for_status()
+            data = response.json()
+
+        next_offset = offset + len(data.get("hits", []))
+        estimated_total = data.get("estimatedTotalHits") or 0
+        return {
+            "hits": data.get("hits", []),
+            "next_cursor": (
+                InstrumentoSearchService.encode_offset(next_offset)
+                if next_offset < estimated_total
+                else None
+            ),
+            "has_more": next_offset < estimated_total,
+        }
+
+    @staticmethod
+    def facet_distribution(
+        instrumento_id: uuid.UUID | str,
+        facet_fields: list[str],
+    ) -> dict[str, dict[str, int]]:
+        if not facet_fields:
+            return {}
+
+        index_uid = InstrumentoSearchService.index_uid(str(instrumento_id))
+        facet_attrs = [f"dados.{field}" for field in facet_fields]
+
+        with InstrumentoSearchService.client() as client:
+            response = client.post(
+                f"/indexes/{index_uid}/search",
+                json={
+                    "q": "",
+                    "limit": 0,
+                    "filter": ["status != EXCLUIDO"],
+                    "facets": facet_attrs,
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+
+        distribution = data.get("facetDistribution") or {}
+        return {
+            field: distribution.get(f"dados.{field}", {})
+            for field in facet_fields
+        }
+
+    @staticmethod
     def ensure_index(client: httpx.Client, index_uid: str) -> None:
         response = client.get(f"/indexes/{index_uid}")
         if response.status_code == 200:
@@ -67,6 +137,35 @@ class InstrumentoSearchService:
         )
         settings_response.raise_for_status()
         InstrumentoSearchService.wait_task(client, settings_response.json().get("taskUid"))
+
+    @staticmethod
+    def configure_dynamic_fields(
+        instrumento_id: uuid.UUID | str,
+        filterable_fields: list[str],
+        sortable_fields: list[str],
+    ) -> None:
+        index_uid = InstrumentoSearchService.index_uid(str(instrumento_id))
+        filterable = [
+            "instrumento_id",
+            "schema_version",
+            "status",
+            "unidade_acondicionamento_ids",
+            "registro_descritivo_ids",
+            *[f"dados.{field}" for field in filterable_fields],
+        ]
+        sortable = ["criado_em", *[f"dados.{field}" for field in sortable_fields]]
+
+        with InstrumentoSearchService.client() as client:
+            InstrumentoSearchService.ensure_index(client, index_uid)
+            response = client.patch(
+                f"/indexes/{index_uid}/settings",
+                json={
+                    "filterableAttributes": filterable,
+                    "sortableAttributes": sortable,
+                },
+            )
+            response.raise_for_status()
+            InstrumentoSearchService.wait_task(client, response.json().get("taskUid"))
 
     @staticmethod
     def wait_task(client: httpx.Client, task_uid: int | None) -> None:
@@ -101,6 +200,7 @@ class InstrumentoSearchService:
             "registro_descritivo_ids": documento.get("registro_descritivo_ids", []),
             "status": documento.get("status", "ATIVO"),
             "criado_em": InstrumentoSearchService.iso_utc(documento["criado_em"]),
+            "atualizado_em": InstrumentoSearchService.iso_utc(documento["atualizado_em"]),
         }
 
     @staticmethod
@@ -151,3 +251,16 @@ class InstrumentoSearchService:
             headers={"Authorization": f"Bearer {settings.meili_master_key}"},
             timeout=10,
         )
+
+    @staticmethod
+    def encode_offset(offset: int) -> str:
+        payload = json.dumps({"offset": offset}, separators=(",", ":")).encode("utf-8")
+        return urlsafe_b64encode(payload).decode("ascii").rstrip("=")
+
+    @staticmethod
+    def decode_offset(cursor: str | None) -> int:
+        if not cursor:
+            return 0
+        padded = cursor + ("=" * (-len(cursor) % 4))
+        payload = json.loads(urlsafe_b64decode(padded.encode("ascii")).decode("utf-8"))
+        return max(int(payload.get("offset", 0)), 0)
