@@ -2,16 +2,14 @@
 
 import { useState } from "react";
 import { Plus } from "lucide-react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { UnidadeForm } from "@/features/unidades/unidade-form";
 import { UnidadesTable } from "@/features/unidades/unidades-table";
 import { listUnidadesPage, type UnidadeFilters } from "@/lib/api/domain";
 
 export default function UnidadesPage() {
-  const [open, setOpen] = useState(false);
   const [filters, setFilters] = useState<UnidadeFilters>({});
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(20);
@@ -36,21 +34,12 @@ export default function UnidadesPage() {
             Cadastro, busca e acompanhamento das unidades físicas e digitais.
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4" />
-              Nova unidade
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Nova unidade</DialogTitle>
-              <DialogDescription>Informe os metadados principais.</DialogDescription>
-            </DialogHeader>
-            <UnidadeForm onSaved={() => setOpen(false)} />
-          </DialogContent>
-        </Dialog>
+        <Button asChild className="!text-white hover:!text-white">
+          <Link href="/unidades/nova" className="!text-white">
+            <Plus className="h-4 w-4" />
+            Nova unidade
+          </Link>
+        </Button>
       </div>
 
       <Card>
