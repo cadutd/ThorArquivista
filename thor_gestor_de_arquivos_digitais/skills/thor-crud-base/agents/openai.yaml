@@ -1,4 +1,4 @@
 ﻿interface:
   display_name: "Thor CRUD Base"
-  short_description: "Padrao full-stack para CRUDs Thor"
-  default_prompt: "Use $thor-crud-base para construir um CRUD completo com backend, API, listagem, filtros, paginacao, formulario e navegacao."
+  short_description: "Padrão full-stack para CRUDs Thor"
+  default_prompt: "Use $thor-crud-base para construir um CRUD completo com backend, API, listagem, filtros, paginação, formulário e navegação."

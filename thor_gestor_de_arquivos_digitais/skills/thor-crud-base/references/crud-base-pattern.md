@@ -1,10 +1,10 @@
-# CRUD Base Pattern
+# Padrão CRUD Base
 
-This reference is self-contained. Use it even when no existing CRUD code is available.
+Esta referência é autocontida. Use-a mesmo quando não houver código CRUD existente disponível.
 
-## Suggested File Structure
+## Estrutura de Arquivos Sugerida
 
-For a Next.js App Router project:
+Para um projeto Next.js App Router:
 
 ```text
 backend/
@@ -34,10 +34,14 @@ frontend/
         page.tsx
         new/
           page.tsx
+        [id]/
+          edit/
+            page.tsx
   features/
     products/
       product-form.tsx
       products-table.tsx
+      product-edit-page.tsx
   lib/
     api/
       products.ts
@@ -45,11 +49,11 @@ frontend/
     products.ts
 ```
 
-Adapt names to the project language. In Portuguese routes, `/produtos/novo` or `/produtos/nova` is fine when it matches the entity gender and existing route style.
+Adapte os nomes ao idioma do projeto. Em rotas em português, `/produtos/novo` ou `/produtos/nova` funciona bem quando combina com o gênero da entidade e com o estilo de rotas existente. Para edição, use uma rota dedicada como `/produtos/{id}/editar`.
 
-## Backend Contract
+## Contrato do Backend
 
-Use a backend API that the frontend can consume without guessing:
+Use uma API backend que o frontend consiga consumir sem adivinhação:
 
 ```text
 GET    /api/v1/products?limit=20&offset=0&q=abc&status=ACTIVE
@@ -59,7 +63,7 @@ PUT    /api/v1/products/{id}
 DELETE /api/v1/products/{id}
 ```
 
-List response:
+Resposta da listagem:
 
 ```json
 {
@@ -68,18 +72,18 @@ List response:
 }
 ```
 
-Rules:
+Regras:
 
-- Validate required fields and enums on the backend.
-- Enforce unique constraints in the database.
-- Apply filters in the database query.
-- Cap `limit` to a safe maximum such as `100`.
-- Return stable ordering.
-- Return `404` for missing IDs and `409` for conflicts.
+- Valide campos obrigatórios e enums no backend.
+- Aplique constraints únicas no banco de dados.
+- Aplique filtros na consulta do banco de dados.
+- Limite `limit` a um máximo seguro, como `100`.
+- Retorne uma ordenação estável.
+- Retorne `404` para IDs ausentes e `409` para conflitos.
 
-## Backend Model Example
+## Exemplo de Modelo Backend
 
-Example SQLAlchemy-style model:
+Exemplo de modelo no estilo SQLAlchemy:
 
 ```py
 from datetime import datetime
@@ -115,18 +119,18 @@ class Product(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 ```
 
-Migration checklist:
+Checklist de migração:
 
-- create table
-- add required and nullable columns correctly
-- add unique constraint for business identifiers
-- add indexes for fields used in search/filter/order
-- add foreign keys for relationships
-- define enum creation/drop behavior according to the database
+- criar tabela
+- adicionar colunas obrigatórias e anuláveis corretamente
+- adicionar constraint única para identificadores de negócio
+- adicionar índices para campos usados em busca/filtro/ordenação
+- adicionar chaves estrangeiras para relacionamentos
+- definir o comportamento de criação/remoção de enums conforme o banco de dados
 
-## Backend Schemas Example
+## Exemplo de Schemas Backend
 
-Example Pydantic-style schemas:
+Exemplo de schemas no estilo Pydantic:
 
 ```py
 from datetime import datetime
@@ -168,11 +172,11 @@ class ProductPage(BaseModel):
     total: int
 ```
 
-If the stack uses another framework, keep the same concepts: create payload, update payload, read DTO, page DTO, enum validation, and field limits.
+Se a stack usar outro framework, mantenha os mesmos conceitos: payload de criação, payload de atualização, DTO de leitura, DTO de página, validação de enum e limites de campo.
 
-## Backend Repository Example
+## Exemplo de Repositório Backend
 
-Keep query construction in a repository/query helper so filters stay testable:
+Mantenha a construção de consultas em um repositório/helper de query para que os filtros continuem testáveis:
 
 ```py
 from datetime import datetime
@@ -239,9 +243,9 @@ def get_product_by_code(db: Session, code: str) -> Product | None:
     return db.scalar(select(Product).where(Product.code == code))
 ```
 
-## Backend Service Example
+## Exemplo de Serviço Backend
 
-Keep business rules in services:
+Mantenha regras de negócio nos serviços:
 
 ```py
 from fastapi import HTTPException, status
@@ -260,7 +264,7 @@ def list_products_page(db: Session, filters: ProductFilters, limit: int, offset:
 
 def create_product(db: Session, payload: ProductCreate) -> Product:
     if get_product_by_code(db, payload.code):
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Product code already exists.")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Código do produto já existe.")
 
     product = Product(**payload.model_dump())
     db.add(product)
@@ -272,12 +276,12 @@ def create_product(db: Session, payload: ProductCreate) -> Product:
 def update_product(db: Session, product_id: int, payload: ProductUpdate) -> Product:
     product = get_product(db, product_id)
     if not product:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Produto não encontrado.")
 
     values = payload.model_dump(exclude_unset=True)
     next_code = values.get("code")
     if next_code and next_code != product.code and get_product_by_code(db, next_code):
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Product code already exists.")
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Código do produto já existe.")
 
     for field, value in values.items():
         setattr(product, field, value)
@@ -290,17 +294,17 @@ def update_product(db: Session, product_id: int, payload: ProductUpdate) -> Prod
 def delete_product(db: Session, product_id: int) -> None:
     product = get_product(db, product_id)
     if not product:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found.")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Produto não encontrado.")
 
     db.delete(product)
     db.commit()
 ```
 
-If business rules require auditability, prefer soft delete or status transition instead of physical delete.
+Se as regras de negócio exigirem auditabilidade, prefira exclusão lógica ou transição de status em vez de exclusão física.
 
-## Backend Router Example
+## Exemplo de Router Backend
 
-Example FastAPI router:
+Exemplo de router FastAPI:
 
 ```py
 from datetime import datetime
@@ -350,7 +354,7 @@ def get_product_endpoint(product_id: int, db: Session = Depends(get_db)) -> Prod
     if not product:
         from fastapi import HTTPException
 
-        raise HTTPException(status_code=404, detail="Product not found.")
+        raise HTTPException(status_code=404, detail="Produto não encontrado.")
     return product
 
 
@@ -369,29 +373,29 @@ def delete_product_endpoint(product_id: int, db: Session = Depends(get_db)) -> N
     delete_product(db, product_id)
 ```
 
-Register the router in the API's central router file:
+Registre o router no arquivo central de rotas da API:
 
 ```py
 api_router.include_router(products.router)
 ```
 
-## Backend Tests Checklist
+## Checklist de Testes Backend
 
-Add tests at the API or service level for:
+Adicione testes no nível da API ou do serviço para:
 
-- create succeeds with valid required fields
-- create rejects missing required fields
-- create rejects duplicate unique identifiers
-- list returns `{ items, total }`
-- simple `q` search matches expected fields
-- advanced filters apply independently and together
-- pagination respects `limit` and `offset`
-- max page size is enforced
-- get/update/delete return `404` for missing IDs
-- update rejects uniqueness conflicts
-- delete removes, soft-deletes, or deactivates according to the rule
+- criação com sucesso usando campos obrigatórios válidos
+- criação rejeita campos obrigatórios ausentes
+- criação rejeita identificadores únicos duplicados
+- listagem retorna `{ items, total }`
+- busca simples por `q` encontra os campos esperados
+- filtros avançados são aplicados de forma independente e em conjunto
+- paginação respeita `limit` e `offset`
+- tamanho máximo de página é aplicado
+- obter/atualizar/excluir retornam `404` para IDs ausentes
+- atualização rejeita conflitos de unicidade
+- exclusão remove, exclui logicamente ou desativa conforme a regra
 
-Example API test shape:
+Formato de exemplo para teste de API:
 
 ```py
 def test_list_products_paginates(client):
@@ -403,9 +407,9 @@ def test_list_products_paginates(client):
     assert isinstance(body["items"], list)
 ```
 
-## Types And API Shape
+## Tipos e Formato da API
 
-Use a paginated list shape:
+Use um formato de listagem paginada:
 
 ```ts
 export type Product = {
@@ -441,7 +445,7 @@ export type ListProductsParams = {
 };
 ```
 
-API functions can wrap any HTTP client:
+Funções de API podem encapsular qualquer cliente HTTP:
 
 ```ts
 export async function listProductsPage(params: ListProductsParams): Promise<Page<Product>> {
@@ -457,7 +461,7 @@ export async function listProductsPage(params: ListProductsParams): Promise<Page
 
   const response = await fetch(`/api/products?${search.toString()}`);
   if (!response.ok) {
-    throw new Error("Failed to load products.");
+    throw new Error("Falha ao carregar produtos.");
   }
   return response.json();
 }
@@ -469,7 +473,15 @@ export async function createProduct(payload: ProductPayload): Promise<Product> {
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
-    throw new Error("Failed to create product.");
+    throw new Error("Falha ao criar produto.");
+  }
+  return response.json();
+}
+
+export async function getProduct(id: number): Promise<Product> {
+  const response = await fetch(`/api/products/${id}`);
+  if (!response.ok) {
+    throw new Error("Falha ao carregar produto.");
   }
   return response.json();
 }
@@ -481,7 +493,7 @@ export async function updateProduct(id: number, payload: ProductPayload): Promis
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
-    throw new Error("Failed to update product.");
+    throw new Error("Falha ao atualizar produto.");
   }
   return response.json();
 }
@@ -489,12 +501,12 @@ export async function updateProduct(id: number, payload: ProductPayload): Promis
 export async function deleteProduct(id: number): Promise<void> {
   const response = await fetch(`/api/products/${id}`, { method: "DELETE" });
   if (!response.ok) {
-    throw new Error("Failed to delete product.");
+    throw new Error("Falha ao excluir produto.");
   }
 }
 ```
 
-## List Page Example
+## Exemplo de Página de Listagem
 
 ```tsx
 "use client";
@@ -530,22 +542,22 @@ export default function ProductsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-normal">Products</h1>
-          <p className="text-sm text-muted-foreground">Register, search, and manage products.</p>
+          <h1 className="text-2xl font-semibold tracking-normal">Produtos</h1>
+          <p className="text-sm text-muted-foreground">Cadastre, busque e gerencie produtos.</p>
         </div>
         <Button asChild>
           <Link href="/products/new">
             <Plus className="h-4 w-4" />
-            New product
+            Novo produto
           </Link>
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Catalog</CardTitle>
+          <CardTitle>Catálogo</CardTitle>
           <CardDescription>
-            {query.isLoading ? "Loading records..." : `${total} records found`}
+            {query.isLoading ? "Carregando registros..." : `${total} registros encontrados`}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -577,7 +589,7 @@ export default function ProductsPage() {
 }
 ```
 
-## Create Page Example
+## Exemplo de Página de Criação
 
 ```tsx
 "use client";
@@ -596,21 +608,21 @@ export default function NewProductPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-normal">New product</h1>
-          <p className="text-sm text-muted-foreground">Fill in the main product metadata.</p>
+          <h1 className="text-2xl font-semibold tracking-normal">Novo produto</h1>
+          <p className="text-sm text-muted-foreground">Preencha os principais metadados do produto.</p>
         </div>
         <Button asChild variant="outline">
           <Link href="/products">
             <ArrowLeft className="h-4 w-4" />
-            Back
+            Voltar
           </Link>
         </Button>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Create</CardTitle>
-          <CardDescription>Required fields are marked with an asterisk.</CardDescription>
+          <CardTitle>Criar</CardTitle>
+          <CardDescription>Campos obrigatórios são marcados com asterisco.</CardDescription>
         </CardHeader>
         <CardContent>
           <ProductForm onSaved={() => router.push("/products")} />
@@ -621,12 +633,93 @@ export default function NewProductPage() {
 }
 ```
 
-## Table Example
+## Exemplo de Página de Edição
+
+```tsx
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ProductForm } from "@/features/products/product-form";
+import { getProduct } from "@/lib/api/products";
+
+type Props = {
+  productId: number;
+};
+
+export function ProductEditPage({ productId }: Props) {
+  const router = useRouter();
+  const query = useQuery({
+    queryKey: ["products", productId],
+    queryFn: () => getProduct(productId),
+    enabled: Number.isFinite(productId),
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-normal">Editar produto</h1>
+          <p className="text-sm text-muted-foreground">Atualize os principais metadados do produto.</p>
+        </div>
+        <Button asChild variant="outline">
+          <Link href="/products">
+            <ArrowLeft className="h-4 w-4" />
+            Voltar
+          </Link>
+        </Button>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Edição</CardTitle>
+          <CardDescription>
+            {query.data ? `Produto ${query.data.code}` : "Carregando dados do produto."}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {query.isLoading ? (
+            <p className="text-sm text-muted-foreground">Carregando produto...</p>
+          ) : query.error ? (
+            <p className="text-sm text-destructive">{query.error.message}</p>
+          ) : query.data ? (
+            <ProductForm product={query.data} onSaved={() => router.push("/products")} />
+          ) : (
+            <p className="text-sm text-muted-foreground">Produto não encontrado.</p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+```
+
+Arquivo de rota para Next.js App Router:
+
+```tsx
+import { ProductEditPage } from "@/features/products/product-edit-page";
+
+type PageProps = {
+  params: Promise<{ id: string }>;
+};
+
+export default async function Page({ params }: PageProps) {
+  const { id } = await params;
+  return <ProductEditPage productId={Number(id)} />;
+}
+```
+
+## Exemplo de Tabela
 
 ```tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   flexRender,
@@ -676,7 +769,6 @@ export function ProductsTable({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [draftFilters, setDraftFilters] = useState<ProductFilters>(filters);
   const [selected, setSelected] = useState<Product | null>(null);
-  const [editing, setEditing] = useState<Product | null>(null);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const currentPage = Math.min(pageIndex + 1, totalPages);
 
@@ -696,7 +788,7 @@ export function ProductsTable({
     () => [
       {
         accessorKey: "code",
-        header: "Code",
+        header: "Código",
         cell: ({ row }) => (
           <button
             className="font-medium text-primary hover:underline"
@@ -707,19 +799,21 @@ export function ProductsTable({
           </button>
         ),
       },
-      { accessorKey: "name", header: "Name" },
-      { accessorKey: "category", header: "Category" },
+      { accessorKey: "name", header: "Nome" },
+      { accessorKey: "category", header: "Categoria" },
       { accessorKey: "status", header: "Status" },
       {
         id: "actions",
         header: "",
         cell: ({ row }) => (
           <div className="flex justify-end gap-1">
-            <Button aria-label="View" size="icon" type="button" variant="ghost" onClick={() => setSelected(row.original)}>
+            <Button aria-label="Visualizar" size="icon" type="button" variant="ghost" onClick={() => setSelected(row.original)}>
               <Eye className="h-4 w-4" />
             </Button>
-            <Button aria-label="Edit" size="icon" type="button" variant="ghost" onClick={() => setEditing(row.original)}>
-              <Edit className="h-4 w-4" />
+            <Button asChild aria-label="Editar" size="icon" variant="ghost">
+              <Link href={`/products/${row.original.id}/edit`}>
+                <Edit className="h-4 w-4" />
+              </Link>
             </Button>
           </div>
         ),
@@ -741,7 +835,7 @@ export function ProductsTable({
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
             className="pl-9"
-            placeholder="Search"
+            placeholder="Buscar"
             value={draftFilters.q ?? ""}
             onChange={(event) => setDraftFilters({ ...draftFilters, q: event.target.value })}
             onKeyDown={(event) => {
@@ -753,11 +847,11 @@ export function ProductsTable({
         </div>
         <Button type="button" onClick={() => onSearch(draftFilters)}>
           <Search className="h-4 w-4" />
-          Search
+          Buscar
         </Button>
         <Button type="button" variant="outline" onClick={() => setShowAdvanced((value) => !value)}>
           <Filter className="h-4 w-4" />
-          Advanced filters
+          Filtros avançados
         </Button>
       </div>
 
@@ -774,25 +868,25 @@ export function ProductsTable({
 
       {showAdvanced ? (
         <div className="grid gap-3 rounded-md border p-4 md:grid-cols-2 xl:grid-cols-4">
-          <FilterField label="Code">
+          <FilterField label="Código">
             <Input value={draftFilters.code ?? ""} onChange={(event) => setDraftFilters({ ...draftFilters, code: event.target.value })} />
           </FilterField>
-          <FilterField label="Name">
+          <FilterField label="Nome">
             <Input value={draftFilters.name ?? ""} onChange={(event) => setDraftFilters({ ...draftFilters, name: event.target.value })} />
           </FilterField>
-          <SelectFilter label="Category" value={draftFilters.category ?? ""} onChange={(value) => setDraftFilters({ ...draftFilters, category: value as ProductFilters["category"] })}>
-            <option value="">All</option>
-            <option value="BOOK">Book</option>
-            <option value="MEDIA">Media</option>
-            <option value="EQUIPMENT">Equipment</option>
+          <SelectFilter label="Categoria" value={draftFilters.category ?? ""} onChange={(value) => setDraftFilters({ ...draftFilters, category: value as ProductFilters["category"] })}>
+            <option value="">Todos</option>
+            <option value="BOOK">Livro</option>
+            <option value="MEDIA">Mídia</option>
+            <option value="EQUIPMENT">Equipamento</option>
           </SelectFilter>
           <SelectFilter label="Status" value={draftFilters.status ?? ""} onChange={(value) => setDraftFilters({ ...draftFilters, status: value as ProductFilters["status"] })}>
-            <option value="">All</option>
-            <option value="ACTIVE">Active</option>
-            <option value="INACTIVE">Inactive</option>
+            <option value="">Todos</option>
+            <option value="ACTIVE">Ativo</option>
+            <option value="INACTIVE">Inativo</option>
           </SelectFilter>
           <DateRangeFilter
-            label="Created"
+            label="Criado em"
             from={draftFilters.createdFrom}
             to={draftFilters.createdTo}
             onChange={(from, to) => setDraftFilters({ ...draftFilters, createdFrom: from, createdTo: to })}
@@ -800,7 +894,7 @@ export function ProductsTable({
           <div className="flex items-end gap-2">
             <Button type="button" onClick={() => onSearch(draftFilters)}>
               <Search className="h-4 w-4" />
-              Search
+              Buscar
             </Button>
             <Button
               type="button"
@@ -810,7 +904,7 @@ export function ProductsTable({
                 onSearch({});
               }}
             >
-              Clear
+              Limpar
             </Button>
           </div>
         </div>
@@ -843,7 +937,7 @@ export function ProductsTable({
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
-                  No records found.
+                  Nenhum registro encontrado.
                 </TableCell>
               </TableRow>
             )}
@@ -865,45 +959,41 @@ export function ProductsTable({
       {selected ? (
         <div className="rounded-md border p-4">
           <div className="grid gap-3 md:grid-cols-2">
-            <DetailLine label="Code" value={selected.code} />
-            <DetailLine label="Name" value={selected.name} />
-            <DetailLine label="Category" value={selected.category} />
+            <DetailLine label="Código" value={selected.code} />
+            <DetailLine label="Nome" value={selected.name} />
+            <DetailLine label="Categoria" value={selected.category} />
             <DetailLine label="Status" value={selected.status} />
           </div>
           <div className="mt-4 flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setEditing(selected)}>
-              <Edit className="h-4 w-4" />
-              Edit
+            <Button asChild variant="outline">
+              <Link href={`/products/${selected.id}/edit`}>
+                <Edit className="h-4 w-4" />
+                Editar
+              </Link>
             </Button>
             <Button
               type="button"
               variant="destructive"
               disabled={deleteMutation.isPending}
               onClick={() => {
-                if (window.confirm("Delete this record?")) {
+                if (window.confirm("Excluir este registro?")) {
                   deleteMutation.mutate(selected.id);
                 }
               }}
             >
               <Trash2 className="h-4 w-4" />
-              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+              {deleteMutation.isPending ? "Excluindo..." : "Excluir"}
             </Button>
           </div>
         </div>
       ) : null}
 
-      {editing ? (
-        <div className="rounded-md border p-4">
-          {/* Replace with a route or dialog when the project has that pattern. */}
-          {/* <ProductForm product={editing} onSaved={() => setEditing(null)} /> */}
-        </div>
-      ) : null}
     </div>
   );
 }
 ```
 
-## Pagination Helpers
+## Helpers de Paginação
 
 ```tsx
 function PaginationControls({
@@ -931,14 +1021,14 @@ function PaginationControls({
     <div className="flex flex-col gap-3 rounded-md border px-3 py-2">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <p className="text-sm text-muted-foreground">
-          {displayedCount} records of {total} | page {currentPage} of {totalPages}
+          {displayedCount} registros de {total} | página {currentPage} de {totalPages}
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage <= 1} onClick={() => onPageChange(0)}>
-            First
+            Primeira
           </Button>
           <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage <= 1} onClick={() => onPageChange(currentPage - 2)}>
-            Previous
+            Anterior
           </Button>
           {pages.map((page, index) =>
             page === "ellipsis" ? (
@@ -960,16 +1050,16 @@ function PaginationControls({
             ),
           )}
           <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage >= totalPages} onClick={() => onPageChange(currentPage)}>
-            Next
+            Próxima
           </Button>
           <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage >= totalPages} onClick={() => onPageChange(totalPages - 1)}>
-            Last
+            Última
           </Button>
         </div>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-2">
         <Label htmlFor="page-size" className="text-sm text-muted-foreground">
-          Records per page:
+          Registros por página:
         </Label>
         <select
           id="page-size"
@@ -1003,7 +1093,7 @@ function getPaginationItems(currentPage: number, totalPages: number) {
 }
 ```
 
-## Filter Helpers
+## Helpers de Filtros
 
 ```tsx
 function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
@@ -1055,13 +1145,13 @@ function DateRangeFilter({
       <Label>{label}</Label>
       <div className="grid gap-2 sm:grid-cols-2">
         <Input
-          aria-label={`${label} from`}
+          aria-label={`${label} de`}
           type="date"
           value={from?.slice(0, 10) ?? ""}
           onChange={(event) => onChange(startOfDay(event.target.value), to ?? "")}
         />
         <Input
-          aria-label={`${label} to`}
+          aria-label={`${label} até`}
           type="date"
           value={to?.slice(0, 10) ?? ""}
           onChange={(event) => onChange(from ?? "", endOfDay(event.target.value))}
@@ -1089,7 +1179,7 @@ function DetailLine({ label, value }: { label: string; value: React.ReactNode })
 }
 ```
 
-## Form Example
+## Exemplo de Formulário
 
 ```tsx
 "use client";
@@ -1121,7 +1211,7 @@ const schema = z
       ctx.addIssue({
         code: "custom",
         path: ["warrantyUntil"],
-        message: "Warranty date is required when warranty is enabled.",
+        message: "A data da garantia é obrigatória quando a garantia está habilitada.",
       });
     }
   });
@@ -1205,15 +1295,15 @@ export function ProductForm({
   return (
     <form className="space-y-5" onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Code" error={form.formState.errors.code?.message} required>
+        <Field label="Código" error={form.formState.errors.code?.message} required>
           <Input {...form.register("code")} required />
         </Field>
-        <Field label="Name" error={form.formState.errors.name?.message} required>
+        <Field label="Nome" error={form.formState.errors.name?.message} required>
           <Input {...form.register("name")} required />
         </Field>
       </div>
 
-      <Field label="Description" error={form.formState.errors.description?.message}>
+      <Field label="Descrição" error={form.formState.errors.description?.message}>
         <textarea
           className="min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           {...form.register("description")}
@@ -1221,7 +1311,7 @@ export function ProductForm({
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <SelectField label="Category" error={form.formState.errors.category?.message} {...form.register("category")} required>
+        <SelectField label="Categoria" error={form.formState.errors.category?.message} {...form.register("category")} required>
           {(categories.data ?? ["BOOK", "MEDIA", "EQUIPMENT"]).map((category) => (
             <option key={category} value={category}>
               {category}
@@ -1229,10 +1319,10 @@ export function ProductForm({
           ))}
         </SelectField>
         <SelectField label="Status" error={form.formState.errors.status?.message} {...form.register("status")} required>
-          <option value="ACTIVE">Active</option>
-          <option value="INACTIVE">Inactive</option>
+          <option value="ACTIVE">Ativo</option>
+          <option value="INACTIVE">Inativo</option>
         </SelectField>
-        <Field label="Owner ID" error={form.formState.errors.ownerId?.message}>
+        <Field label="ID do responsável" error={form.formState.errors.ownerId?.message}>
           <Input type="number" min={1} {...form.register("ownerId")} />
         </Field>
       </div>
@@ -1240,10 +1330,10 @@ export function ProductForm({
       <section className="space-y-4 rounded-md border p-4">
         <label className="flex items-center gap-2 text-sm font-medium">
           <input type="checkbox" {...form.register("hasWarranty")} />
-          Has warranty
+          Tem garantia
         </label>
         {hasWarranty ? (
-          <Field label="Warranty until" error={form.formState.errors.warrantyUntil?.message} required>
+          <Field label="Garantia até" error={form.formState.errors.warrantyUntil?.message} required>
             <Input type="date" {...form.register("warrantyUntil")} required />
           </Field>
         ) : null}
@@ -1252,7 +1342,7 @@ export function ProductForm({
       {mutation.error ? <p className="text-sm text-destructive">{mutation.error.message}</p> : null}
 
       <Button type="submit" disabled={mutation.isPending}>
-        {mutation.isPending ? "Saving..." : isEditing ? "Save changes" : "Save"}
+        {mutation.isPending ? "Salvando..." : isEditing ? "Salvar alterações" : "Salvar"}
       </Button>
     </form>
   );
@@ -1283,7 +1373,7 @@ function RequiredLabel({ children, required }: { children: React.ReactNode; requ
     <Label>
       {children}
       {required ? (
-        <span className="ml-1 text-destructive" aria-label="required">
+        <span className="ml-1 text-destructive" aria-label="obrigatório">
           *
         </span>
       ) : null}
@@ -1319,16 +1409,17 @@ function toOptionalNumber(value?: string) {
 }
 ```
 
-## Lazy Loading Checklist
+## Checklist de Carregamento Sob Demanda
 
-- Keep list queries paginated.
-- Include filters and pagination state in the query key.
-- Use `enabled` for detail queries that require a selected record.
-- Use `enabled` for option-list queries that should wait for a mode or visible section.
-- Use skeletons or concise loading text for initial load.
-- Use `isFetching` to disable pagination while retaining old data.
+- Mantenha consultas de listagem paginadas.
+- Inclua filtros e estado de paginação na query key.
+- Use `enabled` para consultas de detalhes que exigem um registro selecionado.
+- Use `enabled` para consultas de edição que dependem do ID da rota.
+- Use `enabled` para consultas de listas de opções que devem aguardar um modo ou seção visível.
+- Use skeletons ou texto de carregamento conciso para a carga inicial.
+- Use `isFetching` para desabilitar a paginação enquanto mantém os dados antigos.
 
-Example detail query:
+Exemplo de consulta de detalhes:
 
 ```tsx
 const details = useQuery({
@@ -1338,18 +1429,32 @@ const details = useQuery({
 });
 ```
 
-## Verification Checklist
+Exemplo de consulta de edição:
 
-- Create action opens a full page, not a popup.
-- Create page has a Back button.
-- Successful create returns to the list or the requested destination.
-- Simple search submits on Enter and button click.
-- Simple and advanced searches reset to page 1.
-- Clear filters resets draft filters and submitted filters.
-- Pagination is server-side and has disabled states while fetching.
-- Page-size changes reset to page 1.
-- Required fields exist in both schema and UI.
-- Conditional required fields are enforced in schema and UI.
-- Mutations invalidate list queries.
-- Delete asks for confirmation.
-- Typecheck/build/tests run when available.
+```tsx
+const product = useQuery({
+  queryKey: ["products", productId],
+  queryFn: () => getProduct(productId),
+  enabled: Number.isFinite(productId),
+});
+```
+
+## Checklist de Verificação
+
+- A ação de criar abre uma página completa, não um popup.
+- A página de criação tem um botão Voltar.
+- Criação bem-sucedida retorna para a listagem ou para o destino solicitado.
+- A ação de editar abre uma página completa, não um popup.
+- A página de edição carrega a entidade por ID da rota.
+- A página de edição tem um botão Voltar.
+- Edição bem-sucedida retorna para a listagem ou para o destino solicitado.
+- Busca simples submete com Enter e clique no botão.
+- Buscas simples e avançadas redefinem para a página 1.
+- Limpar filtros redefine os filtros em rascunho e os filtros submetidos.
+- A paginação é server-side e tem estados desabilitados durante a busca.
+- Mudanças no tamanho da página redefinem para a página 1.
+- Campos obrigatórios existem tanto no schema quanto na UI.
+- Campos obrigatórios condicionais são aplicados no schema e na UI.
+- Mutações invalidam consultas de listagem.
+- Exclusão pede confirmação.
+- Typecheck/build/testes rodam quando disponíveis.

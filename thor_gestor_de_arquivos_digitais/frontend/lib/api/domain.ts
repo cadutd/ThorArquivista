@@ -182,6 +182,10 @@ export async function listUnidades(options: {
   return page.items;
 }
 
+export function getUnidade(id: number) {
+  return apiRequest<UnidadeAcondicionamento>(`/unidades-acondicionamento/${id}`);
+}
+
 export function createUnidade(payload: UnidadePayload) {
   return apiRequest<UnidadeAcondicionamento>("/unidades-acondicionamento", {
     method: "POST",

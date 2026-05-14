@@ -7,6 +7,7 @@ import {
   type ColumnDef,
 } from "@tanstack/react-table";
 import { Edit, Eye, Filter, Search, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
-import { UnidadeForm } from "@/features/unidades/unidade-form";
 import { deleteUnidade, type UnidadeFilters } from "@/lib/api/domain";
 import type { CopiaDigital, UnidadeAcondicionamento } from "@/types/domain";
 
@@ -59,7 +59,6 @@ export function UnidadesTable({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [draftFilters, setDraftFilters] = useState<UnidadeFilters>(filters);
   const [selected, setSelected] = useState<UnidadeAcondicionamento | null>(null);
-  const [editing, setEditing] = useState<UnidadeAcondicionamento | null>(null);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const currentPage = Math.min(pageIndex + 1, totalPages);
 
@@ -118,13 +117,14 @@ export function UnidadesTable({
               <Eye className="h-4 w-4" />
             </Button>
             <Button
+              asChild
               aria-label="Editar unidade"
               size="icon"
-              type="button"
               variant="ghost"
-              onClick={() => setEditing(row.original)}
             >
-              <Edit className="h-4 w-4" />
+              <Link href={`/unidades/${row.original.id}/editar`}>
+                <Edit className="h-4 w-4" />
+              </Link>
             </Button>
           </div>
         ),
@@ -355,10 +355,6 @@ export function UnidadesTable({
           {selected ? (
             <UnidadeDetails
               unidade={selected}
-              onEdit={() => {
-                setEditing(selected);
-                setSelected(null);
-              }}
               onDelete={() => {
                 if (window.confirm("Excluir esta unidade de acondicionamento?")) {
                   deleteMutation.mutate(selected.id);
@@ -369,30 +365,16 @@ export function UnidadesTable({
           ) : null}
         </DialogContent>
       </Dialog>
-
-      <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)}>
-        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Editar unidade</DialogTitle>
-            <DialogDescription>Atualize os metadados da entidade.</DialogDescription>
-          </DialogHeader>
-          {editing ? (
-            <UnidadeForm unidade={editing} onSaved={() => setEditing(null)} />
-          ) : null}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
 
 function UnidadeDetails({
   unidade,
-  onEdit,
   onDelete,
   isDeleting,
 }: {
   unidade: UnidadeAcondicionamento;
-  onEdit: () => void;
   onDelete: () => void;
   isDeleting: boolean;
 }) {
@@ -454,9 +436,11 @@ function UnidadeDetails({
       </section>
 
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onEdit}>
-          <Edit className="h-4 w-4" />
-          Editar
+        <Button asChild variant="outline">
+          <Link href={`/unidades/${unidade.id}/editar`}>
+            <Edit className="h-4 w-4" />
+            Editar
+          </Link>
         </Button>
         <Button
           type="button"

@@ -1,144 +1,147 @@
 ---
 name: thor-crud-base
-description: Build or refactor full-stack CRUD modules using the Thor base CRUD pattern for future projects, independent of any existing entity code. Use when Codex is asked to create backend models, migrations, schemas, repositories, services, API routes, frontend listing, create, edit, view, delete, simple search, advanced filtering, pagination, lazy-loaded data, required fields, or navigation flows for a CRUD feature.
+description: Crie ou refatore módulos CRUD full-stack usando o padrão CRUD base do Thor para projetos futuros, independentemente de qualquer código de entidade existente. Use quando o Codex for solicitado a criar modelos de backend, migrações, schemas, repositórios, serviços, rotas de API, listagem frontend, criação, edição, visualização, exclusão, busca simples, filtros avançados, paginação, dados carregados sob demanda, campos obrigatórios ou fluxos de navegação para uma funcionalidade CRUD.
 ---
 
 # Thor CRUD Base
 
-## Workflow
+## Fluxo de Trabalho
 
-Use this skill as a generic full-stack CRUD standard. Do not assume access to an existing CRUD implementation. If the project already has backend layers, UI components, routing conventions, API clients, or state libraries, adapt the examples to those local patterns while preserving the behavioral contract.
+Use esta skill como um padrão CRUD full-stack genérico. Não presuma acesso a uma implementação CRUD existente. Se o projeto já tiver camadas de backend, componentes de UI, convenções de rotas, clientes de API ou bibliotecas de estado, adapte os exemplos a esses padrões locais preservando o contrato comportamental.
 
-Read `references/crud-base-pattern.md` when implementing or reviewing a CRUD. It contains copyable backend and frontend examples for persistence, API contracts, pagination, filters, navigation, list pages, table filters, forms, required fields, lazy loading, mutations, and verification.
+Leia `references/crud-base-pattern.md` ao implementar ou revisar um CRUD. O arquivo contém exemplos copiáveis de backend e frontend para persistência, contratos de API, paginação, filtros, navegação, páginas de listagem, filtros de tabela, formulários, campos obrigatórios, carregamento sob demanda, mutações e verificação.
 
-## Core Contract
+## Contrato Principal
 
-Build each CRUD as a backend contract plus frontend surfaces.
+Construa cada CRUD como um contrato de backend mais superfícies de frontend.
 
-Backend layers should include, adapting names to the stack:
+As camadas de backend devem incluir, adaptando os nomes à stack:
 
-- persistence model/entity
-- migration or schema change
-- request/response schemas or DTOs
-- repository/query layer
-- service/business layer
-- API router/controller with list, get, create, update, and delete endpoints
-- tests for validation, filters, pagination, and mutations when the project has tests
+- modelo/entidade de persistência
+- migração ou alteração de schema
+- schemas ou DTOs de requisição/resposta
+- camada de repositório/consulta
+- camada de serviço/negócio
+- router/controller de API com endpoints de listar, obter, criar, atualizar e excluir
+- testes de validação, filtros, paginação e mutações quando o projeto tiver testes
 
-Frontend surfaces should include:
+As superfícies de frontend devem incluir:
 
-- list route: `/entities`
-- create route: `/entities/new` or the project-local equivalent such as `/entidades/nova`
-- reusable table component for list, search, advanced filters, pagination, and row actions
-- reusable form component for create and edit
-- optional details component or route for read-only view
+- rota de listagem: `/entities`
+- rota de criação: `/entities/new` ou o equivalente local do projeto, como `/entidades/nova`
+- rota de edição: `/entities/{id}/edit` ou o equivalente local do projeto, como `/entidades/{id}/editar`
+- componente de tabela reutilizável para listagem, busca, filtros avançados, paginação e ações de linha
+- componente de formulário reutilizável para criação e edição
+- componente ou rota opcional de detalhes para visualização somente leitura
 
-Keep the backend and frontend contracts aligned: field names, enum values, required fields, nullable fields, filter names, date formats, pagination parameters, and error behavior must match.
+Mantenha os contratos de backend e frontend alinhados: nomes de campos, valores de enum, campos obrigatórios, campos anuláveis, nomes de filtros, formatos de data, parâmetros de paginação e comportamento de erro devem coincidir.
 
-Use a full page for create flows, not a popup. The list's primary action navigates to the create route. The create screen includes a `Voltar`/Back button. After successful create, navigate back to the list unless the user asks for another destination.
+Use uma página completa para fluxos de criação, não um popup. A ação principal da listagem navega para a rota de criação. A tela de criação inclui um botão `Voltar`. Após criar com sucesso, navegue de volta para a listagem, salvo se o usuário pedir outro destino.
 
-View and edit may be routes or dialogs depending on the project. Prefer routes for complex forms and dialogs for compact read/edit flows. Delete must require explicit confirmation before mutation.
+Use uma página completa para fluxos de edição, não um popup. A ação de editar na tabela e nos detalhes navega para a rota de edição. A tela de edição carrega a entidade por ID, reutiliza o formulário de criação/edição, inclui um botão `Voltar` para a listagem e, após salvar com sucesso, navega de volta para a listagem salvo se o usuário pedir outro destino.
 
-## Backend API Behavior
+Visualização pode ser rota ou diálogo dependendo do projeto. A exclusão deve exigir confirmação explícita antes da mutação.
 
-Expose predictable REST-style endpoints unless the project uses another API style:
+## Comportamento da API Backend
 
-- `GET /entities` returns `{ items, total }`
-- `GET /entities/{id}` returns one record or `404`
-- `POST /entities` validates and creates
-- `PUT` or `PATCH /entities/{id}` validates and updates
-- `DELETE /entities/{id}` deletes, soft-deletes, or deactivates according to business rules
+Exponha endpoints previsíveis no estilo REST, salvo se o projeto usar outro estilo de API:
 
-List endpoints must support server-side pagination. Prefer `limit` and `offset`, or map to the project's existing `page` and `pageSize` convention. Apply filters in the backend query, not after loading all rows into memory.
+- `GET /entities` retorna `{ items, total }`
+- `GET /entities/{id}` retorna um registro ou `404`
+- `POST /entities` valida e cria
+- `PUT` ou `PATCH /entities/{id}` valida e atualiza
+- `DELETE /entities/{id}` exclui, faz exclusão lógica ou desativa conforme as regras de negócio
 
-Search endpoints should support:
+Endpoints de listagem devem suportar paginação no servidor. Prefira `limit` e `offset`, ou mapeie para a convenção existente do projeto, como `page` e `pageSize`. Aplique filtros na consulta do backend, não depois de carregar todas as linhas em memória.
 
-- simple text query such as `q`
-- advanced filters for exact fields, enums, booleans, numeric ranges, and date ranges
-- deterministic ordering, usually newest first or by stable identifier
-- explicit max page size to protect the API
+Endpoints de busca devem suportar:
 
-Backend required fields and enum values are the source of truth. Mirror them in frontend validation, but never rely on frontend-only validation.
+- consulta simples de texto, como `q`
+- filtros avançados para campos exatos, enums, booleanos, intervalos numéricos e intervalos de data
+- ordenação determinística, normalmente mais recentes primeiro ou por identificador estável
+- tamanho máximo de página explícito para proteger a API
 
-## List Behavior
+Campos obrigatórios e valores de enum do backend são a fonte da verdade. Espelhe-os na validação do frontend, mas nunca dependa apenas da validação do frontend.
 
-Fetch only the current page from the API. Do not load all records just to paginate locally when the dataset can grow.
+## Comportamento da Listagem
 
-Keep list state explicit:
+Busque da API apenas a página atual. Não carregue todos os registros apenas para paginar localmente quando o conjunto de dados puder crescer.
+
+Mantenha o estado da listagem explícito:
 
 - `filters`
 - `pageIndex`
 - `pageSize`
 
-Use a stable query/cache key containing the entity name, filters, page index, and page size. Expected paginated API shape is `{ items, total }`, or adapt the mapper if the backend uses different names.
+Use uma chave estável de consulta/cache contendo o nome da entidade, filtros, índice da página e tamanho da página. O formato esperado da API paginada é `{ items, total }`, ou adapte o mapper se o backend usar nomes diferentes.
 
-## Search, Filters, And Pagination
+## Busca, Filtros e Paginação
 
-Provide simple search:
+Forneça busca simples:
 
-- search input in the table toolbar
-- search icon when icon library exists
-- Enter key submits
-- Search button submits
-- every new search resets the page to the first page
+- campo de busca na barra de ferramentas da tabela
+- ícone de busca quando houver biblioteca de ícones
+- tecla Enter submete
+- botão Buscar submete
+- toda nova busca redefine para a primeira página
 
-Provide advanced search:
+Forneça busca avançada:
 
-- collapsed by default behind a toggle button
-- responsive grid of metadata fields
-- text, enum, boolean, numeric, and date-range controls as appropriate
-- clear filters action that resets the draft and submits an empty filter object
+- recolhida por padrão atrás de um botão alternável
+- grid responsivo de campos de metadados
+- controles de texto, enum, booleano, numérico e intervalo de datas conforme apropriado
+- ação de limpar filtros que redefine o rascunho e submete um objeto de filtros vazio
 
-Render pagination above and below the table for long result sets. Include displayed count, total count, current page, total pages, page-size selector, first/previous/numbered/next/last controls, and disabled states during fetch.
+Renderize a paginação acima e abaixo da tabela para conjuntos longos de resultados. Inclua contagem exibida, contagem total, página atual, total de páginas, seletor de tamanho de página, controles de primeira/anterior/numeradas/próxima/última e estados desabilitados durante a busca.
 
-## Forms
+## Formulários
 
-Use a schema validator when the stack supports one, such as Zod. Keep defaults explicit. Required fields must be represented in both the validation schema and UI.
+Use um validador de schema quando a stack suportar, como Zod. Mantenha os valores padrão explícitos. Campos obrigatórios devem estar representados tanto no schema de validação quanto na UI.
 
-Use a visible required marker beside labels. Show field errors directly below fields. Show mutation errors near submit. Disable submit while saving and use saving text such as `Salvando...` or `Saving...`.
+Use um marcador visível de obrigatório ao lado dos rótulos. Mostre erros de campo diretamente abaixo dos campos. Mostre erros de mutação perto do envio. Desabilite o envio durante o salvamento e use texto de salvamento, como `Salvando...`.
 
-Use responsive layout:
+Use layout responsivo:
 
-- two-column grids for short fields on larger screens
-- full-width fields for long descriptions
-- bordered conditional sections when a field reveals dependent data
+- grids de duas colunas para campos curtos em telas maiores
+- campos de largura total para descrições longas
+- seções condicionais com borda quando um campo revelar dados dependentes
 
-For edit mode, reset form values from the loaded entity. For create mode, reset to defaults after success only if staying on the form; otherwise navigate away.
+No modo de edição, redefina os valores do formulário a partir da entidade carregada. No modo de criação, redefina para os padrões após sucesso apenas se permanecer no formulário; caso contrário, navegue para fora.
 
-## Lazy Loading
+## Carregamento Sob Demanda
 
-Use lazy loading intentionally:
+Use carregamento sob demanda de forma intencional:
 
-- paginate list data server-side with `limit`/`offset` or `page`/`pageSize`
-- fetch option lists only when the form or field is visible
-- use `enabled` or equivalent guards for queries that depend on IDs, selected modes, or open dialogs
-- fetch heavy row details only when the user opens details
-- keep background fetch state separate from empty/error states
+- pagine dados de listagem no servidor com `limit`/`offset` ou `page`/`pageSize`
+- busque listas de opções apenas quando o formulário ou campo estiver visível
+- use `enabled` ou proteções equivalentes para consultas que dependem de IDs, modos selecionados, rotas de edição ou diálogos abertos
+- busque detalhes pesados de linha apenas quando o usuário abrir os detalhes
+- mantenha o estado de busca em segundo plano separado dos estados vazio/erro
 
-## Mutations
+## Mutações
 
-Use create, update, and delete mutations. On success:
+Use mutações de criação, atualização e exclusão. Em caso de sucesso:
 
-- invalidate or refresh the list query
-- invalidate related lookup/detail queries when needed
-- call an `onSaved` or equivalent callback so the parent controls navigation/closing
-- keep delete confirmation close to the destructive action
+- invalide ou atualize a consulta da listagem
+- invalide consultas relacionadas de lookup/detalhe quando necessário
+- chame um callback `onSaved` ou equivalente para que o componente pai controle navegação/fechamento
+- mantenha a confirmação de exclusão próxima da ação destrutiva
 
-Convert optional numeric fields and empty strings before sending payloads. Prefer `null` for intentionally empty optional backend fields when the API expects nullable values.
+Converta campos numéricos opcionais e strings vazias antes de enviar payloads. Prefira `null` para campos opcionais intencionalmente vazios no backend quando a API esperar valores anuláveis.
 
-## Backend Data Integrity
+## Integridade de Dados no Backend
 
-Keep business rules in the backend service layer even when the frontend also validates them. Use database constraints for unique fields, required columns, foreign keys, indexes for searched fields, and timestamp columns when the project supports them.
+Mantenha regras de negócio na camada de serviço do backend mesmo quando o frontend também as validar. Use constraints de banco de dados para campos únicos, colunas obrigatórias, chaves estrangeiras, índices para campos pesquisados e colunas de timestamp quando o projeto suportar.
 
-For filters and pagination, add indexes that match likely queries. At minimum, consider indexes for stable identifiers, status fields, parent/foreign keys, and creation/update timestamps. For broad text search, use the project's established full-text mechanism when available; otherwise use conservative `contains`/`ilike` filters appropriate to the database.
+Para filtros e paginação, adicione índices que correspondam às consultas prováveis. No mínimo, considere índices para identificadores estáveis, campos de status, chaves pai/estrangeiras e timestamps de criação/atualização. Para busca textual ampla, use o mecanismo de full-text estabelecido pelo projeto quando disponível; caso contrário, use filtros conservadores `contains`/`ilike` apropriados ao banco.
 
-Return consistent errors:
+Retorne erros consistentes:
 
-- `400` or `422` for validation errors
-- `404` for missing records
-- `409` for uniqueness or state conflicts
-- `500` only for unexpected failures
+- `400` ou `422` para erros de validação
+- `404` para registros ausentes
+- `409` para conflitos de unicidade ou estado
+- `500` apenas para falhas inesperadas
 
-## Visual Standard
+## Padrão Visual
 
-CRUD screens are operational tools. Keep them dense, scannable, and predictable. Avoid landing pages, decorative backgrounds, nested cards, oversized hero layouts, and purely ornamental UI. Use familiar icons for add, search, filter, view, edit, delete, and back actions when available.
+Telas CRUD são ferramentas operacionais. Mantenha-as densas, fáceis de escanear e previsíveis. Evite landing pages, fundos decorativos, cards aninhados, layouts hero exagerados e UI puramente ornamental. Use ícones familiares para ações de adicionar, buscar, filtrar, visualizar, editar, excluir e voltar quando disponíveis.
