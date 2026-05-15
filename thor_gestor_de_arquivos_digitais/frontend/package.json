@@ -10,7 +10,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:functional": "node --test tests/functional/*.test.mjs",
+    "test:functional:report": "node -e \"require('node:fs').mkdirSync('../test-reports/frontend', { recursive: true })\" && node --test --test-reporter=junit --test-reporter-destination=../test-reports/frontend/junit.xml tests/functional/*.test.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

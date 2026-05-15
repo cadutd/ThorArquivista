@@ -1,0 +1,4 @@
+interface:
+  display_name: "Testar com Docker"
+  short_description: "Prioriza testes no Docker do projeto"
+  default_prompt: "Use $testar-com-docker para validar uma alteração executando os testes dentro dos containers do projeto quando houver Docker Compose."
