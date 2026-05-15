@@ -27,6 +27,13 @@ const schema = z
     identificador: z.string().min(2).max(255),
     titulo: z.string().min(2).max(500),
     descricao: z.string().max(2000).optional(),
+    produtor: z.string().max(255).optional(),
+    unidade: z.string().max(255).optional(),
+    data_limite: z.string().max(255).optional(),
+    codigo_classificacao: z.string().max(255).optional(),
+    assunto: z.string().max(500).optional(),
+    codigo_barra: z.string().max(128).optional(),
+    informacoes_pacote: z.string().optional(),
     tipo_suporte: z.enum(["FISICO", "DIGITAL", "HIBRIDO"]),
     tipo_unidade: z.enum(["CAIXA", "PASTA", "VOLUME", "AIP", "SIP", "DIP"]),
     nivel_acesso: z.enum(["PUBLICO", "RESTRITO", "CONFIDENCIAL"]),
@@ -84,6 +91,13 @@ const defaultValues: FormValues = {
   identificador: "",
   titulo: "",
   descricao: "",
+  produtor: "",
+  unidade: "",
+  data_limite: "",
+  codigo_classificacao: "",
+  assunto: "",
+  codigo_barra: "",
+  informacoes_pacote: "",
   tipo_suporte: "DIGITAL",
   tipo_unidade: "AIP",
   nivel_acesso: "RESTRITO",
@@ -137,6 +151,13 @@ export function UnidadeForm({
       identificador: unidade.identificador,
       titulo: unidade.titulo,
       descricao: unidade.descricao ?? "",
+      produtor: unidade.produtor ?? "",
+      unidade: unidade.unidade ?? "",
+      data_limite: unidade.data_limite ?? "",
+      codigo_classificacao: unidade.codigo_classificacao ?? "",
+      assunto: unidade.assunto ?? "",
+      codigo_barra: unidade.codigo_barra ?? "",
+      informacoes_pacote: unidade.informacoes_pacote ?? "",
       tipo_suporte: unidade.tipo_suporte,
       tipo_unidade: unidade.tipo_unidade,
       nivel_acesso: unidade.nivel_acesso,
@@ -153,6 +174,13 @@ export function UnidadeForm({
         identificador: values.identificador,
         titulo: values.titulo,
         descricao: values.descricao || null,
+        produtor: values.produtor || null,
+        unidade: values.unidade || null,
+        data_limite: values.data_limite || null,
+        codigo_classificacao: values.codigo_classificacao || null,
+        assunto: values.assunto || null,
+        codigo_barra: values.codigo_barra || null,
+        informacoes_pacote: values.informacoes_pacote || null,
         tipo_suporte: values.tipo_suporte,
         tipo_unidade: values.tipo_unidade,
         nivel_acesso: values.nivel_acesso,
@@ -247,6 +275,41 @@ export function UnidadeForm({
           className="min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
           {...form.register("descricao")}
           placeholder="Descrição breve"
+        />
+      </Field>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Produtor" error={form.formState.errors.produtor?.message}>
+          <Input {...form.register("produtor")} />
+        </Field>
+        <Field label="Unidade" error={form.formState.errors.unidade?.message}>
+          <Input {...form.register("unidade")} />
+        </Field>
+        <Field label="Data-limite" error={form.formState.errors.data_limite?.message}>
+          <Input {...form.register("data_limite")} placeholder="Ex.: 1998-2005" />
+        </Field>
+        <Field
+          label="Código de classificação"
+          error={form.formState.errors.codigo_classificacao?.message}
+        >
+          <Input {...form.register("codigo_classificacao")} />
+        </Field>
+        <Field label="Assunto" error={form.formState.errors.assunto?.message}>
+          <Input {...form.register("assunto")} />
+        </Field>
+        <Field label="Código de barra" error={form.formState.errors.codigo_barra?.message}>
+          <Input {...form.register("codigo_barra")} inputMode="text" />
+        </Field>
+      </div>
+
+      <Field
+        label="Informações do pacote"
+        error={form.formState.errors.informacoes_pacote?.message}
+      >
+        <textarea
+          className="min-h-28 w-full rounded-md border bg-background px-3 py-2 font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          {...form.register("informacoes_pacote")}
+          placeholder="Conteúdo do bag-info.txt"
         />
       </Field>
 

@@ -21,6 +21,13 @@ export type UnidadePayload = {
   identificador: string;
   titulo: string;
   descricao?: string | null;
+  produtor?: string | null;
+  unidade?: string | null;
+  data_limite?: string | null;
+  codigo_classificacao?: string | null;
+  assunto?: string | null;
+  codigo_barra?: string | null;
+  informacoes_pacote?: string | null;
   tipo_suporte: string;
   tipo_unidade: string;
   nivel_acesso: string;
@@ -34,6 +41,13 @@ export type UnidadeFilters = Partial<{
   identificador: string;
   titulo: string;
   descricao: string;
+  produtor: string;
+  unidade: string;
+  data_limite: string;
+  codigo_classificacao: string;
+  assunto: string;
+  codigo_barra: string;
+  informacoes_pacote: string;
   tipo_suporte: string;
   tipo_unidade: string;
   nivel_acesso: string;

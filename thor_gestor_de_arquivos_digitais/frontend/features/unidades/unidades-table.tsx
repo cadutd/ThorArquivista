@@ -211,6 +211,68 @@ export function UnidadesTable({
               }
             />
           </FilterField>
+          <FilterField label="Produtor">
+            <Input
+              value={draftFilters.produtor ?? ""}
+              onChange={(event) =>
+                setDraftFilters({ ...draftFilters, produtor: event.target.value })
+              }
+            />
+          </FilterField>
+          <FilterField label="Unidade">
+            <Input
+              value={draftFilters.unidade ?? ""}
+              onChange={(event) =>
+                setDraftFilters({ ...draftFilters, unidade: event.target.value })
+              }
+            />
+          </FilterField>
+          <FilterField label="Data-limite">
+            <Input
+              value={draftFilters.data_limite ?? ""}
+              onChange={(event) =>
+                setDraftFilters({ ...draftFilters, data_limite: event.target.value })
+              }
+            />
+          </FilterField>
+          <FilterField label="Código de classificação">
+            <Input
+              value={draftFilters.codigo_classificacao ?? ""}
+              onChange={(event) =>
+                setDraftFilters({
+                  ...draftFilters,
+                  codigo_classificacao: event.target.value,
+                })
+              }
+            />
+          </FilterField>
+          <FilterField label="Assunto">
+            <Input
+              value={draftFilters.assunto ?? ""}
+              onChange={(event) =>
+                setDraftFilters({ ...draftFilters, assunto: event.target.value })
+              }
+            />
+          </FilterField>
+          <FilterField label="Código de barra">
+            <Input
+              value={draftFilters.codigo_barra ?? ""}
+              onChange={(event) =>
+                setDraftFilters({ ...draftFilters, codigo_barra: event.target.value })
+              }
+            />
+          </FilterField>
+          <FilterField label="Informações do pacote">
+            <Input
+              value={draftFilters.informacoes_pacote ?? ""}
+              onChange={(event) =>
+                setDraftFilters({
+                  ...draftFilters,
+                  informacoes_pacote: event.target.value,
+                })
+              }
+            />
+          </FilterField>
           <SelectFilter
             label="Suporte"
             value={draftFilters.tipo_suporte ?? ""}
@@ -383,6 +445,13 @@ function UnidadeDetails({
     ["Identificador", unidade.identificador],
     ["Título", unidade.titulo],
     ["Descrição", unidade.descricao || "-"],
+    ["Produtor", unidade.produtor || "-"],
+    ["Unidade", unidade.unidade || "-"],
+    ["Data-limite", unidade.data_limite || "-"],
+    ["Código de classificação", unidade.codigo_classificacao || "-"],
+    ["Assunto", unidade.assunto || "-"],
+    ["Código de barra", unidade.codigo_barra || "-"],
+    ["Informações do pacote", unidade.informacoes_pacote || "-"],
     ["Suporte", unidade.tipo_suporte],
     ["Tipo", unidade.tipo_unidade],
     ["Nível de acesso", unidade.nivel_acesso],

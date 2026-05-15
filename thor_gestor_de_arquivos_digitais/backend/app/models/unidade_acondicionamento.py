@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from sqlalchemy import (
     String,
+    Text,
     DateTime,
     ForeignKey,
     Enum as SAEnum,
@@ -35,6 +36,13 @@ class UnidadeAcondicionamento(Base):
 
     titulo: Mapped[str] = mapped_column(String(500))
     descricao: Mapped[str | None] = mapped_column(String(2000))
+    produtor: Mapped[str | None] = mapped_column(String(255))
+    unidade: Mapped[str | None] = mapped_column(String(255))
+    data_limite: Mapped[str | None] = mapped_column(String(255))
+    codigo_classificacao: Mapped[str | None] = mapped_column(String(255))
+    assunto: Mapped[str | None] = mapped_column(String(500))
+    codigo_barra: Mapped[str | None] = mapped_column(String(128))
+    informacoes_pacote: Mapped[str | None] = mapped_column(Text)
 
     tipo_suporte: Mapped[TipoSuporte] = mapped_column(
         SAEnum(TipoSuporte), index=True

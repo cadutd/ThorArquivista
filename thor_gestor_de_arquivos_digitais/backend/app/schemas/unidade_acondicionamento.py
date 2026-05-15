@@ -19,6 +19,13 @@ class UnidadeAcondicionamentoBase(BaseModel):
     identificador: str = Field(..., max_length=255)
     titulo: str = Field(..., max_length=500)
     descricao: str | None = Field(default=None, max_length=2000)
+    produtor: str | None = Field(default=None, max_length=255)
+    unidade: str | None = Field(default=None, max_length=255)
+    data_limite: str | None = Field(default=None, max_length=255)
+    codigo_classificacao: str | None = Field(default=None, max_length=255)
+    assunto: str | None = Field(default=None, max_length=500)
+    codigo_barra: str | None = Field(default=None, max_length=128)
+    informacoes_pacote: str | None = None
 
     tipo_suporte: TipoSuporte
     tipo_unidade: TipoUnidade
@@ -50,6 +57,13 @@ class UnidadeAcondicionamentoUpdate(BaseModel):
     identificador: str | None = Field(default=None, max_length=255)
     titulo: str | None = Field(default=None, max_length=500)
     descricao: str | None = Field(default=None, max_length=2000)
+    produtor: str | None = Field(default=None, max_length=255)
+    unidade: str | None = Field(default=None, max_length=255)
+    data_limite: str | None = Field(default=None, max_length=255)
+    codigo_classificacao: str | None = Field(default=None, max_length=255)
+    assunto: str | None = Field(default=None, max_length=500)
+    codigo_barra: str | None = Field(default=None, max_length=128)
+    informacoes_pacote: str | None = None
 
     tipo_suporte: TipoSuporte | None = None
     tipo_unidade: TipoUnidade | None = None

@@ -17,6 +17,13 @@ export type UnidadeAcondicionamento = {
   identificador: string;
   titulo: string;
   descricao?: string | null;
+  produtor?: string | null;
+  unidade?: string | null;
+  data_limite?: string | null;
+  codigo_classificacao?: string | null;
+  assunto?: string | null;
+  codigo_barra?: string | null;
+  informacoes_pacote?: string | null;
   tipo_suporte: TipoSuporte;
   tipo_unidade: TipoUnidade;
   nivel_acesso: NivelAcesso;
