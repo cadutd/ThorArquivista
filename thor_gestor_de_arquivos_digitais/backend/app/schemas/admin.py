@@ -13,3 +13,8 @@ class ConfiguracaoEnderecamento(BaseModel):
     digitos_codigo_estrutura: DigitosCodigoEstrutura = Field(
         default_factory=DigitosCodigoEstrutura,
     )
+
+
+class ConfiguracaoInstituicao(BaseModel):
+    nome: str | None = Field(default=None, max_length=255)
+    logotipo_data_url: str | None = Field(default=None, max_length=5000000)

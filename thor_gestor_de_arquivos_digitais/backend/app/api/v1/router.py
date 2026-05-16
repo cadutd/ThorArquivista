@@ -14,6 +14,7 @@ from app.api.v1.unidades_acondicionamento import router as unidades_router
 from app.api.v1.midias_armazenamento import router as midias_router
 from app.api.v1.copias_unidades_acondicionamento_digitais import router as copias_router
 from app.api.v1.eventos_preservacao import router as eventos_router
+from app.api.v1.fichas_espelho import router as fichas_espelho_router
 from app.api.v1.instrumentos_pesquisa import router as instrumentos_pesquisa_router
 
 from app.security.deps import get_current_user_claims
@@ -85,6 +86,13 @@ api_router.include_router(
 api_router.include_router(
     eventos_router,
     tags=["eventos-preservacao"],
+    dependencies=protecoes,
+)
+
+api_router.include_router(
+    fichas_espelho_router,
+    prefix="/fichas-espelho",
+    tags=["fichas-espelho"],
     dependencies=protecoes,
 )
 

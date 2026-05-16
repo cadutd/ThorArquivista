@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Database,
   FileSearch,
+  FileText,
   Gauge,
   HardDrive,
   LogOut,
@@ -29,6 +30,7 @@ const navigation = [
   { href: "/instrumentos-pesquisa", label: "Instrumentos de Pesquisa", icon: FileSearch },
   { href: "/midias", label: "Mídias", icon: HardDrive },
   { href: "/enderecamento", label: "Endereçamento", icon: MapPinned },
+  { href: "/modelos-ficha-espelho", label: "Modelos de Ficha", icon: FileText },
   { href: "/eventos", label: "Eventos", icon: Boxes },
   { href: "/admin", label: "Administração", icon: Settings },
 ];

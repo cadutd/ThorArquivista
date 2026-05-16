@@ -6,10 +6,10 @@ import {
   useReactTable,
   type ColumnDef,
 } from "@tanstack/react-table";
-import { Edit, Eye, Filter, Search, Trash2 } from "lucide-react";
+import { Edit, Eye, Filter, Printer, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,6 +29,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
+import { listarModelosFichaEspelho } from "@/lib/api/ficha-espelho";
 import { deleteUnidade, type UnidadeFilters } from "@/lib/api/domain";
 import type { CopiaDigital, UnidadeAcondicionamento } from "@/types/domain";
 
@@ -59,6 +60,9 @@ export function UnidadesTable({
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [draftFilters, setDraftFilters] = useState<UnidadeFilters>(filters);
   const [selected, setSelected] = useState<UnidadeAcondicionamento | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [printIds, setPrintIds] = useState<number[]>([]);
+  const [printDialogOpen, setPrintDialogOpen] = useState(false);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const currentPage = Math.min(pageIndex + 1, totalPages);
 
@@ -74,8 +78,58 @@ export function UnidadesTable({
     },
   });
 
+  const openPrintDialog = (ids: number[]) => {
+    setPrintIds(ids);
+    setPrintDialogOpen(true);
+  };
+
   const columns = useMemo<ColumnDef<UnidadeAcondicionamento>[]>(
     () => [
+      {
+        id: "selecao",
+        header: () => {
+          const pageIds = data.map((item) => item.id);
+          const allSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
+          return (
+            <input
+              aria-label="Selecionar unidades da página"
+              type="checkbox"
+              checked={allSelected}
+              onChange={(event) => {
+                setSelectedIds((current) => {
+                  const next = new Set(current);
+                  pageIds.forEach((id) => {
+                    if (event.target.checked) {
+                      next.add(id);
+                    } else {
+                      next.delete(id);
+                    }
+                  });
+                  return next;
+                });
+              }}
+            />
+          );
+        },
+        cell: ({ row }) => (
+          <input
+            aria-label={`Selecionar ${row.original.identificador}`}
+            type="checkbox"
+            checked={selectedIds.has(row.original.id)}
+            onChange={(event) =>
+              setSelectedIds((current) => {
+                const next = new Set(current);
+                if (event.target.checked) {
+                  next.add(row.original.id);
+                } else {
+                  next.delete(row.original.id);
+                }
+                return next;
+              })
+            }
+          />
+        ),
+      },
       {
         accessorKey: "identificador",
         header: "Identificador",
@@ -108,6 +162,15 @@ export function UnidadesTable({
         cell: ({ row }) => (
           <div className="flex justify-end gap-1">
             <Button
+              aria-label="Imprimir ficha espelho"
+              size="icon"
+              type="button"
+              variant="ghost"
+              onClick={() => openPrintDialog([row.original.id])}
+            >
+              <Printer className="h-4 w-4" />
+            </Button>
+            <Button
               aria-label="Visualizar unidade"
               size="icon"
               type="button"
@@ -130,7 +193,7 @@ export function UnidadesTable({
         ),
       },
     ],
-    [],
+    [data, selectedIds],
   );
 
   // TanStack Table currently opts this hook out of React Compiler memoization.
@@ -171,6 +234,15 @@ export function UnidadesTable({
         >
           <Filter className="h-4 w-4" />
           Busca por metadado
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={!selectedIds.size}
+          onClick={() => openPrintDialog(Array.from(selectedIds))}
+        >
+          <Printer className="h-4 w-4" />
+          Imprimir fichas ({selectedIds.size})
         </Button>
       </div>
 
@@ -417,6 +489,7 @@ export function UnidadesTable({
           {selected ? (
             <UnidadeDetails
               unidade={selected}
+              onPrint={() => openPrintDialog([selected.id])}
               onDelete={() => {
                 if (window.confirm("Excluir esta unidade de acondicionamento?")) {
                   deleteMutation.mutate(selected.id);
@@ -427,6 +500,12 @@ export function UnidadesTable({
           ) : null}
         </DialogContent>
       </Dialog>
+
+      <PrintDialog
+        open={printDialogOpen}
+        unidadeIds={printIds}
+        onOpenChange={setPrintDialogOpen}
+      />
     </div>
   );
 }
@@ -434,10 +513,12 @@ export function UnidadesTable({
 function UnidadeDetails({
   unidade,
   onDelete,
+  onPrint,
   isDeleting,
 }: {
   unidade: UnidadeAcondicionamento;
   onDelete: () => void;
+  onPrint: () => void;
   isDeleting: boolean;
 }) {
   const fields: Array<[string, React.ReactNode]> = [
@@ -505,6 +586,10 @@ function UnidadeDetails({
       </section>
 
       <div className="flex justify-end gap-2">
+        <Button type="button" variant="outline" onClick={onPrint}>
+          <Printer className="h-4 w-4" />
+          Ficha espelho
+        </Button>
         <Button asChild variant="outline">
           <Link href={`/unidades/${unidade.id}/editar`}>
             <Edit className="h-4 w-4" />
@@ -522,6 +607,77 @@ function UnidadeDetails({
         </Button>
       </div>
     </div>
+  );
+}
+
+function PrintDialog({
+  open,
+  unidadeIds,
+  onOpenChange,
+}: {
+  open: boolean;
+  unidadeIds: number[];
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [modeloId, setModeloId] = useState("");
+  const modelos = useQuery({
+    queryKey: ["fichas-espelho", "modelos", "ativos"],
+    queryFn: () => listarModelosFichaEspelho({ ativo: true }),
+    enabled: open,
+  });
+  const selectedModeloId = modeloId || (modelos.data?.items[0] ? String(modelos.data.items[0].id) : "");
+
+  const print = () => {
+    if (!selectedModeloId || !unidadeIds.length) {
+      return;
+    }
+    const params = new URLSearchParams({
+      modeloId: selectedModeloId,
+      unidadeIds: unidadeIds.join(","),
+    });
+    window.open(`/fichas-espelho/imprimir?${params.toString()}`, "_blank", "noopener,noreferrer");
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Gerar fichas espelho</DialogTitle>
+          <DialogDescription>Escolha o modelo para imprimir {unidadeIds.length} unidade(s).</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Modelo</Label>
+            <select
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+              value={selectedModeloId}
+              onChange={(event) => setModeloId(event.target.value)}
+            >
+              <option value="">Selecione</option>
+              {(modelos.data?.items ?? []).map((modelo) => (
+                <option key={modelo.id} value={modelo.id}>
+                  {modelo.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+          {modelos.error ? <p className="text-sm text-destructive">{modelos.error.message}</p> : null}
+          {!modelos.isLoading && !modelos.data?.items.length ? (
+            <p className="text-sm text-muted-foreground">Cadastre um modelo ativo em Administração.</p>
+          ) : null}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button type="button" disabled={!selectedModeloId || !unidadeIds.length} onClick={print}>
+              <Printer className="h-4 w-4" />
+              Gerar para impressão
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
