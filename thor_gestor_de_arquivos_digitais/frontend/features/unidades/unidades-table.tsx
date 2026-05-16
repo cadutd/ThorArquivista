@@ -766,75 +766,71 @@ function PaginationControls({
   const pages = getPaginationItems(currentPage, totalPages);
 
   return (
-    <div className="flex flex-col gap-3 rounded-md border px-3 py-2">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <p className="text-sm text-muted-foreground">
-          {displayedCount} registros de {total} | página {currentPage} de {totalPages}
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={isLoading || currentPage <= 1}
-            onClick={() => onPageChange(0)}
-          >
-            Primeira
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={isLoading || currentPage <= 1}
-            onClick={() => onPageChange(currentPage - 2)}
-          >
-            Anterior
-          </Button>
-          {pages.map((page, index) =>
-            page === "ellipsis" ? (
-              <span
-                key={`ellipsis-${index}`}
-                className="flex h-9 min-w-9 items-center justify-center px-2 text-sm text-muted-foreground"
-              >
-                ...
-              </span>
-            ) : (
-              <Button
-                key={page}
-                type="button"
-                variant={page === currentPage ? "default" : "outline"}
-                size="sm"
-                className="min-w-9 px-2"
-                disabled={isLoading || page === currentPage}
-                onClick={() => onPageChange(page - 1)}
-              >
-                {page}
-              </Button>
-            ),
-          )}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={isLoading || currentPage >= totalPages}
-            onClick={() => onPageChange(currentPage)}
-          >
-            Próxima
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={isLoading || currentPage >= totalPages}
-            onClick={() => onPageChange(totalPages - 1)}
-          >
-            Última
-          </Button>
-        </div>
-      </div>
-      <div className="flex flex-wrap items-center justify-center gap-2">
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2">
+      <p className="whitespace-nowrap text-sm text-muted-foreground">
+        {displayedCount} registros de {total} | página {currentPage} de {totalPages}
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={isLoading || currentPage <= 1}
+          onClick={() => onPageChange(0)}
+        >
+          Primeira
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={isLoading || currentPage <= 1}
+          onClick={() => onPageChange(currentPage - 2)}
+        >
+          Anterior
+        </Button>
+        {pages.map((page, index) =>
+          page === "ellipsis" ? (
+            <span
+              key={`ellipsis-${index}`}
+              className="flex h-9 min-w-9 items-center justify-center px-2 text-sm text-muted-foreground"
+            >
+              ...
+            </span>
+          ) : (
+            <Button
+              key={page}
+              type="button"
+              variant={page === currentPage ? "default" : "outline"}
+              size="sm"
+              className="min-w-9 px-2"
+              disabled={isLoading || page === currentPage}
+              onClick={() => onPageChange(page - 1)}
+            >
+              {page}
+            </Button>
+          ),
+        )}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={isLoading || currentPage >= totalPages}
+          onClick={() => onPageChange(currentPage)}
+        >
+          Próxima
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={isLoading || currentPage >= totalPages}
+          onClick={() => onPageChange(totalPages - 1)}
+        >
+          Última
+        </Button>
         <Label htmlFor="unidades-page-size" className="text-sm text-muted-foreground">
-          Registros por página:
+          Por página:
         </Label>
         <select
           id="unidades-page-size"
