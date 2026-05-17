@@ -2,7 +2,8 @@
 
 import { useMemo, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Image as ImageIcon, KeyRound, Save, ServerCog, Settings, Users } from "lucide-react";
+import Link from "next/link";
+import { Building2, Image as ImageIcon, KeyRound, Save, ServerCog, Settings, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -10,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import {
   obterConfiguracaoEnderecamento,
   obterConfiguracaoInstituicao,
+  obterInstituicaoArquivo,
   salvarConfiguracaoEnderecamento,
   salvarConfiguracaoInstituicao,
   type ConfiguracaoEnderecamento,
@@ -17,7 +19,13 @@ import {
 } from "@/lib/api/admin";
 import { config } from "@/lib/config";
 
-const adminItems = [
+const adminItems: Array<{
+  title: string;
+  description: string;
+  icon: typeof KeyRound;
+  value: string;
+  href?: string;
+}> = [
   {
     title: "Keycloak",
     description: "Realm, clientes, papéis e políticas de autenticação.",
@@ -42,6 +50,13 @@ const adminItems = [
     icon: Settings,
     value: "MVP",
   },
+  {
+    title: "Instituição de Arquivo",
+    description: "Custodiante padrão usada nos fluxos arquivísticos do sistema.",
+    icon: Building2,
+    value: "",
+    href: "/admin/instituicao-arquivo",
+  },
 ];
 
 export default function AdminPage() {
@@ -53,6 +68,10 @@ export default function AdminPage() {
   const instituicao = useQuery({
     queryKey: ["admin", "configuracoes", "instituicao"],
     queryFn: obterConfiguracaoInstituicao,
+  });
+  const instituicaoArquivo = useQuery({
+    queryKey: ["admin", "instituicao-arquivo"],
+    queryFn: obterInstituicaoArquivo,
   });
   const defaultValues: ConfiguracaoEnderecamento = {
     digitos_codigo_estrutura: {
@@ -140,8 +159,15 @@ export default function AdminPage() {
               </CardHeader>
               <CardContent>
                 <code className="block rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-                  {item.value}
+                  {item.href === "/admin/instituicao-arquivo"
+                    ? instituicaoArquivo.data?.nome ?? ""
+                    : item.value}
                 </code>
+                {item.href ? (
+                  <Button asChild className="mt-3" variant="outline">
+                    <Link href={item.href}>Abrir cadastro</Link>
+                  </Button>
+                ) : null}
               </CardContent>
             </Card>
           );

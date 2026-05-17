@@ -11,6 +11,7 @@ export type TipoInstrumentoPesquisa = "GUIA" | "INVENTARIO" | "CATALOGO" | "INDI
 export type StatusInstrumentoPesquisa = "RASCUNHO" | "PUBLICADO" | "ARQUIVADO";
 export type VisibilidadeInstrumentoPesquisa = "INTERNO" | "PUBLICO" | "RESTRITO";
 export type TipoCampoInstrumento = "TEXTO_CURTO" | "TEXTO_LONGO" | "NUMERO" | "DATA" | "PERIODO" | "BOOLEANO" | "LISTA_SIMPLES" | "LISTA_MULTIPLA" | "VOCABULARIO" | "UNIDADE_ACONDICIONAMENTO" | "REGISTRO_DESCRITIVO" | "URL" | "ARQUIVO" | "IMAGEM" | "CAMPO_CALCULADO";
+export type TipoEntidadeProdutora = "ORGAO_PUBLICO" | "UNIDADE_ADMINISTRATIVA" | "EMPRESA_PUBLICA" | "EMPRESA_PRIVADA" | "PESSOA_FISICA" | "FAMILIA" | "COMISSAO" | "GRUPO_TRABALHO" | "FUNDO" | "COLECAO" | "OUTRO";
 
 export type UnidadeAcondicionamento = {
   id: number;
@@ -165,4 +166,44 @@ export type InstrumentoRegistroPage = {
   next_cursor?: string | null;
   has_more: boolean;
   total?: number | null;
+};
+
+export type EntidadeProdutora = {
+  id: string;
+  nome: string;
+  nome_normalizado?: string | null;
+  sigla?: string | null;
+  codigo_referencia?: string | null;
+  tipo_entidade: TipoEntidadeProdutora;
+  natureza_juridica?: string | null;
+  data_inicio?: string | null;
+  data_fim?: string | null;
+  entidade_ativa: boolean;
+  historico?: string | null;
+  competencias_funcoes?: string | null;
+  observacoes?: string | null;
+  email?: string | null;
+  telefone?: string | null;
+  site?: string | null;
+  endereco_logradouro?: string | null;
+  endereco_numero?: string | null;
+  endereco_complemento?: string | null;
+  endereco_bairro?: string | null;
+  endereco_municipio?: string | null;
+  endereco_uf?: string | null;
+  endereco_cep?: string | null;
+  endereco_pais?: string | null;
+  id_entidade_superior?: string | null;
+  nome_entidade_superior?: string | null;
+  criado_em: string;
+  atualizado_em: string;
+  avisos_duplicidade?: string[];
+};
+
+export type EntidadeProdutoraTree = Pick<
+  EntidadeProdutora,
+  "id" | "nome" | "sigla" | "codigo_referencia" | "tipo_entidade" | "entidade_ativa" | "id_entidade_superior"
+> & {
+  has_children: boolean;
+  filhos: EntidadeProdutoraTree[];
 };
