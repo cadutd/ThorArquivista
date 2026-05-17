@@ -26,3 +26,12 @@ from app.models.instrumento_pesquisa import InstrumentoCampo, InstrumentoPesquis
 from app.models.entidade_produtora import EntidadeProdutora  # noqa: F401
 from app.models.instituicao_arquivo import InstituicaoArquivo  # noqa: F401
 from app.models.user import User  # noqa: F401
+from app.models.admissao import (  # noqa: F401
+    AcordoAdmissao,
+    EventoAdmissao,
+    ProcessoAdmissao,
+    RelacaoSipAip,
+    ReuniaoAdmissao,
+    SessaoSubmissao,
+    SipAdmissao,
+)

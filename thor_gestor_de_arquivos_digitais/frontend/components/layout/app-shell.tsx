@@ -15,6 +15,7 @@ import {
   FileText,
   Gauge,
   HardDrive,
+  Inbox,
   LogOut,
   MapPinned,
   Settings,
@@ -27,6 +28,7 @@ import { cn } from "@/lib/utils";
 
 const navigation = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
+  { href: "/admissao", label: "Admissão", icon: Inbox },
   { href: "/unidades", label: "Unidades", icon: Archive },
   { href: "/entidades-produtoras", label: "Entidades Produtoras", icon: Building2 },
   { href: "/usuarios", label: "Usuários", icon: Users },
