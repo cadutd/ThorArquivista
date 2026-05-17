@@ -1,0 +1,4 @@
+interface:
+  display_name: "Thor Lazy Tree"
+  short_description: "Padroniza arvores lazy load no Thor"
+  default_prompt: "Use $thor-lazy-tree para criar ou revisar uma arvore navegavel com lazy load no Thor."
