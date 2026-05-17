@@ -19,6 +19,7 @@ import {
   MapPinned,
   Settings,
   ShieldCheck,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth/auth-provider";
@@ -28,6 +29,7 @@ const navigation = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
   { href: "/unidades", label: "Unidades", icon: Archive },
   { href: "/entidades-produtoras", label: "Entidades Produtoras", icon: Building2 },
+  { href: "/usuarios", label: "Usuários", icon: Users },
   { href: "/descricao-arquivistica", label: "Descrição Arquivística", icon: BookOpenText },
   { href: "/instrumentos-pesquisa", label: "Instrumentos de Pesquisa", icon: FileSearch },
   { href: "/midias", label: "Mídias", icon: HardDrive },

@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test:functional": "node --test tests/functional/*.test.mjs",
-    "test:functional:report": "node -e \"require('node:fs').mkdirSync('../test-reports/frontend', { recursive: true })\" && node --test --test-reporter=junit --test-reporter-destination=../test-reports/frontend/junit.xml tests/functional/*.test.mjs"
+    "test:functional:report": "node -e \"require('node:fs').mkdirSync('../test-reports/frontend', { recursive: true })\" && node --test --test-reporter=junit --test-reporter-destination=../test-reports/frontend/junit.xml tests/functional/*.test.mjs",
+    "test:e2e:keycloak": "playwright test tests/e2e/keycloak-user-login.spec.mjs --project=chromium"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -35,6 +36,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4.2.4",
     "@types/node": "^24.12.2",
     "@types/prop-types": "^15.7.15",

@@ -17,6 +17,7 @@ from app.api.v1.eventos_preservacao import router as eventos_router
 from app.api.v1.fichas_espelho import router as fichas_espelho_router
 from app.api.v1.instrumentos_pesquisa import router as instrumentos_pesquisa_router
 from app.api.v1.entidades_produtoras import router as entidades_produtoras_router
+from app.api.v1.usuarios import router as usuarios_router
 
 from app.security.deps import get_current_user_claims
 
@@ -108,6 +109,13 @@ api_router.include_router(
     entidades_produtoras_router,
     prefix="/entidades-produtoras",
     tags=["entidades-produtoras"],
+    dependencies=protecoes,
+)
+
+api_router.include_router(
+    usuarios_router,
+    prefix="/usuarios",
+    tags=["usuarios"],
     dependencies=protecoes,
 )
 

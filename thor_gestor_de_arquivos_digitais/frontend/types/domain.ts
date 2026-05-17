@@ -12,6 +12,7 @@ export type StatusInstrumentoPesquisa = "RASCUNHO" | "PUBLICADO" | "ARQUIVADO";
 export type VisibilidadeInstrumentoPesquisa = "INTERNO" | "PUBLICO" | "RESTRITO";
 export type TipoCampoInstrumento = "TEXTO_CURTO" | "TEXTO_LONGO" | "NUMERO" | "DATA" | "PERIODO" | "BOOLEANO" | "LISTA_SIMPLES" | "LISTA_MULTIPLA" | "VOCABULARIO" | "UNIDADE_ACONDICIONAMENTO" | "REGISTRO_DESCRITIVO" | "URL" | "ARQUIVO" | "IMAGEM" | "CAMPO_CALCULADO";
 export type TipoEntidadeProdutora = "ORGAO_PUBLICO" | "UNIDADE_ADMINISTRATIVA" | "EMPRESA_PUBLICA" | "EMPRESA_PRIVADA" | "PESSOA_FISICA" | "FAMILIA" | "COMISSAO" | "GRUPO_TRABALHO" | "FUNDO" | "COLECAO" | "OUTRO";
+export type PapelUsuario = "ADMIN" | "ARQUIVISTA" | "OPERADOR" | "CONSULTA";
 
 export type UnidadeAcondicionamento = {
   id: number;
@@ -206,4 +207,17 @@ export type EntidadeProdutoraTree = Pick<
 > & {
   has_children: boolean;
   filhos: EntidadeProdutoraTree[];
+};
+
+export type Usuario = {
+  id: string;
+  keycloak_sub?: string | null;
+  username: string;
+  nome: string;
+  email: string;
+  papel: PapelUsuario;
+  ativo: boolean;
+  observacoes?: string | null;
+  criado_em: string;
+  atualizado_em: string;
 };

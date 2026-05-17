@@ -150,6 +150,10 @@ services:
       keycloak_realm: thor
       keycloak_client_id: thor-api
       keycloak_verify_audience: "true"
+      keycloak_admin_realm: master
+      keycloak_admin_client_id: admin-cli
+      keycloak_admin_user: admin
+      keycloak_admin_password: admin
       cors_origins: '["http://localhost:3000"]'
 
     ports:
@@ -191,6 +195,10 @@ services:
       keycloak_realm: thor
       keycloak_client_id: thor-api
       keycloak_verify_audience: "true"
+      keycloak_admin_realm: master
+      keycloak_admin_client_id: admin-cli
+      keycloak_admin_user: admin
+      keycloak_admin_password: admin
       cors_origins: '["http://localhost:3000"]'
     command: >
       sh -c "

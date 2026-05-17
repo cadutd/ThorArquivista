@@ -34,9 +34,10 @@ const adminItems: Array<{
   },
   {
     title: "Usuários",
-    description: "Gestão delegada ao provedor de identidade.",
+    description: "Perfis locais vinculados ao provedor de identidade.",
     icon: Users,
     value: "OIDC",
+    href: "/usuarios",
   },
   {
     title: "API",

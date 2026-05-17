@@ -25,3 +25,4 @@ from app.models.ficha_espelho import ModeloFichaEspelho  # noqa: F401
 from app.models.instrumento_pesquisa import InstrumentoCampo, InstrumentoPesquisa  # noqa: F401
 from app.models.entidade_produtora import EntidadeProdutora  # noqa: F401
 from app.models.instituicao_arquivo import InstituicaoArquivo  # noqa: F401
+from app.models.user import User  # noqa: F401

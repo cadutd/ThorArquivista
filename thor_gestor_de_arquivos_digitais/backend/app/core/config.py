@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     keycloak_realm: str = "thor"
     keycloak_client_id: str = "thor-api"
     keycloak_verify_audience: bool = True  # valida aud/azp
+    keycloak_admin_realm: str = "master"
+    keycloak_admin_client_id: str = "admin-cli"
+    keycloak_admin_user: str = "admin"
+    keycloak_admin_password: str = "admin"
 
     cors_origins: list[str] = ["http://localhost:3000"]
 
