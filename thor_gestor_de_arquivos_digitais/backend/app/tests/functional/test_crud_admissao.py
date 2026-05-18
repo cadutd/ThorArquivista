@@ -252,6 +252,10 @@ def test_crud_entidades_filhas_admissao_por_funcao(client: TestClient, unique_co
     reuniao = client.post(f"/api/v1/admissao/processos/{processo['id']}/reunioes", json=reuniao_payload())
     evento = client.post(f"/api/v1/admissao/processos/{processo['id']}/eventos", json=evento_payload())
     reunioes = client.get(f"/api/v1/admissao/processos/{processo['id']}/reunioes")
+    reuniao_atualizada = client.put(
+        f"/api/v1/admissao/reunioes/{reuniao.json()['id']}",
+        json={"tipo_reuniao": "ALINHAMENTO_TECNICO", "pendencias": "Pendência registrada."},
+    )
     acordos = client.get(f"/api/v1/admissao/processos/{processo['id']}/acordos")
     sessoes = client.get(f"/api/v1/admissao/processos/{processo['id']}/sessoes")
     sips = client.get(f"/api/v1/admissao/processos/{processo['id']}/sips")
@@ -259,10 +263,14 @@ def test_crud_entidades_filhas_admissao_por_funcao(client: TestClient, unique_co
     ativado = client.post(f"/api/v1/admissao/acordos/{acordo['id']}/ativar")
     validado = client.post(f"/api/v1/admissao/sips/{sip['id']}/validar")
     missing_reuniao = client.get(f"/api/v1/admissao/reunioes/{missing_uuid()}")
+    reuniao_excluida = client.delete(f"/api/v1/admissao/reunioes/{reuniao.json()['id']}")
+    reuniao_excluida_novamente = client.delete(f"/api/v1/admissao/reunioes/{reuniao.json()['id']}")
 
     assert reuniao.status_code == 201
     assert evento.status_code == 201
     assert reunioes.status_code == 200
+    assert reuniao_atualizada.status_code == 200
+    assert reuniao_atualizada.json()["tipo_reuniao"] == "ALINHAMENTO_TECNICO"
     assert acordos.status_code == 200
     assert sessoes.status_code == 200
     assert sips.status_code == 200
@@ -270,3 +278,5 @@ def test_crud_entidades_filhas_admissao_por_funcao(client: TestClient, unique_co
     assert ativado.status_code == 200
     assert validado.status_code == 200
     assert missing_reuniao.status_code == 404
+    assert reuniao_excluida.status_code == 204
+    assert reuniao_excluida_novamente.status_code == 404

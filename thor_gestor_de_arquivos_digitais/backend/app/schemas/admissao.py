@@ -131,7 +131,6 @@ class ReuniaoAdmissaoBase(BaseModel):
     deliberacoes: str | None = None
     pendencias: str | None = None
     proximos_passos: str | None = None
-    ata_documento: str | None = Field(default=None, max_length=500)
     criado_por: str | None = Field(default=None, max_length=255)
     atualizado_por: str | None = Field(default=None, max_length=255)
 
@@ -151,7 +150,6 @@ class ReuniaoAdmissaoUpdate(BaseModel):
     deliberacoes: str | None = None
     pendencias: str | None = None
     proximos_passos: str | None = None
-    ata_documento: str | None = Field(default=None, max_length=500)
     atualizado_por: str | None = Field(default=None, max_length=255)
 
 

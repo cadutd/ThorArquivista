@@ -164,6 +164,13 @@ def atualizar_reuniao(id: uuid.UUID, dados: ReuniaoAdmissaoUpdate, db: Session =
     return reuniao
 
 
+@router.delete("/reunioes/{id}", status_code=status.HTTP_204_NO_CONTENT)
+def excluir_reuniao(id: uuid.UUID, db: Session = Depends(db_dep)):
+    if not AdmissaoService.excluir_reuniao(db, id):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reunião de admissão não encontrada.")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
 @router.get("/processos/{processo_id}/acordos", response_model=list[AcordoAdmissaoRead])
 def listar_acordos(processo_id: uuid.UUID, db: Session = Depends(db_dep)):
     return AdmissaoService.listar_acordos(db, processo_id)

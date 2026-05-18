@@ -75,7 +75,6 @@ def upgrade() -> None:
             deliberacoes TEXT,
             pendencias TEXT,
             proximos_passos TEXT,
-            ata_documento VARCHAR(500),
             criado_por VARCHAR(255),
             atualizado_por VARCHAR(255),
             criado_em TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),

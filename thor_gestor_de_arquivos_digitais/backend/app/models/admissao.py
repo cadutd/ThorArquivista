@@ -200,7 +200,6 @@ class ReuniaoAdmissao(Base):
     deliberacoes: Mapped[str | None] = mapped_column(Text)
     pendencias: Mapped[str | None] = mapped_column(Text)
     proximos_passos: Mapped[str | None] = mapped_column(Text)
-    ata_documento: Mapped[str | None] = mapped_column(String(500))
     criado_por: Mapped[str | None] = mapped_column(String(255))
     atualizado_por: Mapped[str | None] = mapped_column(String(255))
     criado_em: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())

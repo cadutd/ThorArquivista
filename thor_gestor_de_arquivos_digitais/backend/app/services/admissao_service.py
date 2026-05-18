@@ -198,6 +198,15 @@ class AdmissaoService:
         return reuniao
 
     @staticmethod
+    def excluir_reuniao(db: Session, id: uuid.UUID) -> bool:
+        reuniao = db.get(ReuniaoAdmissao, id)
+        if not reuniao:
+            return False
+        db.delete(reuniao)
+        db.commit()
+        return True
+
+    @staticmethod
     def criar_acordo(db: Session, processo_id: uuid.UUID, dados: AcordoAdmissaoCreate) -> AcordoAdmissao:
         processo = AdmissaoService._obter_processo_ou_erro(db, processo_id)
         if AdmissaoService._enum_value(dados.status) == "ATIVO":
