@@ -12,6 +12,8 @@ Interface administrativa em Next.js, React, TypeScript e Tailwind CSS para opera
 - Gerenciar endereçamento de armazenamento físico e lógico.
 - Gerar topografia, consultar posições e acompanhar ocupação.
 - Atribuir posições a unidades, mídias e cópias digitais.
+- Gerenciar processos de admissão, reuniões, acordos, sessões de submissão, SIPs e eventos do processo.
+- Gerenciar instrumentos de pesquisa, campos e registros dinâmicos.
 - Consultar eventos de preservação.
 
 ## Stack
@@ -84,9 +86,14 @@ O Compose expõe o frontend em `http://localhost:3000`, integrado ao backend em 
 - `/login`: entrada via Keycloak.
 - `/auth/callback`: callback OIDC.
 - `/dashboard`: tela principal do sistema com indicadores.
+- `/admissao`: listagem e filtros de processos de admissão.
+- `/admissao/novo`: criação de processo de admissão.
+- `/admissao/[id]`: visualização do processo com abas de resumo, reuniões, acordos, sessões, SIPs, AIPs, eventos e documentos.
+- `/admissao/[id]/editar`: edição do processo de admissão.
 - `/unidades`: CRUD de unidades de acondicionamento.
 - `/midias`: gestão de mídias.
 - `/enderecamento`: módulo de endereçamento de armazenamento.
+- `/instrumentos-pesquisa`: gestão de instrumentos, campos e registros dinâmicos.
 - `/eventos`: consulta de eventos por unidade.
 - `/admin`: área administrativa inicial.
 
@@ -116,6 +123,27 @@ Registros por página: BB
 ```
 
 Há uma paginação entre a busca e a tabela e outra abaixo da tabela.
+
+## Admissão
+
+O módulo de admissão está disponível em `/admissao` e usa paginação de backend com filtros por número, título, entidade produtora, tipo de processo, tipo de ingresso, suporte, status, processo ativo e intervalo de datas.
+
+Fluxos principais:
+
+- criar, editar, visualizar e excluir processos de admissão;
+- exibir todos os campos do processo na aba `Resumo`;
+- vincular uma descrição arquivística existente por consulta em pop-up;
+- registrar o nome do usuário responsável;
+- manter reuniões do processo com CRUD completo e tela de visualização própria;
+- gerenciar acordos, sessões, SIPs e eventos relacionados ao processo.
+
+Arquivos principais:
+
+- `frontend/app/(app)/admissao/`
+- `frontend/features/admissao/admissao-page.tsx`
+- `frontend/features/admissao/processo-admissao-form.tsx`
+- `frontend/features/admissao/processo-admissao-detail-page.tsx`
+- `frontend/lib/api/admissao.ts`
 
 ## Endereçamento de Armazenamento
 
@@ -158,4 +186,19 @@ docker compose exec backend python -m app.scripts.seed_storage_addressing
 npm run typecheck
 npm run lint
 npm run build
+```
+
+Com Docker:
+
+```bash
+docker exec -w /app thor-frontend npm run typecheck
+docker exec -w /app thor-frontend npm run lint
+docker exec -w /app thor-frontend npm run build
+```
+
+Testes funcionais e E2E disponíveis:
+
+```bash
+npm run test:functional
+npm run test:e2e:keycloak
 ```

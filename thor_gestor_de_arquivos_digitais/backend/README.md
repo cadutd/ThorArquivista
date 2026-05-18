@@ -12,6 +12,7 @@ API do Thor Gestor de Arquivos Digitais, implementada em FastAPI com PostgreSQL,
 - Gerar topografia de armazenamento.
 - Atribuir posições a unidades, mídias e cópias digitais.
 - Registrar movimentações de armazenamento.
+- Gerenciar processos de admissão de acervos, reuniões, acordos, sessões de submissão, SIPs e eventos do processo.
 - Gerenciar instrumentos de pesquisa, campos configuráveis e registros dinâmicos.
 - Executar busca simples inicial nos registros dinâmicos.
 - Publicar eventos de indexação assíncrona para o worker Celery.
@@ -74,6 +75,7 @@ Todas as rotas abaixo ficam sob `/api/v1`.
 | Compartimentos | `/compartimentos-armazenamento` | CRUD de prateleiras, gavetas, slots, diretórios etc. |
 | Posições | `/posicoes-armazenamento` | Consulta, posições livres/ocupadas e CRUD |
 | Movimentações | `/movimentacoes-armazenamento` | Histórico de movimentação |
+| Admissão | `/admissao/processos` | Processos de admissão, filtros e paginação |
 | Instrumentos de pesquisa | `/instrumentos-pesquisa` | Instrumentos, campos, registros dinâmicos e busca |
 
 O endpoint `/dashboard` calcula os totais diretamente no banco, evitando contagens incorretas causadas por listagens paginadas.
@@ -96,6 +98,24 @@ Endpoints de atribuição:
 | `/unidades-acondicionamento/{id}/atribuir-posicao` | Move ou atribui posição a uma unidade |
 | `/midias-armazenamento/{id}/atribuir-posicao` | Move ou atribui posição a uma mídia |
 | `/copias-unidades-acondicionamento-digitais/{id}/atribuir-posicao` | Move ou atribui posição a uma cópia digital |
+
+Rotas principais do módulo de admissão:
+
+| Rota | Finalidade |
+| --- | --- |
+| `/admissao/processos` | CRUD de processos, filtros, paginação e auditoria de criação/alteração |
+| `/admissao/processos/{processo_id}/reunioes` | Listagem e criação de reuniões do processo |
+| `/admissao/reunioes/{id}` | Visualização, edição e exclusão de uma reunião |
+| `/admissao/processos/{processo_id}/acordos` | Acordos de admissão do processo |
+| `/admissao/acordos/{id}/ativar` | Ativação de acordo |
+| `/admissao/acordos/{id}/nova-versao` | Criação de nova versão de acordo |
+| `/admissao/processos/{processo_id}/sessoes` | Sessões de submissão vinculadas ao processo |
+| `/admissao/sessoes/{id}/finalizar` | Finalização de sessão |
+| `/admissao/processos/{processo_id}/sips` | SIPs do processo |
+| `/admissao/sips/{id}/validar` | Validação de SIP |
+| `/admissao/sips/{id}/rejeitar` | Rejeição de SIP |
+| `/admissao/sips/{id}/transformar-aip` | Geração de vínculo SIP/AIP com unidade de acondicionamento |
+| `/admissao/processos/{processo_id}/eventos` | Eventos operacionais do processo |
 
 ## Endereçamento de Armazenamento
 
@@ -126,6 +146,34 @@ Regras implementadas:
 - liberação da posição anterior quando um objeto é movido;
 - registro de movimentação a cada atribuição;
 - consultas de posições livres, ocupadas, localização de unidade e ocupação por local/zona.
+
+## Admissão de Acervos
+
+O módulo de admissão registra o ciclo de entrada de acervos digitais ou físicos. O processo concentra os dados gerais da negociação e recebimento, incluindo instituição de arquivo, entidade produtora, descrição arquivística associada, usuário responsável, status, datas, volumes, restrições e parecer final.
+
+Entidades principais:
+
+- `ProcessoAdmissao`: dossiê principal de admissão.
+- `ReuniaoAdmissao`: reuniões vinculadas ao processo, com enum `tipo_reuniao`.
+- `AcordoAdmissao`: versões de acordo e regras de recebimento.
+- `SessaoSubmissao`: sessões de envio/recebimento de pacotes.
+- `SipAdmissao`: pacotes SIP recebidos, validados ou rejeitados.
+- `RelacaoSipAip`: vínculo de SIP transformado em AIP/unidade de acondicionamento.
+- `EventoAdmissao`: linha de eventos do processo.
+
+Arquivos principais:
+
+- `app/models/admissao.py`
+- `app/schemas/admissao.py`
+- `app/services/admissao_service.py`
+- `app/api/v1/admissao.py`
+
+Observações:
+
+- `criado_por` e `atualizado_por` de processos são preenchidos a partir dos claims do usuário Keycloak.
+- `nome_usuario_responsavel` é um campo operacional do processo.
+- `id_descricao_arquivistica` vincula o processo a uma descrição existente.
+- Reuniões não usam mais os campos legados `codigo_sip`, `responsavel_caminho` e `ata_documento`.
 
 ## Rodar com Docker Compose
 
@@ -234,6 +282,12 @@ A migration `000002_storage_locations` adiciona:
 - `movimentacoes_armazenamento`;
 - vínculo opcional `id_posicao_armazenamento` em unidades, mídias e cópias digitais.
 
+Migrations do módulo de admissão:
+
+- `20260517_000016_admissao`: cria processos de admissão, reuniões, acordos, sessões, SIPs, relações SIP/AIP e eventos.
+- `20260518_000017_admissao_responsavel`: adiciona `nome_usuario_responsavel` ao processo.
+- `20260518_000018_remove_ata_documento_reunioes`: remove o campo legado `ata_documento` de reuniões.
+
 ## Massa de Teste
 
 Com os containers rodando:
@@ -305,6 +359,13 @@ Eventos de indexação suportados:
 ```bash
 python -m pytest app\tests
 python -m py_compile app\api\v1\dashboard.py app\api\v1\armazenamento.py app\schemas\armazenamento.py app\services\armazenamento_service.py app\api\v1\router.py
+```
+
+Com Docker:
+
+```bash
+docker exec thor-backend pytest /app/app/tests
+docker exec thor-backend pytest /app/app/tests/functional/test_crud_admissao.py /app/app/tests/integration/test_admissao_integrado.py
 ```
 
 Se `pytest` não estiver instalado no ambiente local, instale as dependências do projeto antes de executar os testes.

@@ -1,6 +1,6 @@
 # Thor Gestor de Arquivos Digitais
 
-Manual de desenvolvimento do sistema Thor, uma aplicação para gestão de unidades de acondicionamento físicas e digitais, endereçamento de armazenamento, mídias, cópias digitais e eventos de preservação.
+Manual de desenvolvimento do sistema Thor, uma aplicação para gestão de unidades de acondicionamento físicas e digitais, admissão de acervos, endereçamento de armazenamento, mídias, cópias digitais, instrumentos de pesquisa e eventos de preservação.
 
 ## Visão Geral
 
@@ -15,6 +15,7 @@ Serviços auxiliares sobem via Docker Compose:
 - PostgreSQL principal: banco da aplicação.
 - PostgreSQL do Keycloak: banco separado para identidade.
 - Keycloak: provedor OIDC usado no login do frontend e na validação de tokens do backend.
+- MongoDB: armazenamento dos registros dinâmicos dos instrumentos de pesquisa.
 - Redis: infraestrutura de fila para Celery e coordenação operacional.
 - Meilisearch: motor de busca local usado pelos registros dinâmicos dos instrumentos de pesquisa.
 - pgAdmin: administração visual do PostgreSQL.
@@ -107,7 +108,8 @@ Banco principal:
 - Database: `thor_db`
 - Host dentro do Docker: `postgres`
 - Host no sistema local: `localhost`
-- Porta: `5432`
+- Porta no sistema local: `5433`
+- Porta dentro da rede Docker: `5432`
 
 ## Configuração do Keycloak
 
@@ -293,6 +295,12 @@ Rotas principais sob `/api/v1`:
 | `/compartimentos-armazenamento` | CRUD de compartimentos |
 | `/posicoes-armazenamento` | Consulta e CRUD de posições |
 | `/movimentacoes-armazenamento` | Histórico de movimentações |
+| `/admissao/processos` | CRUD de processos de admissão, filtros e paginação |
+| `/admissao/processos/{id}/reunioes` | Reuniões vinculadas ao processo de admissão |
+| `/admissao/processos/{id}/acordos` | Acordos de admissão e versionamento |
+| `/admissao/processos/{id}/sessoes` | Sessões de submissão do processo |
+| `/admissao/processos/{id}/sips` | SIPs recebidos no processo |
+| `/admissao/processos/{id}/eventos` | Linha de eventos do processo de admissão |
 | `/instrumentos-pesquisa` | Cadastro de instrumentos, campos e registros dinâmicos |
 | `/instrumentos-pesquisa/{id}/registros` | Listagem dinâmica por cursor |
 | `/instrumentos-pesquisa/{id}/buscar` | Busca simples inicial no MongoDB, usando campos `aparece_busca` |
@@ -346,6 +354,7 @@ Telas principais:
 | --- | --- |
 | Login | `/login` |
 | Dashboard | `/dashboard` |
+| Admissão | `/admissao` |
 | Unidades | `/unidades` |
 | Mídias | `/midias` |
 | Endereçamento | `/enderecamento` |
@@ -360,6 +369,17 @@ As telas de unidades, mídias, instrumentos de pesquisa e busca avançada de reg
 XX registros de YY | página B de C  Primeira Anterior 1 2 3 ... C Próxima Última
 Registros por página: BB
 ```
+
+Telas do módulo de admissão:
+
+| Tela | Rota |
+| --- | --- |
+| Listagem de processos | `/admissao` |
+| Novo processo | `/admissao/novo` |
+| Visualização do processo | `/admissao/{id}` |
+| Edição do processo | `/admissao/{id}/editar` |
+
+O processo de admissão registra dados gerais do dossiê, instituição de arquivo, entidade produtora, descrição arquivística associada, responsável, status, datas, volumes e parecer final. A visualização do processo reúne abas para resumo, reuniões, acordos, sessões, SIPs, AIPs, eventos e documentos. Reuniões possuem CRUD completo com visualização dedicada, edição e exclusão.
 
 Telas do módulo de endereçamento:
 
@@ -520,6 +540,12 @@ A migration `000002_storage_locations` adiciona:
 - `movimentacoes_armazenamento`;
 - `id_posicao_armazenamento` em unidades, mídias e cópias digitais.
 
+As migrations mais recentes adicionam o módulo de admissão:
+
+- `20260517_000016_admissao`: processos de admissão, reuniões, acordos, sessões, SIPs, vínculos SIP/AIP e eventos.
+- `20260518_000017_admissao_responsavel`: nome do usuário responsável no processo.
+- `20260518_000018_remove_ata_documento_reunioes`: remove o campo legado `ata_documento` de reuniões.
+
 ## Observações de Desenvolvimento
 
 - O frontend chama a API pelo navegador usando `http://localhost:8000/api/v1`; por isso o backend libera CORS para `http://localhost:3000`.
@@ -547,6 +573,14 @@ Backend:
 ```bash
 cd backend
 python -m pytest app\tests
+```
+
+Validação recomendada via Docker:
+
+```bash
+docker exec thor-backend pytest /app/app/tests
+docker exec -w /app thor-frontend npm run typecheck
+docker exec -w /app thor-frontend npm run lint
 ```
 
 Se `pytest` não estiver instalado no Python local, instale as dependências do backend antes de executar os testes.
