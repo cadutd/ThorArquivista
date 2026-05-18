@@ -37,7 +37,7 @@ export function AdmissaoPage() {
           <h1 className="text-2xl font-semibold tracking-normal">Admissão</h1>
           <p className="text-sm text-muted-foreground">Processos de admissão OAIS, acordos, submissões, SIPs e eventos.</p>
         </div>
-        <Button asChild><Link href="/admissao/novo"><Plus className="h-4 w-4" />Novo processo</Link></Button>
+        <Button asChild className="text-white"><Link href="/admissao/novo"><Plus className="h-4 w-4" />Novo processo</Link></Button>
       </div>
 
       <div className="space-y-3 rounded-md border p-4">
@@ -94,12 +94,13 @@ function ProcessosTable({ processos, isLoading }: { processos: ProcessoAdmissao[
   return (
     <div className="overflow-hidden rounded-md border">
       <Table>
-        <TableHeader><TableRow><TableHead>Processo</TableHead><TableHead>Produtor</TableHead><TableHead>Ingresso</TableHead><TableHead>Suporte</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
+        <TableHeader><TableRow><TableHead>Processo</TableHead><TableHead>Produtor</TableHead><TableHead>Descrição arquivística</TableHead><TableHead>Ingresso</TableHead><TableHead>Suporte</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
         <TableBody>
           {processos.length ? processos.map((processo) => (
             <TableRow key={processo.id}>
               <TableCell><Link className="font-medium text-primary hover:underline" href={`/admissao/${processo.id}`}>{processo.numero_processo}</Link><p className="text-xs text-muted-foreground">{processo.titulo}</p></TableCell>
               <TableCell>{processo.nome_entidade_produtora || "-"}</TableCell>
+              <TableCell>{processo.titulo_descricao_arquivistica || "-"}</TableCell>
               <TableCell>{label(processo.tipo_ingresso)}</TableCell>
               <TableCell>{label(processo.tipo_suporte)}</TableCell>
               <TableCell>{label(processo.status)}</TableCell>
@@ -110,7 +111,7 @@ function ProcessosTable({ processos, isLoading }: { processos: ProcessoAdmissao[
               </div></TableCell>
             </TableRow>
           )) : (
-            <TableRow><TableCell colSpan={6} className="h-24 text-center text-muted-foreground">{isLoading ? "Carregando processos..." : "Nenhum processo de admissão encontrado."}</TableCell></TableRow>
+            <TableRow><TableCell colSpan={7} className="h-24 text-center text-muted-foreground">{isLoading ? "Carregando processos..." : "Nenhum processo de admissão encontrado."}</TableCell></TableRow>
           )}
         </TableBody>
       </Table>

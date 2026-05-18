@@ -2,14 +2,17 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { Search } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { obterInstituicaoArquivo } from "@/lib/api/admin";
 import { createProcessoAdmissao, updateProcessoAdmissao, type ProcessoAdmissao } from "@/lib/api/admissao";
+import { listarRegistrosDescricao } from "@/lib/api/descricao-arquivistica";
 import { listEntidadesProdutoras } from "@/lib/api/entidades-produtoras";
 
 const schema = z.object({
@@ -18,6 +21,8 @@ const schema = z.object({
   descricao: z.string().optional(),
   id_instituicao_arquivo: z.string().min(1, "Cadastre ou selecione a Instituição de Arquivo."),
   id_entidade_produtora: z.string().min(1, "Selecione a entidade produtora."),
+  id_descricao_arquivistica: z.string().optional(),
+  nome_usuario_responsavel: z.string().optional(),
   tipo_processo_admissao: z.enum(["FECHADO", "CONTINUO"]),
   tipo_ingresso: z.enum(["TRANSFERENCIA", "RECOLHIMENTO", "DOACAO", "AQUISICAO", "INCORPORACAO", "REGULARIZACAO_LEGADO", "OUTRO"]),
   tipo_suporte: z.enum(["DIGITAL", "FISICO", "HIBRIDO"]),
@@ -48,6 +53,8 @@ const defaultValues: FormValues = {
   descricao: "",
   id_instituicao_arquivo: "",
   id_entidade_produtora: "",
+  id_descricao_arquivistica: "",
+  nome_usuario_responsavel: "",
   tipo_processo_admissao: "FECHADO",
   tipo_ingresso: "TRANSFERENCIA",
   tipo_suporte: "DIGITAL",
@@ -72,8 +79,16 @@ const defaultValues: FormValues = {
 
 export function ProcessoAdmissaoForm({ processo, onSaved }: { processo?: ProcessoAdmissao; onSaved?: (processo: ProcessoAdmissao) => void }) {
   const queryClient = useQueryClient();
+  const [descricaoDialogOpen, setDescricaoDialogOpen] = useState(false);
+  const [descricaoSearch, setDescricaoSearch] = useState("");
+  const [descricaoTitle, setDescricaoTitle] = useState<string | null>(null);
   const instituicao = useQuery({ queryKey: ["admin", "instituicao-arquivo"], queryFn: obterInstituicaoArquivo });
   const produtoras = useQuery({ queryKey: ["entidades-produtoras", "lookup"], queryFn: listEntidadesProdutoras });
+  const descricoes = useQuery({
+    queryKey: ["descricao-arquivistica", "consulta", descricaoSearch],
+    queryFn: () => listarRegistrosDescricao({ q: descricaoSearch }),
+    enabled: descricaoDialogOpen,
+  });
   const form = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues });
 
   useEffect(() => {
@@ -94,6 +109,11 @@ export function ProcessoAdmissaoForm({ processo, onSaved }: { processo?: Process
       onSaved?.(saved);
     },
   });
+  const descricaoDisplayTitle = descricaoTitle ?? processo?.titulo_descricao_arquivistica ?? "";
+  const produtorasOptions =
+    processo && processo.nome_entidade_produtora && !(produtoras.data ?? []).some((entidade) => entidade.id === processo.id_entidade_produtora)
+      ? [{ id: processo.id_entidade_produtora, nome: processo.nome_entidade_produtora }, ...(produtoras.data ?? [])]
+      : (produtoras.data ?? []);
 
   return (
     <form className="space-y-6" onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
@@ -108,8 +128,17 @@ export function ProcessoAdmissaoForm({ processo, onSaved }: { processo?: Process
           </SelectField>
           <SelectField label="Entidade produtora" error={form.formState.errors.id_entidade_produtora?.message} {...form.register("id_entidade_produtora")} required>
             <option value="">Selecione</option>
-            {(produtoras.data ?? []).map((entidade) => <option key={entidade.id} value={entidade.id}>{entidade.nome}</option>)}
+            {produtorasOptions.map((entidade) => <option key={entidade.id} value={entidade.id}>{entidade.nome}</option>)}
           </SelectField>
+          <Field label="Descrição Arquivística Associada">
+            <input type="hidden" {...form.register("id_descricao_arquivistica")} />
+            <div className="flex gap-2">
+              <Input value={descricaoDisplayTitle} readOnly placeholder="Sem vínculo" />
+              <Button type="button" variant="outline" onClick={() => setDescricaoDialogOpen(true)}><Search className="h-4 w-4" />Consultar</Button>
+              {descricaoDisplayTitle ? <Button type="button" variant="outline" onClick={() => { form.setValue("id_descricao_arquivistica", ""); setDescricaoTitle(""); }}>Limpar</Button> : null}
+            </div>
+          </Field>
+          <Field label="Nome do usuário responsável"><Input {...form.register("nome_usuario_responsavel")} /></Field>
           <SelectField label="Tipo do processo" {...form.register("tipo_processo_admissao")}><option value="FECHADO">FECHADO</option><option value="CONTINUO">CONTINUO</option></SelectField>
           <SelectField label="Tipo de ingresso" {...form.register("tipo_ingresso")}>{["TRANSFERENCIA","RECOLHIMENTO","DOACAO","AQUISICAO","INCORPORACAO","REGULARIZACAO_LEGADO","OUTRO"].map((value) => <option key={value} value={value}>{label(value)}</option>)}</SelectField>
           <SelectField label="Suporte" {...form.register("tipo_suporte")}><option value="DIGITAL">DIGITAL</option><option value="FISICO">FISICO</option><option value="HIBRIDO">HIBRIDO</option></SelectField>
@@ -126,6 +155,8 @@ export function ProcessoAdmissaoForm({ processo, onSaved }: { processo?: Process
           <Field label="Encerramento"><Input type="date" {...form.register("data_encerramento")} /></Field>
           <Field label="Volume estimado"><Input {...form.register("volume_estimado")} /></Field>
           <Field label="Volume recebido"><Input {...form.register("volume_recebido")} /></Field>
+          <Field label="Quantidade de unidades estimadas"><Input type="number" min={0} {...form.register("quantidade_unidades_estimadas")} /></Field>
+          <Field label="Quantidade de unidades recebidas"><Input type="number" min={0} {...form.register("quantidade_unidades_recebidas")} /></Field>
           <SelectField label="Resultado final" {...form.register("resultado_final")}><option value="">Sem resultado</option><option value="ADMITIDO">ADMITIDO</option><option value="ADMITIDO_COM_RESSALVA">ADMITIDO COM RESSALVA</option><option value="REJEITADO">REJEITADO</option><option value="CANCELADO">CANCELADO</option></SelectField>
           <label className="flex items-center gap-2 pt-8 text-sm font-medium"><input type="checkbox" {...form.register("processo_ativo")} />Processo ativo</label>
           <label className="flex items-center gap-2 pt-8 text-sm font-medium"><input type="checkbox" {...form.register("admissoes_recorrentes")} />Admissões recorrentes</label>
@@ -144,8 +175,62 @@ export function ProcessoAdmissaoForm({ processo, onSaved }: { processo?: Process
         <TextAreaField label="Parecer final" {...form.register("parecer_final")} />
       </section>
 
+      {processo ? (
+        <section className="space-y-3">
+          <h2 className="text-base font-semibold">Auditoria</h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            <Field label="criado_em"><Input value={formatDateTime(processo.criado_em)} disabled readOnly /></Field>
+            <Field label="atualizado_em"><Input value={formatDateTime(processo.atualizado_em)} disabled readOnly /></Field>
+            <Field label="criado_por"><Input value={processo.criado_por ?? ""} disabled readOnly /></Field>
+            <Field label="atualizado_por"><Input value={processo.atualizado_por ?? ""} disabled readOnly /></Field>
+          </div>
+        </section>
+      ) : null}
+
       {mutation.error ? <p className="text-sm text-destructive">{mutation.error.message}</p> : null}
       <Button type="submit" disabled={mutation.isPending}>{mutation.isPending ? "Salvando..." : "Salvar processo"}</Button>
+      <Dialog open={descricaoDialogOpen} onOpenChange={setDescricaoDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Consultar descrição arquivística</DialogTitle>
+            <DialogDescription>Selecione uma descrição existente para vincular ao processo.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="flex gap-2">
+              <Input
+                placeholder="Buscar por código ou título"
+                value={descricaoSearch}
+                onChange={(event) => setDescricaoSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    descricoes.refetch();
+                  }
+                }}
+              />
+              <Button type="button" variant="outline" onClick={() => descricoes.refetch()}><Search className="h-4 w-4" />Buscar</Button>
+            </div>
+            <div className="max-h-96 overflow-auto rounded-md border">
+              {(descricoes.data ?? []).map((descricao) => (
+                <button
+                  key={descricao.id}
+                  type="button"
+                  className="flex w-full flex-col gap-1 border-b px-3 py-2 text-left text-sm last:border-b-0 hover:bg-muted"
+                  onClick={() => {
+                    form.setValue("id_descricao_arquivistica", descricao.id, { shouldDirty: true });
+                    setDescricaoTitle(descricao.titulo);
+                    setDescricaoDialogOpen(false);
+                  }}
+                >
+                  <span className="font-medium">{descricao.titulo}</span>
+                  <span className="text-xs text-muted-foreground">{descricao.codigo_referencia}</span>
+                </button>
+              ))}
+              {!descricoes.data?.length ? <p className="p-4 text-sm text-muted-foreground">{descricoes.isLoading ? "Carregando..." : "Nenhuma descrição encontrada."}</p> : null}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 }
@@ -158,6 +243,8 @@ function toFormValues(processo: ProcessoAdmissao): FormValues {
     descricao: processo.descricao ?? "",
     id_instituicao_arquivo: processo.id_instituicao_arquivo,
     id_entidade_produtora: processo.id_entidade_produtora,
+    id_descricao_arquivistica: processo.id_descricao_arquivistica ?? "",
+    nome_usuario_responsavel: processo.nome_usuario_responsavel ?? "",
     tipo_processo_admissao: processo.tipo_processo_admissao,
     tipo_ingresso: processo.tipo_ingresso,
     tipo_suporte: processo.tipo_suporte,
@@ -187,6 +274,8 @@ function toPayload(values: FormValues) {
   return {
     ...values,
     descricao: nullable(values.descricao),
+    id_descricao_arquivistica: values.id_descricao_arquivistica || null,
+    nome_usuario_responsavel: nullable(values.nome_usuario_responsavel),
     data_fim_prevista: values.data_fim_prevista || null,
     data_encerramento: values.data_encerramento || null,
     resultado_final: values.resultado_final || null,
@@ -204,6 +293,7 @@ function toPayload(values: FormValues) {
 }
 
 function label(value: string) { return value.replaceAll("_", " "); }
+function formatDateTime(value?: string | null) { return value ? new Date(value).toLocaleString("pt-BR") : ""; }
 
 function Field({ label, error, children, required }: { label: string; error?: string; children: React.ReactNode; required?: boolean }) {
   return <div className="space-y-2"><Label>{label}{required ? <span className="ml-1 text-destructive">*</span> : null}</Label>{children}{error ? <p className="text-xs text-destructive">{error}</p> : null}</div>;

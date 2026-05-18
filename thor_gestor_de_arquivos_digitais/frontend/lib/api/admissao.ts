@@ -20,6 +20,7 @@ export type ProcessoAdmissao = {
   descricao?: string | null;
   id_instituicao_arquivo: string;
   id_entidade_produtora: string;
+  nome_usuario_responsavel?: string | null;
   tipo_processo_admissao: TipoProcessoAdmissao;
   tipo_ingresso: TipoIngressoAdmissao;
   tipo_suporte: TipoSuporte;

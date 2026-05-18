@@ -37,8 +37,8 @@ export function ProcessoAdmissaoDetailPage({ id }: { id: string }) {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-normal">{processo.data.numero_processo}</h1>
-          <p className="text-sm text-muted-foreground">{processo.data.titulo}</p>
+          <h1 className="text-2xl font-semibold tracking-normal">{processo.data.titulo}</h1>
+          <p className="text-sm text-muted-foreground">{processo.data.numero_processo}</p>
         </div>
         <div className="flex gap-2">
           <Button asChild variant="outline"><Link href="/admissao"><ArrowLeft className="h-4 w-4" />Voltar</Link></Button>
@@ -55,7 +55,7 @@ export function ProcessoAdmissaoDetailPage({ id }: { id: string }) {
         <TabsContent value="acordos"><Acordos processoId={id} /></TabsContent>
         <TabsContent value="sessoes"><Sessoes processoId={id} /></TabsContent>
         <TabsContent value="sips"><Sips processoId={id} /></TabsContent>
-        <TabsContent value="aips"><p className="rounded-md border p-4 text-sm text-muted-foreground">AIPs são vinculados pela ação "transformar em AIP" do SIP usando Unidade de Acondicionamento. A tabela de relação já está preparada no backend.</p></TabsContent>
+        <TabsContent value="aips"><p className="rounded-md border p-4 text-sm text-muted-foreground">AIPs são vinculados pela ação transformar em AIP do SIP usando Unidade de Acondicionamento. A tabela de relação já está preparada no backend.</p></TabsContent>
         <TabsContent value="eventos"><Eventos processoId={id} /></TabsContent>
         <TabsContent value="documentos"><p className="rounded-md border p-4 text-sm text-muted-foreground">Documentos administrativos usam campos de referência textual nesta fase. A tela fica reservada para integração com anexos/documentos quando essa entidade for consolidada.</p></TabsContent>
       </Tabs>
@@ -65,18 +65,38 @@ export function ProcessoAdmissaoDetailPage({ id }: { id: string }) {
 
 function Resumo({ processo }: { processo: Awaited<ReturnType<typeof getProcessoAdmissao>> }) {
   const fields: Array<[string, React.ReactNode]> = [
+    ["ID", processo.id],
+    ["Número do processo", processo.numero_processo],
+    ["Título", processo.titulo],
+    ["ID da instituição de arquivo", processo.id_instituicao_arquivo],
     ["Instituição", processo.nome_instituicao_arquivo],
+    ["ID da entidade produtora", processo.id_entidade_produtora],
     ["Entidade produtora", processo.nome_entidade_produtora],
+    ["Descrição Arquivística Associada", processo.titulo_descricao_arquivistica],
+    ["ID da descrição arquivística associada", processo.id_descricao_arquivistica],
+    ["Nome do usuário responsável", processo.nome_usuario_responsavel],
     ["Status", label(processo.status)],
-    ["Tipo", label(processo.tipo_processo_admissao)],
-    ["Ingresso", label(processo.tipo_ingresso)],
-    ["Suporte", label(processo.tipo_suporte)],
-    ["Início", processo.data_inicio],
-    ["Fim previsto", processo.data_fim_prevista],
-    ["Encerramento", processo.data_encerramento],
-    ["Ativo", processo.processo_ativo ? "Sim" : "Não"],
-    ["Recorrente", processo.admissoes_recorrentes ? "Sim" : "Não"],
+    ["Tipo do processo", label(processo.tipo_processo_admissao)],
+    ["Tipo de ingresso", label(processo.tipo_ingresso)],
+    ["Tipo de suporte", label(processo.tipo_suporte)],
+    ["Data de início", processo.data_inicio],
+    ["Data fim prevista", processo.data_fim_prevista],
+    ["Data de encerramento", processo.data_encerramento],
+    ["Processo ativo", processo.processo_ativo ? "Sim" : "Não"],
+    ["Admissões recorrentes", processo.admissoes_recorrentes ? "Sim" : "Não"],
+    ["Resultado final", label(processo.resultado_final)],
+    ["Código de classificação", processo.codigo_classificacao],
+    ["Descrição da classificação", processo.codigo_classificacao_descricao],
+    ["Restrição de acesso", processo.restricao_acesso],
+    ["Hipótese legal de restrição", processo.hipotese_legal_restricao],
+    ["Volume estimado", processo.volume_estimado],
     ["Volume recebido", processo.volume_recebido],
+    ["Quantidade de unidades estimadas", processo.quantidade_unidades_estimadas],
+    ["Quantidade de unidades recebidas", processo.quantidade_unidades_recebidas],
+    ["Criado por", processo.criado_por],
+    ["Atualizado por", processo.atualizado_por],
+    ["Criado em", formatDate(processo.criado_em)],
+    ["Atualizado em", formatDate(processo.atualizado_em)],
   ];
   return <div className="space-y-4"><div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">{fields.map(([name, value]) => <Detail key={name} label={name} value={value} />)}</div><LongText label="Descrição" value={processo.descricao} /><LongText label="Observações" value={processo.observacoes} /><LongText label="Parecer final" value={processo.parecer_final} /></div>;
 }
@@ -147,9 +167,9 @@ function SimpleTable({ headers, rows, loading }: { headers: string[]; rows: Arra
   return <div className="overflow-hidden rounded-md border"><Table><TableHeader><TableRow>{headers.map((header) => <TableHead key={header}>{header}</TableHead>)}</TableRow></TableHeader><TableBody>{rows.length ? rows.map((row, index) => <TableRow key={index}>{row.map((cell, cellIndex) => <TableCell key={cellIndex}>{cell}</TableCell>)}</TableRow>) : <TableRow><TableCell colSpan={headers.length} className="h-24 text-center text-muted-foreground">{loading ? "Carregando..." : "Nenhum registro encontrado."}</TableCell></TableRow>}</TableBody></Table></div>;
 }
 
-function Detail({ label, value }: { label: string; value?: React.ReactNode }) { return <div className="rounded-md border p-3"><p className="text-xs font-medium uppercase text-muted-foreground">{label}</p><div className="mt-1 text-sm">{value || "-"}</div></div>; }
+function Detail({ label, value }: { label: string; value?: React.ReactNode }) { return <div className="rounded-md border p-3"><p className="text-xs font-medium uppercase text-muted-foreground">{label}</p><div className="mt-1 break-words text-sm">{value || "-"}</div></div>; }
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="space-y-2"><Label>{label}</Label>{children}</div>; }
-function LongText({ label, value }: { label: string; value?: string | null }) { return value ? <section className="space-y-1"><h3 className="text-sm font-semibold">{label}</h3><p className="whitespace-pre-wrap text-sm text-muted-foreground">{value}</p></section> : null; }
+function LongText({ label, value }: { label: string; value?: string | null }) { return <section className="space-y-1 rounded-md border p-3"><h3 className="text-xs font-medium uppercase text-muted-foreground">{label}</h3><p className="whitespace-pre-wrap break-words text-sm">{value || "-"}</p></section>; }
 function label(value?: string | null) { return value ? value.replaceAll("_", " ") : "-"; }
 function formatDate(value?: string | null) { return value ? new Date(value).toLocaleString("pt-BR") : "-"; }
 function toDateTime(value?: string) { return value ? `${value}T09:00:00` : new Date().toISOString(); }

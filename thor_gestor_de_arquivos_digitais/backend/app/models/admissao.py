@@ -148,6 +148,7 @@ class ProcessoAdmissao(Base):
     descricao: Mapped[str | None] = mapped_column(Text)
     id_instituicao_arquivo: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("instituicao_arquivo.id"), nullable=False, index=True)
     id_entidade_produtora: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("entidades_produtoras.id"), nullable=False, index=True)
+    nome_usuario_responsavel: Mapped[str | None] = mapped_column(String(255))
     tipo_processo_admissao: Mapped[TipoProcessoAdmissao] = mapped_column(SAEnum(TipoProcessoAdmissao), nullable=False, index=True)
     tipo_ingresso: Mapped[TipoIngressoAdmissao] = mapped_column(SAEnum(TipoIngressoAdmissao), nullable=False, index=True)
     tipo_suporte: Mapped[TipoSuporte] = mapped_column(SAEnum(TipoSuporte), nullable=False, index=True)

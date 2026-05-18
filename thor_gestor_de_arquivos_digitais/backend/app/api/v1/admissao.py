@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import db_dep
+from app.security.deps import get_current_user_claims
 from app.models.admissao import (
     CanalSubmissao,
     StatusProcessoAdmissao,
@@ -80,9 +81,17 @@ def listar_processos(
 
 
 @router.post("/processos", response_model=ProcessoAdmissaoRead, status_code=status.HTTP_201_CREATED)
-def criar_processo(dados: ProcessoAdmissaoCreate, db: Session = Depends(db_dep)):
+def criar_processo(
+    dados: ProcessoAdmissaoCreate,
+    db: Session = Depends(db_dep),
+    claims: dict = Depends(get_current_user_claims),
+):
     try:
-        return AdmissaoService.criar_processo(db, dados)
+        usuario = _nome_usuario_claims(claims)
+        return AdmissaoService.criar_processo(
+            db,
+            ProcessoAdmissaoCreate(**{**dados.model_dump(), "criado_por": usuario, "atualizado_por": usuario}),
+        )
     except LookupError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValueError as e:
@@ -98,9 +107,18 @@ def obter_processo(id: uuid.UUID, db: Session = Depends(db_dep)):
 
 
 @router.put("/processos/{id}", response_model=ProcessoAdmissaoRead)
-def atualizar_processo(id: uuid.UUID, dados: ProcessoAdmissaoUpdate, db: Session = Depends(db_dep)):
+def atualizar_processo(
+    id: uuid.UUID,
+    dados: ProcessoAdmissaoUpdate,
+    db: Session = Depends(db_dep),
+    claims: dict = Depends(get_current_user_claims),
+):
     try:
-        processo = AdmissaoService.atualizar_processo(db, id, dados)
+        processo = AdmissaoService.atualizar_processo(
+            db,
+            id,
+            ProcessoAdmissaoUpdate(**{**dados.model_dump(exclude_unset=True), "atualizado_por": _nome_usuario_claims(claims)}),
+        )
     except LookupError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValueError as e:
@@ -311,3 +329,11 @@ def criar_evento(processo_id: uuid.UUID, dados: EventoAdmissaoCreate, db: Sessio
         return AdmissaoService.criar_evento(db, processo_id, dados)
     except LookupError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+def _nome_usuario_claims(claims: dict) -> str | None:
+    for campo in ("name", "preferred_username", "email", "sub"):
+        valor = claims.get(campo)
+        if isinstance(valor, str) and valor.strip():
+            return valor.strip()
+    return None

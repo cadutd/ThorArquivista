@@ -30,6 +30,7 @@ class ProcessoAdmissaoBase(BaseModel):
     descricao: str | None = None
     id_instituicao_arquivo: uuid.UUID
     id_entidade_produtora: uuid.UUID
+    nome_usuario_responsavel: str | None = Field(default=None, max_length=255)
     tipo_processo_admissao: TipoProcessoAdmissao
     tipo_ingresso: TipoIngressoAdmissao
     tipo_suporte: TipoSuporte
@@ -75,6 +76,7 @@ class ProcessoAdmissaoUpdate(BaseModel):
     descricao: str | None = None
     id_instituicao_arquivo: uuid.UUID | None = None
     id_entidade_produtora: uuid.UUID | None = None
+    nome_usuario_responsavel: str | None = Field(default=None, max_length=255)
     tipo_processo_admissao: TipoProcessoAdmissao | None = None
     tipo_ingresso: TipoIngressoAdmissao | None = None
     tipo_suporte: TipoSuporte | None = None
