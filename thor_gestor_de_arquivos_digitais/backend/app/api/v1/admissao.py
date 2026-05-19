@@ -177,9 +177,19 @@ def listar_acordos(processo_id: uuid.UUID, db: Session = Depends(db_dep)):
 
 
 @router.post("/processos/{processo_id}/acordos", response_model=AcordoAdmissaoRead, status_code=status.HTTP_201_CREATED)
-def criar_acordo(processo_id: uuid.UUID, dados: AcordoAdmissaoCreate, db: Session = Depends(db_dep)):
+def criar_acordo(
+    processo_id: uuid.UUID,
+    dados: AcordoAdmissaoCreate,
+    db: Session = Depends(db_dep),
+    claims: dict = Depends(get_current_user_claims),
+):
     try:
-        return AdmissaoService.criar_acordo(db, processo_id, dados)
+        usuario = _nome_usuario_claims(claims)
+        return AdmissaoService.criar_acordo(
+            db,
+            processo_id,
+            AcordoAdmissaoCreate(**{**dados.model_dump(), "criado_por": usuario, "atualizado_por": usuario}),
+        )
     except LookupError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValueError as e:
@@ -195,26 +205,50 @@ def obter_acordo(id: uuid.UUID, db: Session = Depends(db_dep)):
 
 
 @router.put("/acordos/{id}", response_model=AcordoAdmissaoRead)
-def atualizar_acordo(id: uuid.UUID, dados: AcordoAdmissaoUpdate, db: Session = Depends(db_dep)):
-    acordo = AdmissaoService.atualizar_acordo(db, id, dados)
+def atualizar_acordo(
+    id: uuid.UUID,
+    dados: AcordoAdmissaoUpdate,
+    db: Session = Depends(db_dep),
+    claims: dict = Depends(get_current_user_claims),
+):
+    try:
+        acordo = AdmissaoService.atualizar_acordo(
+            db,
+            id,
+            AcordoAdmissaoUpdate(**{**dados.model_dump(exclude_unset=True), "atualizado_por": _nome_usuario_claims(claims)}),
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
     if not acordo:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Acordo de admissão não encontrado.")
     return acordo
 
 
 @router.post("/acordos/{id}/ativar", response_model=AcordoAdmissaoRead)
-def ativar_acordo(id: uuid.UUID, db: Session = Depends(db_dep)):
-    acordo = AdmissaoService.ativar_acordo(db, id)
+def ativar_acordo(id: uuid.UUID, db: Session = Depends(db_dep), claims: dict = Depends(get_current_user_claims)):
+    try:
+        acordo = AdmissaoService.ativar_acordo(db, id)
+        if acordo:
+            acordo.atualizado_por = _nome_usuario_claims(claims)
+            db.commit()
+            db.refresh(acordo)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
     if not acordo:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Acordo de admissão não encontrado.")
     return acordo
 
 
 @router.post("/acordos/{id}/nova-versao", response_model=AcordoAdmissaoRead, status_code=status.HTTP_201_CREATED)
-def nova_versao_acordo(id: uuid.UUID, db: Session = Depends(db_dep)):
+def nova_versao_acordo(id: uuid.UUID, db: Session = Depends(db_dep), claims: dict = Depends(get_current_user_claims)):
     acordo = AdmissaoService.nova_versao_acordo(db, id)
     if not acordo:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Acordo de admissão não encontrado.")
+    usuario = _nome_usuario_claims(claims)
+    acordo.criado_por = usuario
+    acordo.atualizado_por = usuario
+    db.commit()
+    db.refresh(acordo)
     return acordo
 
 

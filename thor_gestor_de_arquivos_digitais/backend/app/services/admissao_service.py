@@ -209,10 +209,12 @@ class AdmissaoService:
     @staticmethod
     def criar_acordo(db: Session, processo_id: uuid.UUID, dados: AcordoAdmissaoCreate) -> AcordoAdmissao:
         processo = AdmissaoService._obter_processo_ou_erro(db, processo_id)
-        if AdmissaoService._enum_value(dados.status) == "ATIVO":
-            AdmissaoService._desativar_acordos_ativos(db, processo.id)
         payload = dados.model_dump(exclude={"numero_versao"})
         numero = dados.numero_versao or AdmissaoService._proximo_numero(db, AcordoAdmissao, processo_id, "numero_versao")
+        if AdmissaoService._enum_value(dados.status) == "ATIVO":
+            AdmissaoService._validar_ultima_versao_ativa(db, processo.id, numero)
+            AdmissaoService._desativar_acordos_ativos(db, processo.id)
+            db.flush()
         acordo = AcordoAdmissao(id_processo_admissao=processo.id, numero_versao=numero, **payload)
         db.add(acordo)
         db.flush()
@@ -238,7 +240,9 @@ class AdmissaoService:
             return None
         payload = dados.model_dump(exclude_unset=True)
         if AdmissaoService._enum_value(payload.get("status")) == "ATIVO":
+            AdmissaoService._validar_ultima_versao_ativa(db, acordo.id_processo_admissao, acordo.numero_versao)
             AdmissaoService._desativar_acordos_ativos(db, acordo.id_processo_admissao, exceto_id=acordo.id)
+            db.flush()
         for campo, valor in payload.items():
             setattr(acordo, campo, valor)
         if AdmissaoService._enum_value(payload.get("status")) == "ATIVO":
@@ -252,7 +256,9 @@ class AdmissaoService:
         acordo = db.get(AcordoAdmissao, id)
         if not acordo:
             return None
+        AdmissaoService._validar_ultima_versao_ativa(db, acordo.id_processo_admissao, acordo.numero_versao)
         AdmissaoService._desativar_acordos_ativos(db, acordo.id_processo_admissao, exceto_id=acordo.id)
+        db.flush()
         acordo.status = StatusAcordoAdmissao.ATIVO
         acordo.data_inicio_vigencia = acordo.data_inicio_vigencia or datetime.now(timezone.utc).date()
         AdmissaoService._registrar_evento(db, acordo.id_processo_admissao, TipoEventoAdmissao.ATIVACAO_ACORDO, f"Versão {acordo.numero_versao} do acordo ativada.")
@@ -262,21 +268,34 @@ class AdmissaoService:
 
     @staticmethod
     def nova_versao_acordo(db: Session, id: uuid.UUID) -> AcordoAdmissao | None:
-        origem = db.get(AcordoAdmissao, id)
-        if not origem:
+        referencia = db.get(AcordoAdmissao, id)
+        if not referencia:
             return None
+        origem = (
+            db.query(AcordoAdmissao)
+            .filter(
+                AcordoAdmissao.id_processo_admissao == referencia.id_processo_admissao,
+                AcordoAdmissao.status == StatusAcordoAdmissao.ATIVO,
+            )
+            .first()
+            or referencia
+        )
         campos = [
             "titulo", "descricao", "regras_empacotamento", "regras_nomenclatura", "formatos_aceitos",
             "metadados_obrigatorios", "requisitos_fixidez", "requisitos_representacao", "politica_validacao",
             "politica_rejeicao", "politica_normalizacao", "politica_sigilo", "periodicidade_submissao", "observacoes",
+            "data_fim_vigencia", "documento_acordo",
         ]
         acordo = AcordoAdmissao(
             id_processo_admissao=origem.id_processo_admissao,
             numero_versao=AdmissaoService._proximo_numero(db, AcordoAdmissao, origem.id_processo_admissao, "numero_versao"),
-            status=StatusAcordoAdmissao.RASCUNHO,
+            status=StatusAcordoAdmissao.ATIVO,
+            data_inicio_vigencia=datetime.now(timezone.utc).date(),
             motivo_revisao=f"Nova versão baseada na versão {origem.numero_versao}.",
             **{campo: getattr(origem, campo) for campo in campos},
         )
+        AdmissaoService._desativar_acordos_ativos(db, origem.id_processo_admissao)
+        db.flush()
         db.add(acordo)
         db.flush()
         AdmissaoService._registrar_evento(db, origem.id_processo_admissao, TipoEventoAdmissao.CRIACAO_VERSAO_ACORDO, f"Versão {acordo.numero_versao} do acordo criada a partir da versão {origem.numero_versao}.")
@@ -451,6 +470,17 @@ class AdmissaoService:
             query = query.filter(AcordoAdmissao.id != exceto_id)
         for acordo in query.all():
             acordo.status = StatusAcordoAdmissao.ENCERRADO
+
+    @staticmethod
+    def _validar_ultima_versao_ativa(db: Session, processo_id: uuid.UUID, numero_versao: int) -> None:
+        maior = (
+            db.query(AcordoAdmissao.numero_versao)
+            .filter(AcordoAdmissao.id_processo_admissao == processo_id)
+            .order_by(AcordoAdmissao.numero_versao.desc())
+            .first()
+        )
+        if maior and numero_versao < maior[0]:
+            raise ValueError("Apenas a última versão do acordo de admissão pode ficar ativa.")
 
     @staticmethod
     def _validar_referencias_processo(db: Session, valores: dict) -> None:

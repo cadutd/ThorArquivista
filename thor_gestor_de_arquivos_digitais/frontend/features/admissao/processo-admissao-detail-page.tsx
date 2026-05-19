@@ -10,7 +10,6 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
-  ativarAcordoAdmissao,
   createAcordoAdmissao,
   createEventoAdmissao,
   createReuniaoAdmissao,
@@ -26,8 +25,11 @@ import {
   listSipsProcesso,
   novaVersaoAcordoAdmissao,
   rejeitarSipAdmissao,
+  type AcordoAdmissao,
   type ReuniaoAdmissao,
+  type StatusAcordoAdmissao,
   type TipoReuniaoAdmissao,
+  updateAcordoAdmissao,
   updateReuniaoAdmissao,
   validarSipAdmissao,
 } from "@/lib/api/admissao";
@@ -43,6 +45,14 @@ const TIPOS_REUNIAO: TipoReuniaoAdmissao[] = [
   "OUTRO",
 ];
 
+const STATUS_ACORDO: StatusAcordoAdmissao[] = [
+  "RASCUNHO",
+  "EM_ANALISE",
+  "ATIVO",
+  "SUSPENSO",
+  "ENCERRADO",
+];
+
 type ReuniaoFormData = {
   titulo: string;
   tipo_reuniao: TipoReuniaoAdmissao;
@@ -52,6 +62,28 @@ type ReuniaoFormData = {
   deliberacoes: string;
   pendencias: string;
   proximos_passos: string;
+};
+
+type AcordoFormData = {
+  titulo: string;
+  descricao: string;
+  status: StatusAcordoAdmissao;
+  data_inicio_vigencia: string;
+  data_fim_vigencia: string;
+  motivo_revisao: string;
+  regras_empacotamento: string;
+  regras_nomenclatura: string;
+  formatos_aceitos: string;
+  metadados_obrigatorios: string;
+  requisitos_fixidez: string;
+  requisitos_representacao: string;
+  politica_validacao: string;
+  politica_rejeicao: string;
+  politica_normalizacao: string;
+  politica_sigilo: string;
+  periodicidade_submissao: string;
+  observacoes: string;
+  documento_acordo: string;
 };
 
 export function ProcessoAdmissaoDetailPage({ id }: { id: string }) {
@@ -225,12 +257,124 @@ function Reunioes({ processoId }: { processoId: string }) {
 function Acordos({ processoId }: { processoId: string }) {
   const queryClient = useQueryClient();
   const query = useQuery({ queryKey: ["admissao", "acordos", processoId], queryFn: () => listAcordosAdmissao(processoId) });
-  const create = useMutation({ mutationFn: (payload: Record<string, unknown>) => createAcordoAdmissao(processoId, payload), onSuccess: () => invalidate(queryClient, processoId) });
-  const activate = useMutation({ mutationFn: ativarAcordoAdmissao, onSuccess: () => invalidate(queryClient, processoId) });
-  const version = useMutation({ mutationFn: novaVersaoAcordoAdmissao, onSuccess: () => invalidate(queryClient, processoId) });
-  return <CrudPanel title="Nova versão de acordo" mutationError={create.error?.message} onSubmit={(data) => create.mutate({ titulo: data.titulo, status: data.tipo || "RASCUNHO", data_inicio_vigencia: data.data || null, regras_empacotamento: data.descricao })}>
-    <div className="overflow-hidden rounded-md border"><Table><TableHeader><TableRow><TableHead>Versão</TableHead><TableHead>Título</TableHead><TableHead>Status</TableHead><TableHead>Vigência</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader><TableBody>{(query.data ?? []).map((item) => <TableRow key={item.id}><TableCell>{item.numero_versao}</TableCell><TableCell>{item.titulo}</TableCell><TableCell>{label(item.status)}</TableCell><TableCell>{item.data_inicio_vigencia || "-"}</TableCell><TableCell><div className="flex justify-end gap-1"><Button type="button" variant="outline" size="sm" disabled={activate.isPending || item.status === "ATIVO"} onClick={() => activate.mutate(item.id)}><Check className="h-4 w-4" />Ativar</Button><Button type="button" variant="outline" size="sm" disabled={version.isPending} onClick={() => version.mutate(item.id)}>Nova versão</Button></div></TableCell></TableRow>)}{!query.data?.length ? <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">{query.isLoading ? "Carregando..." : "Nenhum acordo registrado."}</TableCell></TableRow> : null}</TableBody></Table></div>
-  </CrudPanel>;
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<AcordoAdmissao | null>(null);
+  const [viewing, setViewing] = useState<AcordoAdmissao | null>(null);
+  const [data, setData] = useState<AcordoFormData>(defaultAcordoFormData());
+  const create = useMutation({ mutationFn: (payload: Partial<AcordoAdmissao>) => createAcordoAdmissao(processoId, payload), onSuccess: () => invalidate(queryClient, processoId) });
+  const update = useMutation({ mutationFn: ({ id, payload }: { id: string; payload: Partial<AcordoAdmissao> }) => updateAcordoAdmissao(id, payload), onSuccess: () => invalidate(queryClient, processoId) });
+  const version = useMutation({
+    mutationFn: novaVersaoAcordoAdmissao,
+    onSuccess: (acordo) => {
+      setViewing(null);
+      startEdit(acordo);
+      return invalidate(queryClient, processoId);
+    },
+  });
+  const mutationError = create.error?.message || update.error?.message || version.error?.message;
+
+  const latestVersion = Math.max(0, ...(query.data ?? []).map((item) => item.numero_versao));
+  const activeAgreement = (query.data ?? []).find((item) => item.status === "ATIVO");
+
+  const closeForm = () => {
+    setOpen(false);
+    setEditing(null);
+    setData(defaultAcordoFormData());
+  };
+
+  const startCreate = () => {
+    setViewing(null);
+    setEditing(null);
+    setData(activeAgreement ? acordoToFormData(activeAgreement) : defaultAcordoFormData());
+    setOpen(true);
+  };
+
+  function startEdit(acordo: AcordoAdmissao) {
+    setViewing(null);
+    setEditing(acordo);
+    setData(acordoToFormData(acordo));
+    setOpen(true);
+  }
+
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    const payload = acordoPayload(data);
+    if (editing) {
+      update.mutate({ id: editing.id, payload }, { onSuccess: closeForm });
+    } else {
+      create.mutate(payload, { onSuccess: closeForm });
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end"><Button type="button" onClick={startCreate}><Plus className="h-4 w-4" />Novo acordo de admissão</Button></div>
+      {viewing ? (
+        <AcordoDetails
+          acordo={viewing}
+          isLatest={viewing.numero_versao === latestVersion}
+          isVersioning={version.isPending}
+          onClose={() => setViewing(null)}
+          onEdit={() => startEdit(viewing)}
+          onNewVersion={() => version.mutate(activeAgreement?.id ?? viewing.id)}
+        />
+      ) : null}
+      {open ? (
+        <form className="grid gap-3 rounded-md border p-4 md:grid-cols-2" onSubmit={submit}>
+          <Field label="Título"><Input required value={data.titulo} onChange={(event) => setData({ ...data, titulo: event.target.value })} /></Field>
+          <Field label="Status">
+            <select required className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={data.status} onChange={(event) => setData({ ...data, status: event.target.value as StatusAcordoAdmissao })}>
+              {STATUS_ACORDO.map((value) => <option key={value} value={value}>{label(value)}</option>)}
+            </select>
+          </Field>
+          <Field label="Data início vigência"><Input type="date" value={data.data_inicio_vigencia} onChange={(event) => setData({ ...data, data_inicio_vigencia: event.target.value })} /></Field>
+          <Field label="Data fim vigência"><Input type="date" value={data.data_fim_vigencia} onChange={(event) => setData({ ...data, data_fim_vigencia: event.target.value })} /></Field>
+          <Field label="Periodicidade submissão"><Input value={data.periodicidade_submissao} onChange={(event) => setData({ ...data, periodicidade_submissao: event.target.value })} /></Field>
+          <Field label="Documento do acordo"><Input value={data.documento_acordo} onChange={(event) => setData({ ...data, documento_acordo: event.target.value })} /></Field>
+          <AcordoTextarea label="Descrição" value={data.descricao} onChange={(value) => setData({ ...data, descricao: value })} />
+          <AcordoTextarea label="Motivo revisão" value={data.motivo_revisao} onChange={(value) => setData({ ...data, motivo_revisao: value })} />
+          <AcordoTextarea label="Regras empacotamento" value={data.regras_empacotamento} onChange={(value) => setData({ ...data, regras_empacotamento: value })} />
+          <AcordoTextarea label="Regras nomenclatura" value={data.regras_nomenclatura} onChange={(value) => setData({ ...data, regras_nomenclatura: value })} />
+          <AcordoTextarea label="Formatos aceitos" value={data.formatos_aceitos} onChange={(value) => setData({ ...data, formatos_aceitos: value })} />
+          <AcordoTextarea label="Metadados obrigatórios" value={data.metadados_obrigatorios} onChange={(value) => setData({ ...data, metadados_obrigatorios: value })} />
+          <AcordoTextarea label="Requisitos fixidez" value={data.requisitos_fixidez} onChange={(value) => setData({ ...data, requisitos_fixidez: value })} />
+          <AcordoTextarea label="Requisitos representação" value={data.requisitos_representacao} onChange={(value) => setData({ ...data, requisitos_representacao: value })} />
+          <AcordoTextarea label="Política validação" value={data.politica_validacao} onChange={(value) => setData({ ...data, politica_validacao: value })} />
+          <AcordoTextarea label="Política rejeição" value={data.politica_rejeicao} onChange={(value) => setData({ ...data, politica_rejeicao: value })} />
+          <AcordoTextarea label="Política normalização" value={data.politica_normalizacao} onChange={(value) => setData({ ...data, politica_normalizacao: value })} />
+          <AcordoTextarea label="Política sigilo" value={data.politica_sigilo} onChange={(value) => setData({ ...data, politica_sigilo: value })} />
+          <AcordoTextarea label="Observações" value={data.observacoes} onChange={(value) => setData({ ...data, observacoes: value })} />
+          {editing ? (
+            <>
+              <Field label="Criado por"><Input value={editing.criado_por ?? ""} disabled /></Field>
+              <Field label="Atualizado por"><Input value={editing.atualizado_por ?? ""} disabled /></Field>
+              <Field label="Criado em"><Input value={formatDate(editing.criado_em)} disabled /></Field>
+              <Field label="Atualizado em"><Input value={formatDate(editing.atualizado_em)} disabled /></Field>
+            </>
+          ) : null}
+          <div className="flex items-end gap-2 md:col-span-2"><Button type="submit" disabled={create.isPending || update.isPending}>{create.isPending || update.isPending ? "Salvando..." : "Salvar"}</Button><Button type="button" variant="outline" onClick={closeForm}>Cancelar</Button></div>
+          {mutationError ? <p className="text-sm text-destructive md:col-span-2">{mutationError}</p> : null}
+        </form>
+      ) : null}
+      <div className="overflow-hidden rounded-md border">
+        <Table>
+          <TableHeader><TableRow><TableHead>Versão</TableHead><TableHead>Título</TableHead><TableHead>Status</TableHead><TableHead>Vigência</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
+          <TableBody>
+            {(query.data ?? []).map((item) => (
+              <TableRow key={item.id}>
+                <TableCell>{item.numero_versao}</TableCell>
+                <TableCell>{item.titulo}</TableCell>
+                <TableCell>{label(item.status)}</TableCell>
+                <TableCell>{formatDateOnly(item.data_inicio_vigencia)} - {formatDateOnly(item.data_fim_vigencia)}</TableCell>
+                <TableCell className="text-right"><Button type="button" variant="ghost" size="icon" aria-label="Visualizar acordo de admissão" onClick={() => { setOpen(false); setEditing(null); setViewing(item); }}><Eye className="h-4 w-4" /></Button></TableCell>
+              </TableRow>
+            ))}
+            {!query.data?.length ? <TableRow><TableCell colSpan={5} className="h-24 text-center text-muted-foreground">{query.isLoading ? "Carregando..." : "Nenhum acordo de admissão registrado."}</TableCell></TableRow> : null}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
 }
 
 function Sessoes({ processoId }: { processoId: string }) {
@@ -304,6 +448,70 @@ function ReuniaoDetails({ reuniao, onClose, onEdit }: { reuniao: ReuniaoAdmissao
   );
 }
 
+function AcordoDetails({
+  acordo,
+  isLatest,
+  isVersioning,
+  onClose,
+  onEdit,
+  onNewVersion,
+}: {
+  acordo: AcordoAdmissao;
+  isLatest: boolean;
+  isVersioning: boolean;
+  onClose: () => void;
+  onEdit: () => void;
+  onNewVersion: () => void;
+}) {
+  const fields: Array<[string, React.ReactNode]> = [
+    ["ID", acordo.id],
+    ["ID do processo", acordo.id_processo_admissao],
+    ["Versão", acordo.numero_versao],
+    ["Título", acordo.titulo],
+    ["Status", label(acordo.status)],
+    ["Data início vigência", formatDateOnly(acordo.data_inicio_vigencia)],
+    ["Data fim vigência", formatDateOnly(acordo.data_fim_vigencia)],
+    ["Periodicidade submissão", acordo.periodicidade_submissao],
+    ["Documento do acordo", acordo.documento_acordo],
+    ["Criado por", acordo.criado_por],
+    ["Atualizado por", acordo.atualizado_por],
+    ["Criado em", formatDate(acordo.criado_em)],
+    ["Atualizado em", formatDate(acordo.atualizado_em)],
+  ];
+  return (
+    <section className="space-y-4 rounded-md border p-4">
+      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h3 className="text-base font-semibold">{acordo.titulo}</h3>
+          <p className="text-sm text-muted-foreground">Acordo de admissão versão {acordo.numero_versao}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={onEdit}><Edit className="h-4 w-4" />Editar</Button>
+          <Button type="button" variant="outline" size="sm" disabled={isVersioning} onClick={onNewVersion}>Nova versão</Button>
+          <Button type="button" variant="outline" size="sm" onClick={onClose}>Fechar</Button>
+        </div>
+      </div>
+      {!isLatest ? <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Apenas a última versão do acordo de admissão pode ficar ativa.</p> : null}
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {fields.map(([name, value]) => <Detail key={name} label={name} value={value} />)}
+      </div>
+      <LongText label="Descrição" value={acordo.descricao} />
+      <LongText label="Motivo revisão" value={acordo.motivo_revisao} />
+      <LongText label="Regras empacotamento" value={acordo.regras_empacotamento} />
+      <LongText label="Regras nomenclatura" value={acordo.regras_nomenclatura} />
+      <LongText label="Formatos aceitos" value={acordo.formatos_aceitos} />
+      <LongText label="Metadados obrigatórios" value={acordo.metadados_obrigatorios} />
+      <LongText label="Requisitos fixidez" value={acordo.requisitos_fixidez} />
+      <LongText label="Requisitos representação" value={acordo.requisitos_representacao} />
+      <LongText label="Política validação" value={acordo.politica_validacao} />
+      <LongText label="Política rejeição" value={acordo.politica_rejeicao} />
+      <LongText label="Política normalização" value={acordo.politica_normalizacao} />
+      <LongText label="Política sigilo" value={acordo.politica_sigilo} />
+      <LongText label="Observações" value={acordo.observacoes} />
+    </section>
+  );
+}
+
 function defaultReuniaoFormData(): ReuniaoFormData {
   return {
     titulo: "",
@@ -315,6 +523,83 @@ function defaultReuniaoFormData(): ReuniaoFormData {
     pendencias: "",
     proximos_passos: "",
   };
+}
+
+function defaultAcordoFormData(): AcordoFormData {
+  return {
+    titulo: "",
+    descricao: "",
+    status: "RASCUNHO",
+    data_inicio_vigencia: "",
+    data_fim_vigencia: "",
+    motivo_revisao: "",
+    regras_empacotamento: "",
+    regras_nomenclatura: "",
+    formatos_aceitos: "",
+    metadados_obrigatorios: "",
+    requisitos_fixidez: "",
+    requisitos_representacao: "",
+    politica_validacao: "",
+    politica_rejeicao: "",
+    politica_normalizacao: "",
+    politica_sigilo: "",
+    periodicidade_submissao: "",
+    observacoes: "",
+    documento_acordo: "",
+  };
+}
+
+function acordoToFormData(acordo: AcordoAdmissao): AcordoFormData {
+  return {
+    titulo: acordo.titulo,
+    descricao: acordo.descricao ?? "",
+    status: acordo.status,
+    data_inicio_vigencia: acordo.data_inicio_vigencia ?? "",
+    data_fim_vigencia: acordo.data_fim_vigencia ?? "",
+    motivo_revisao: acordo.motivo_revisao ?? "",
+    regras_empacotamento: acordo.regras_empacotamento ?? "",
+    regras_nomenclatura: acordo.regras_nomenclatura ?? "",
+    formatos_aceitos: acordo.formatos_aceitos ?? "",
+    metadados_obrigatorios: acordo.metadados_obrigatorios ?? "",
+    requisitos_fixidez: acordo.requisitos_fixidez ?? "",
+    requisitos_representacao: acordo.requisitos_representacao ?? "",
+    politica_validacao: acordo.politica_validacao ?? "",
+    politica_rejeicao: acordo.politica_rejeicao ?? "",
+    politica_normalizacao: acordo.politica_normalizacao ?? "",
+    politica_sigilo: acordo.politica_sigilo ?? "",
+    periodicidade_submissao: acordo.periodicidade_submissao ?? "",
+    observacoes: acordo.observacoes ?? "",
+    documento_acordo: acordo.documento_acordo ?? "",
+  };
+}
+
+function acordoPayload(data: AcordoFormData): Partial<AcordoAdmissao> {
+  const nullable = (value: string) => value.trim() || null;
+  return {
+    titulo: data.titulo.trim(),
+    descricao: nullable(data.descricao),
+    status: data.status,
+    data_inicio_vigencia: data.data_inicio_vigencia || null,
+    data_fim_vigencia: data.data_fim_vigencia || null,
+    motivo_revisao: nullable(data.motivo_revisao),
+    regras_empacotamento: nullable(data.regras_empacotamento),
+    regras_nomenclatura: nullable(data.regras_nomenclatura),
+    formatos_aceitos: nullable(data.formatos_aceitos),
+    metadados_obrigatorios: nullable(data.metadados_obrigatorios),
+    requisitos_fixidez: nullable(data.requisitos_fixidez),
+    requisitos_representacao: nullable(data.requisitos_representacao),
+    politica_validacao: nullable(data.politica_validacao),
+    politica_rejeicao: nullable(data.politica_rejeicao),
+    politica_normalizacao: nullable(data.politica_normalizacao),
+    politica_sigilo: nullable(data.politica_sigilo),
+    periodicidade_submissao: nullable(data.periodicidade_submissao),
+    observacoes: nullable(data.observacoes),
+    documento_acordo: nullable(data.documento_acordo),
+  };
+}
+
+function AcordoTextarea({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return <div className="md:col-span-2"><Field label={label}><textarea className="min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm" value={value} onChange={(event) => onChange(event.target.value)} /></Field></div>;
 }
 
 function reuniaoPayload(data: ReuniaoFormData): Partial<ReuniaoAdmissao> {
@@ -357,8 +642,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function LongText({ label, value }: { label: string; value?: string | null }) { return <section className="space-y-1 rounded-md border p-3"><h3 className="text-xs font-medium uppercase text-muted-foreground">{label}</h3><p className="whitespace-pre-wrap break-words text-sm">{value || "-"}</p></section>; }
 function label(value?: string | null) { return value ? value.replaceAll("_", " ") : "-"; }
 function formatDate(value?: string | null) { return value ? new Date(value).toLocaleString("pt-BR") : "-"; }
+function formatDateOnly(value?: string | null) { return value ? new Date(`${value}T00:00:00`).toLocaleDateString("pt-BR") : "-"; }
 function toDateTime(value?: string) { return value ? `${value}T09:00:00` : new Date().toISOString(); }
-function tabLabel(value: string) { return value.charAt(0).toUpperCase() + value.slice(1); }
+function tabLabel(value: string) {
+  if (value === "acordos") return "Acordos de admissão";
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
 function invalidate(queryClient: ReturnType<typeof useQueryClient>, processoId: string) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: ["admissao"] }),
