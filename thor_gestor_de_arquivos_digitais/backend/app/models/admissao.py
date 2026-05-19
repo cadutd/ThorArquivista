@@ -95,6 +95,8 @@ class StatusSessaoSubmissao(str, Enum):
     EM_VALIDACAO = "EM_VALIDACAO"
     VALIDADA = "VALIDADA"
     REJEITADA = "REJEITADA"
+    NORMALIZANDO = "NORMALIZANDO"
+    NORMALIZADA = "NORMALIZADA"
     FINALIZADA = "FINALIZADA"
     CANCELADA = "CANCELADA"
 
@@ -114,6 +116,17 @@ class TipoEventoAdmissao(str, Enum):
     REUNIAO_ADMISSAO = "REUNIAO_ADMISSAO"
     CRIACAO_VERSAO_ACORDO = "CRIACAO_VERSAO_ACORDO"
     ATIVACAO_ACORDO = "ATIVACAO_ACORDO"
+    SESSAO_INICIADA = "SESSAO_INICIADA"
+    SESSAO_EM_TRANSFERENCIA = "SESSAO_EM_TRANSFERENCIA"
+    SESSAO_RECEBIDA = "SESSAO_RECEBIDA"
+    SESSAO_EM_QUARENTENA = "SESSAO_EM_QUARENTENA"
+    SESSAO_EM_VALIDACAO = "SESSAO_EM_VALIDACAO"
+    SESSAO_VALIDADA = "SESSAO_VALIDADA"
+    SESSAO_REJEITADA = "SESSAO_REJEITADA"
+    SESSAO_NORMALIZANDO = "SESSAO_NORMALIZANDO"
+    SESSAO_NORMALIZADA = "SESSAO_NORMALIZADA"
+    SESSAO_FINALIZADA = "SESSAO_FINALIZADA"
+    SESSAO_CANCELADA = "SESSAO_CANCELADA"
     INICIO_SESSAO = "INICIO_SESSAO"
     RECEBIMENTO_SIP = "RECEBIMENTO_SIP"
     APROVACAO = "APROVACAO"
@@ -256,14 +269,11 @@ class SessaoSubmissao(Base):
     data_inicio: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
     data_fim: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True))
     canal_submissao: Mapped[CanalSubmissao] = mapped_column(SAEnum(CanalSubmissao), nullable=False, index=True)
-    protocolo_transferencia: Mapped[str | None] = mapped_column(String(255))
     responsavel_envio: Mapped[str | None] = mapped_column(String(255))
     responsavel_recebimento: Mapped[str | None] = mapped_column(String(255))
     tipo_suporte: Mapped[TipoSuporte] = mapped_column(SAEnum(TipoSuporte), nullable=False, index=True)
     volume_informado: Mapped[str | None] = mapped_column(String(100))
     volume_recebido: Mapped[str | None] = mapped_column(String(100))
-    quantidade_itens_informada: Mapped[int | None] = mapped_column(Integer)
-    quantidade_itens_recebida: Mapped[int | None] = mapped_column(Integer)
     caminho_origem: Mapped[str | None] = mapped_column(String(500))
     caminho_destino_quarentena: Mapped[str | None] = mapped_column(String(500))
     status: Mapped[StatusSessaoSubmissao] = mapped_column(SAEnum(StatusSessaoSubmissao), nullable=False, default=StatusSessaoSubmissao.INICIADA, index=True)

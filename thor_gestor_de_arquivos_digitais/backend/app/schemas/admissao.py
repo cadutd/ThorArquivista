@@ -232,21 +232,18 @@ class AcordoAdmissaoRead(AcordoAdmissaoBase):
 class SessaoSubmissaoBase(BaseModel):
     model_config = ConfigDict(use_enum_values=True)
 
-    id_acordo_utilizado: uuid.UUID
+    id_acordo_utilizado: uuid.UUID | None = None
     numero_sessao: int | None = Field(default=None, ge=1)
     titulo: str = Field(..., min_length=1, max_length=255)
     descricao: str | None = None
     data_inicio: datetime
     data_fim: datetime | None = None
     canal_submissao: CanalSubmissao
-    protocolo_transferencia: str | None = Field(default=None, max_length=255)
     responsavel_envio: str | None = Field(default=None, max_length=255)
     responsavel_recebimento: str | None = Field(default=None, max_length=255)
     tipo_suporte: TipoSuporte
     volume_informado: str | None = Field(default=None, max_length=100)
     volume_recebido: str | None = Field(default=None, max_length=100)
-    quantidade_itens_informada: int | None = Field(default=None, ge=0)
-    quantidade_itens_recebida: int | None = Field(default=None, ge=0)
     caminho_origem: str | None = Field(default=None, max_length=500)
     caminho_destino_quarentena: str | None = Field(default=None, max_length=500)
     status: StatusSessaoSubmissao = StatusSessaoSubmissao.INICIADA
@@ -269,14 +266,11 @@ class SessaoSubmissaoUpdate(BaseModel):
     data_inicio: datetime | None = None
     data_fim: datetime | None = None
     canal_submissao: CanalSubmissao | None = None
-    protocolo_transferencia: str | None = Field(default=None, max_length=255)
     responsavel_envio: str | None = Field(default=None, max_length=255)
     responsavel_recebimento: str | None = Field(default=None, max_length=255)
     tipo_suporte: TipoSuporte | None = None
     volume_informado: str | None = Field(default=None, max_length=100)
     volume_recebido: str | None = Field(default=None, max_length=100)
-    quantidade_itens_informada: int | None = Field(default=None, ge=0)
-    quantidade_itens_recebida: int | None = Field(default=None, ge=0)
     caminho_origem: str | None = Field(default=None, max_length=500)
     caminho_destino_quarentena: str | None = Field(default=None, max_length=500)
     status: StatusSessaoSubmissao | None = None
@@ -293,6 +287,22 @@ class SessaoSubmissaoRead(SessaoSubmissaoBase):
     numero_sessao: int
     criado_em: datetime
     atualizado_em: datetime
+
+
+class SessaoSubmissaoList(BaseModel):
+    items: list[SessaoSubmissaoRead]
+    total: int
+    limit: int
+    offset: int
+
+
+class SessaoSubmissaoStatusUpdate(BaseModel):
+    model_config = ConfigDict(use_enum_values=True)
+
+    status: StatusSessaoSubmissao
+    volume_recebido: str | None = Field(default=None, max_length=100)
+    resultado_validacao: str | None = None
+    atualizado_por: str | None = Field(default=None, max_length=255)
 
 
 class SipAdmissaoBase(BaseModel):

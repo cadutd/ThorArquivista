@@ -33,7 +33,9 @@ from app.schemas.admissao import (
     ReuniaoAdmissaoRead,
     ReuniaoAdmissaoUpdate,
     SessaoSubmissaoCreate,
+    SessaoSubmissaoList,
     SessaoSubmissaoRead,
+    SessaoSubmissaoStatusUpdate,
     SessaoSubmissaoUpdate,
     SipAdmissaoCreate,
     SipAdmissaoRead,
@@ -252,15 +254,31 @@ def nova_versao_acordo(id: uuid.UUID, db: Session = Depends(db_dep), claims: dic
     return acordo
 
 
-@router.get("/processos/{processo_id}/sessoes", response_model=list[SessaoSubmissaoRead])
-def listar_sessoes(processo_id: uuid.UUID, db: Session = Depends(db_dep)):
-    return AdmissaoService.listar_sessoes(db, processo_id)
+@router.get("/processos/{processo_id}/sessoes", response_model=SessaoSubmissaoList)
+def listar_sessoes(
+    processo_id: uuid.UUID,
+    db: Session = Depends(db_dep),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+):
+    items, total = AdmissaoService.listar_sessoes(db, processo_id, limit=limit, offset=offset)
+    return SessaoSubmissaoList(items=items, total=total, limit=limit, offset=offset)
 
 
 @router.post("/processos/{processo_id}/sessoes", response_model=SessaoSubmissaoRead, status_code=status.HTTP_201_CREATED)
-def criar_sessao(processo_id: uuid.UUID, dados: SessaoSubmissaoCreate, db: Session = Depends(db_dep)):
+def criar_sessao(
+    processo_id: uuid.UUID,
+    dados: SessaoSubmissaoCreate,
+    db: Session = Depends(db_dep),
+    claims: dict = Depends(get_current_user_claims),
+):
     try:
-        return AdmissaoService.criar_sessao(db, processo_id, dados)
+        usuario = _nome_usuario_claims(claims)
+        return AdmissaoService.criar_sessao(
+            db,
+            processo_id,
+            SessaoSubmissaoCreate(**{**dados.model_dump(), "criado_por": usuario, "atualizado_por": usuario}),
+        )
     except LookupError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except ValueError as e:
@@ -276,8 +294,45 @@ def obter_sessao(id: uuid.UUID, db: Session = Depends(db_dep)):
 
 
 @router.put("/sessoes/{id}", response_model=SessaoSubmissaoRead)
-def atualizar_sessao(id: uuid.UUID, dados: SessaoSubmissaoUpdate, db: Session = Depends(db_dep)):
-    sessao = AdmissaoService.atualizar_sessao(db, id, dados)
+def atualizar_sessao(
+    id: uuid.UUID,
+    dados: SessaoSubmissaoUpdate,
+    db: Session = Depends(db_dep),
+    claims: dict = Depends(get_current_user_claims),
+):
+    try:
+        sessao = AdmissaoService.atualizar_sessao(
+            db,
+            id,
+            SessaoSubmissaoUpdate(**{**dados.model_dump(exclude_unset=True), "atualizado_por": _nome_usuario_claims(claims)}),
+        )
+    except LookupError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+    if not sessao:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sessão de submissão não encontrada.")
+    return sessao
+
+
+@router.patch("/sessoes/{id}/status", response_model=SessaoSubmissaoRead)
+def alterar_status_sessao(
+    id: uuid.UUID,
+    dados: SessaoSubmissaoStatusUpdate,
+    db: Session = Depends(db_dep),
+    claims: dict = Depends(get_current_user_claims),
+):
+    try:
+        sessao = AdmissaoService.alterar_status_sessao(
+            db,
+            id,
+            dados.status,
+            atualizado_por=dados.atualizado_por or _nome_usuario_claims(claims),
+            volume_recebido=dados.volume_recebido,
+            resultado_validacao=dados.resultado_validacao,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
     if not sessao:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Sessão de submissão não encontrada.")
     return sessao

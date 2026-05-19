@@ -16,7 +16,6 @@ import {
   createSessaoSubmissao,
   createSipAdmissao,
   deleteReuniaoAdmissao,
-  finalizarSessaoSubmissao,
   getProcessoAdmissao,
   listAcordosAdmissao,
   listEventosAdmissao,
@@ -27,6 +26,7 @@ import {
   rejeitarSipAdmissao,
   type AcordoAdmissao,
   type ReuniaoAdmissao,
+  type SessaoSubmissao,
   type StatusAcordoAdmissao,
   type TipoReuniaoAdmissao,
   updateAcordoAdmissao,
@@ -52,6 +52,8 @@ const STATUS_ACORDO: StatusAcordoAdmissao[] = [
   "SUSPENSO",
   "ENCERRADO",
 ];
+
+const CANAIS_SUBMISSAO = ["UPLOAD", "API", "REDE_INTERNA", "MIDIA_REMOVIVEL", "ENTREGA_FISICA", "IMPORTACAO_SISTEMA", "OUTRO"] as const;
 
 type ReuniaoFormData = {
   titulo: string;
@@ -84,6 +86,18 @@ type AcordoFormData = {
   periodicidade_submissao: string;
   observacoes: string;
   documento_acordo: string;
+};
+
+type SessaoFormData = {
+  titulo: string;
+  data_inicio: string;
+  canal_submissao: (typeof CANAIS_SUBMISSAO)[number];
+  tipo_suporte: SessaoSubmissao["tipo_suporte"];
+  responsavel_envio: string;
+  responsavel_recebimento: string;
+  volume_informado: string;
+  caminho_origem: string;
+  observacoes: string;
 };
 
 export function ProcessoAdmissaoDetailPage({ id }: { id: string }) {
@@ -379,15 +393,80 @@ function Acordos({ processoId }: { processoId: string }) {
 
 function Sessoes({ processoId }: { processoId: string }) {
   const queryClient = useQueryClient();
-  const sessoes = useQuery({ queryKey: ["admissao", "sessoes", processoId], queryFn: () => listSessoesSubmissao(processoId) });
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const [viewing, setViewing] = useState<SessaoSubmissao | null>(null);
+  const [open, setOpen] = useState(false);
+  const [data, setData] = useState<SessaoFormData>(defaultSessaoFormData());
+  const sessoes = useQuery({ queryKey: ["admissao", "sessoes", processoId, pageIndex, pageSize], queryFn: () => listSessoesSubmissao(processoId, { limit: pageSize, offset: pageIndex * pageSize }) });
   const acordos = useQuery({ queryKey: ["admissao", "acordos", processoId], queryFn: () => listAcordosAdmissao(processoId) });
-  const create = useMutation({ mutationFn: (payload: Record<string, unknown>) => createSessaoSubmissao(processoId, payload), onSuccess: () => invalidate(queryClient, processoId) });
-  const finish = useMutation({ mutationFn: finalizarSessaoSubmissao, onSuccess: () => invalidate(queryClient, processoId) });
+  const create = useMutation({
+    mutationFn: (payload: Partial<SessaoSubmissao>) => createSessaoSubmissao(processoId, payload),
+    onSuccess: () => {
+      setOpen(false);
+      setData(defaultSessaoFormData());
+      return invalidate(queryClient, processoId);
+    },
+  });
   const activeAgreement = (acordos.data ?? []).find((item) => item.status === "ATIVO") ?? acordos.data?.[0];
-  return <CrudPanel title="Nova sessão" mutationError={create.error?.message} onSubmit={(data) => create.mutate({ titulo: data.titulo, id_acordo_utilizado: activeAgreement?.id, data_inicio: toDateTime(data.data), canal_submissao: data.tipo || "UPLOAD", tipo_suporte: data.suporte || "DIGITAL", responsavel_envio: data.responsavel, observacoes: data.descricao })}>
-    {!activeAgreement ? <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Crie ou ative um acordo antes de registrar sessões.</p> : null}
-    <div className="overflow-hidden rounded-md border"><Table><TableHeader><TableRow><TableHead>Nº</TableHead><TableHead>Título</TableHead><TableHead>Canal</TableHead><TableHead>Status</TableHead><TableHead>Acordo</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader><TableBody>{(sessoes.data ?? []).map((item) => <TableRow key={item.id}><TableCell>{item.numero_sessao}</TableCell><TableCell>{item.titulo}</TableCell><TableCell>{label(item.canal_submissao)}</TableCell><TableCell>{label(item.status)}</TableCell><TableCell>{item.id_acordo_utilizado.slice(0, 8)}</TableCell><TableCell className="text-right"><Button type="button" variant="outline" size="sm" disabled={finish.isPending || item.status === "FINALIZADA"} onClick={() => finish.mutate(item.id)}>Finalizar</Button></TableCell></TableRow>)}{!sessoes.data?.length ? <TableRow><TableCell colSpan={6} className="h-24 text-center text-muted-foreground">{sessoes.isLoading ? "Carregando..." : "Nenhuma sessão registrada."}</TableCell></TableRow> : null}</TableBody></Table></div>
-  </CrudPanel>;
+  const total = sessoes.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    create.mutate(sessaoPayload(data));
+  };
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end"><Button type="button" onClick={() => setOpen((value) => !value)}><Plus className="h-4 w-4" />Nova sessão</Button></div>
+      {!activeAgreement ? <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Crie ou ative um acordo antes de registrar sessões.</p> : null}
+      {open ? (
+        <form className="grid gap-3 rounded-md border p-4 md:grid-cols-2" onSubmit={submit}>
+          <Field label="Acordo de admissão"><Input readOnly disabled value={activeAgreement ? `Versão ${activeAgreement.numero_versao} - ${activeAgreement.titulo}` : "Sem acordo vigente"} /></Field>
+          <Field label="Título"><Input required value={data.titulo} onChange={(event) => setData({ ...data, titulo: event.target.value })} /></Field>
+          <Field label="Data início"><Input required type="datetime-local" value={data.data_inicio} onChange={(event) => setData({ ...data, data_inicio: event.target.value })} /></Field>
+          <Field label="Canal de submissão"><select required className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={data.canal_submissao} onChange={(event) => setData({ ...data, canal_submissao: event.target.value as SessaoFormData["canal_submissao"] })}>{CANAIS_SUBMISSAO.map((value) => <option key={value} value={value}>{label(value)}</option>)}</select></Field>
+          <Field label="Suporte"><select required className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={data.tipo_suporte} onChange={(event) => setData({ ...data, tipo_suporte: event.target.value as SessaoSubmissao["tipo_suporte"] })}><option value="DIGITAL">Digital</option><option value="FISICO">Físico</option><option value="HIBRIDO">Híbrido</option></select></Field>
+          <Field label="Responsável pelo envio"><Input value={data.responsavel_envio} onChange={(event) => setData({ ...data, responsavel_envio: event.target.value })} /></Field>
+          <Field label="Responsável pelo recebimento"><Input value={data.responsavel_recebimento} onChange={(event) => setData({ ...data, responsavel_recebimento: event.target.value })} /></Field>
+          <Field label="Volume informado"><Input value={data.volume_informado} onChange={(event) => setData({ ...data, volume_informado: event.target.value })} /></Field>
+          <Field label="Caminho de origem"><Input value={data.caminho_origem} onChange={(event) => setData({ ...data, caminho_origem: event.target.value })} /></Field>
+          <div className="md:col-span-2"><Field label="Observações"><textarea className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm" value={data.observacoes} onChange={(event) => setData({ ...data, observacoes: event.target.value })} /></Field></div>
+          <div className="flex gap-2 md:col-span-2"><Button type="submit" disabled={create.isPending || !activeAgreement}>{create.isPending ? "Salvando..." : "Salvar"}</Button><Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button></div>
+          {create.error ? <p className="text-sm text-destructive md:col-span-2">{create.error.message}</p> : null}
+        </form>
+      ) : null}
+      {viewing ? <SessaoDetails sessao={viewing} acordo={acordos.data?.find((item) => item.id === viewing.id_acordo_utilizado)} onClose={() => setViewing(null)} /> : null}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2">
+        <p className="text-sm text-muted-foreground">{sessoes.data?.items.length ?? 0} registros de {total} | página {pageIndex + 1} de {totalPages}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="outline" size="sm" disabled={sessoes.isLoading || pageIndex === 0} onClick={() => setPageIndex(0)}>Primeira</Button>
+          <Button type="button" variant="outline" size="sm" disabled={sessoes.isLoading || pageIndex === 0} onClick={() => setPageIndex((value) => Math.max(0, value - 1))}>Anterior</Button>
+          <Button type="button" variant="outline" size="sm" disabled={sessoes.isLoading || pageIndex >= totalPages - 1} onClick={() => setPageIndex((value) => value + 1)}>Próxima</Button>
+          <Button type="button" variant="outline" size="sm" disabled={sessoes.isLoading || pageIndex >= totalPages - 1} onClick={() => setPageIndex(totalPages - 1)}>Última</Button>
+          <Label htmlFor="sessoes-page-size" className="text-sm text-muted-foreground">Por página:</Label>
+          <select id="sessoes-page-size" className="h-9 rounded-md border bg-background px-2 text-sm" value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPageIndex(0); }}><option value={10}>10</option><option value={20}>20</option><option value={50}>50</option></select>
+        </div>
+      </div>
+      <div className="overflow-hidden rounded-md border">
+        <Table>
+          <TableHeader><TableRow><TableHead>Nº</TableHead><TableHead>Título</TableHead><TableHead>Canal</TableHead><TableHead>Status</TableHead><TableHead>Acordo</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader>
+          <TableBody>
+            {(sessoes.data?.items ?? []).map((item) => (
+              <TableRow key={item.id}>
+                <TableCell>{item.numero_sessao}</TableCell>
+                <TableCell>{item.titulo}</TableCell>
+                <TableCell>{label(item.canal_submissao)}</TableCell>
+                <TableCell>{label(item.status)}</TableCell>
+                <TableCell>{acordos.data?.find((acordo) => acordo.id === item.id_acordo_utilizado)?.numero_versao ?? item.id_acordo_utilizado.slice(0, 8)}</TableCell>
+                <TableCell><div className="flex justify-end gap-1"><Button type="button" variant="ghost" size="icon" aria-label="Visualizar sessão" onClick={() => setViewing(item)}><Eye className="h-4 w-4" /></Button><Button asChild variant="outline" size="sm"><Link href={`/admissao/sessoes/${item.id}/status`}>Alterar status</Link></Button></div></TableCell>
+              </TableRow>
+            ))}
+            {!sessoes.data?.items.length ? <TableRow><TableCell colSpan={6} className="h-24 text-center text-muted-foreground">{sessoes.isLoading ? "Carregando..." : "Nenhuma sessão registrada."}</TableCell></TableRow> : null}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
 }
 
 function Sips({ processoId }: { processoId: string }) {
@@ -397,7 +476,7 @@ function Sips({ processoId }: { processoId: string }) {
   const create = useMutation({ mutationFn: (payload: Record<string, unknown>) => createSipAdmissao(String(payload.sessao_id), payload), onSuccess: () => invalidate(queryClient, processoId) });
   const validate = useMutation({ mutationFn: validarSipAdmissao, onSuccess: () => invalidate(queryClient, processoId) });
   const reject = useMutation({ mutationFn: rejeitarSipAdmissao, onSuccess: () => invalidate(queryClient, processoId) });
-  const session = sessoes.data?.[0];
+  const session = sessoes.data?.items[0];
   return <CrudPanel title="Novo SIP" mutationError={create.error?.message} onSubmit={(data) => create.mutate({ sessao_id: session?.id, codigo_sip: data.codigo, titulo: data.titulo, tipo_sip: data.suporte || "DIGITAL", data_recebimento: toDateTime(data.data), caminho_armazenamento_temporario: data.responsavel, observacoes: data.descricao })}>
     {!session ? <p className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Registre uma sessão antes de adicionar SIPs.</p> : null}
     <div className="overflow-hidden rounded-md border"><Table><TableHeader><TableRow><TableHead>Código</TableHead><TableHead>Título</TableHead><TableHead>Tipo</TableHead><TableHead>Status</TableHead><TableHead>Recebimento</TableHead><TableHead className="text-right">Ações</TableHead></TableRow></TableHeader><TableBody>{(sips.data ?? []).map((item) => <TableRow key={item.id}><TableCell>{item.codigo_sip}</TableCell><TableCell>{item.titulo}</TableCell><TableCell>{label(item.tipo_sip)}</TableCell><TableCell>{label(item.status)}</TableCell><TableCell>{formatDate(item.data_recebimento)}</TableCell><TableCell><div className="flex justify-end gap-1"><Button type="button" variant="outline" size="sm" disabled={validate.isPending || item.status === "VALIDADO"} onClick={() => validate.mutate(item.id)}><Check className="h-4 w-4" />Validar</Button><Button type="button" variant="outline" size="sm" disabled={reject.isPending || item.status === "REJEITADO"} onClick={() => reject.mutate(item.id)}><X className="h-4 w-4" />Rejeitar</Button></div></TableCell></TableRow>)}{!sips.data?.length ? <TableRow><TableCell colSpan={6} className="h-24 text-center text-muted-foreground">{sips.isLoading ? "Carregando..." : "Nenhum SIP registrado."}</TableCell></TableRow> : null}</TableBody></Table></div>
@@ -512,6 +591,48 @@ function AcordoDetails({
   );
 }
 
+function SessaoDetails({ sessao, acordo, onClose }: { sessao: SessaoSubmissao; acordo?: AcordoAdmissao; onClose: () => void }) {
+  const fields: Array<[string, React.ReactNode]> = [
+    ["ID", sessao.id],
+    ["ID do processo", sessao.id_processo_admissao],
+    ["Número", sessao.numero_sessao],
+    ["Título", sessao.titulo],
+    ["Status", label(sessao.status)],
+    ["Canal de submissão", label(sessao.canal_submissao)],
+    ["Acordo de admissão", acordo ? `Versão ${acordo.numero_versao} - ${acordo.titulo}` : sessao.id_acordo_utilizado],
+    ["Tipo de suporte", label(sessao.tipo_suporte)],
+    ["Data início", formatDate(sessao.data_inicio)],
+    ["Data fim", formatDate(sessao.data_fim)],
+    ["Responsável envio", sessao.responsavel_envio],
+    ["Responsável recebimento", sessao.responsavel_recebimento],
+    ["Volume informado", sessao.volume_informado],
+    ["Volume recebido", sessao.volume_recebido],
+    ["Caminho origem", sessao.caminho_origem],
+    ["Quarentena", sessao.caminho_destino_quarentena],
+    ["Criado por", sessao.criado_por],
+    ["Atualizado por", sessao.atualizado_por],
+    ["Criado em", formatDate(sessao.criado_em)],
+    ["Atualizado em", formatDate(sessao.atualizado_em)],
+  ];
+  return (
+    <section className="space-y-4 rounded-md border p-4">
+      <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+        <div>
+          <h3 className="text-base font-semibold">{sessao.titulo}</h3>
+          <p className="text-sm text-muted-foreground">Sessão {sessao.numero_sessao}</p>
+        </div>
+        <Button type="button" variant="outline" size="sm" onClick={onClose}>Fechar</Button>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+        {fields.map(([name, value]) => <Detail key={name} label={name} value={value} />)}
+      </div>
+      <LongText label="Resultado validação" value={sessao.resultado_validacao} />
+      <LongText label="Descrição" value={sessao.descricao} />
+      <LongText label="Observações" value={sessao.observacoes} />
+    </section>
+  );
+}
+
 function defaultReuniaoFormData(): ReuniaoFormData {
   return {
     titulo: "",
@@ -546,6 +667,20 @@ function defaultAcordoFormData(): AcordoFormData {
     periodicidade_submissao: "",
     observacoes: "",
     documento_acordo: "",
+  };
+}
+
+function defaultSessaoFormData(): SessaoFormData {
+  return {
+    titulo: "",
+    data_inicio: toDateTimeLocalInput(new Date().toISOString()),
+    canal_submissao: "UPLOAD",
+    tipo_suporte: "DIGITAL",
+    responsavel_envio: "",
+    responsavel_recebimento: "",
+    volume_informado: "",
+    caminho_origem: "",
+    observacoes: "",
   };
 }
 
@@ -598,6 +733,21 @@ function acordoPayload(data: AcordoFormData): Partial<AcordoAdmissao> {
   };
 }
 
+function sessaoPayload(data: SessaoFormData): Partial<SessaoSubmissao> {
+  const nullable = (value: string) => value.trim() || null;
+  return {
+    titulo: data.titulo.trim(),
+    data_inicio: data.data_inicio ? new Date(data.data_inicio).toISOString() : new Date().toISOString(),
+    canal_submissao: data.canal_submissao,
+    tipo_suporte: data.tipo_suporte,
+    responsavel_envio: nullable(data.responsavel_envio),
+    responsavel_recebimento: nullable(data.responsavel_recebimento),
+    volume_informado: nullable(data.volume_informado),
+    caminho_origem: nullable(data.caminho_origem),
+    observacoes: nullable(data.observacoes),
+  };
+}
+
 function AcordoTextarea({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return <div className="md:col-span-2"><Field label={label}><textarea className="min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm" value={value} onChange={(event) => onChange(event.target.value)} /></Field></div>;
 }
@@ -630,7 +780,8 @@ function toDateTimeLocalInput(value: string) {
 function CrudPanel({ title, mutationError, onSubmit, children }: { title: string; mutationError?: string; onSubmit: (data: Record<string, string>) => void; children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<Record<string, string>>({ data: new Date().toISOString().slice(0, 10), suporte: "DIGITAL" });
-  return <div className="space-y-4"><div className="flex justify-end"><Button type="button" onClick={() => setOpen((value) => !value)}><Plus className="h-4 w-4" />{title}</Button></div>{open ? <form className="grid gap-3 rounded-md border p-4 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); onSubmit(data); setOpen(false); }}><Field label="Título"><Input required value={data.titulo ?? ""} onChange={(event) => setData({ ...data, titulo: event.target.value })} /></Field><Field label="Código SIP"><Input value={data.codigo ?? ""} onChange={(event) => setData({ ...data, codigo: event.target.value })} /></Field><Field label="Data"><Input type="date" value={data.data ?? ""} onChange={(event) => setData({ ...data, data: event.target.value })} /></Field><Field label="Tipo/Status/Canal"><Input placeholder="Ex.: ATIVO, UPLOAD" value={data.tipo ?? ""} onChange={(event) => setData({ ...data, tipo: event.target.value })} /></Field><Field label="Suporte"><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={data.suporte ?? "DIGITAL"} onChange={(event) => setData({ ...data, suporte: event.target.value })}><option value="DIGITAL">Digital</option><option value="FISICO">Físico</option><option value="HIBRIDO">Híbrido</option></select></Field><Field label="Responsável/Caminho"><Input value={data.responsavel ?? ""} onChange={(event) => setData({ ...data, responsavel: event.target.value })} /></Field><div className="md:col-span-2"><Field label="Descrição"><textarea className="min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm" value={data.descricao ?? ""} onChange={(event) => setData({ ...data, descricao: event.target.value })} /></Field></div><div className="flex gap-2 md:col-span-2"><Button type="submit">Salvar</Button><Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button></div>{mutationError ? <p className="text-sm text-destructive md:col-span-2">{mutationError}</p> : null}</form> : null}{children}</div>;
+  const isSessao = title === "Nova sessão";
+  return <div className="space-y-4"><div className="flex justify-end"><Button type="button" onClick={() => setOpen((value) => !value)}><Plus className="h-4 w-4" />{title}</Button></div>{open ? <form className="grid gap-3 rounded-md border p-4 md:grid-cols-2" onSubmit={(event) => { event.preventDefault(); onSubmit(data); setOpen(false); }}><Field label="Título"><Input required value={data.titulo ?? ""} onChange={(event) => setData({ ...data, titulo: event.target.value })} /></Field>{!isSessao ? <Field label="Código SIP"><Input value={data.codigo ?? ""} onChange={(event) => setData({ ...data, codigo: event.target.value })} /></Field> : null}<Field label="Data"><Input type="date" value={data.data ?? ""} onChange={(event) => setData({ ...data, data: event.target.value })} /></Field><Field label={isSessao ? "Canal de submissão" : "Tipo/Status"}>{isSessao ? <select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={data.tipo ?? "UPLOAD"} onChange={(event) => setData({ ...data, tipo: event.target.value })}>{CANAIS_SUBMISSAO.map((value) => <option key={value} value={value}>{label(value)}</option>)}</select> : <Input placeholder="Ex.: APROVACAO" value={data.tipo ?? ""} onChange={(event) => setData({ ...data, tipo: event.target.value })} />}</Field><Field label="Suporte"><select className="h-10 w-full rounded-md border bg-background px-3 text-sm" value={data.suporte ?? "DIGITAL"} onChange={(event) => setData({ ...data, suporte: event.target.value })}><option value="DIGITAL">Digital</option><option value="FISICO">Físico</option><option value="HIBRIDO">Híbrido</option></select></Field><Field label="Responsável/Caminho"><Input value={data.responsavel ?? ""} onChange={(event) => setData({ ...data, responsavel: event.target.value })} /></Field><div className="md:col-span-2"><Field label="Descrição"><textarea className="min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm" value={data.descricao ?? ""} onChange={(event) => setData({ ...data, descricao: event.target.value })} /></Field></div><div className="flex gap-2 md:col-span-2"><Button type="submit">Salvar</Button><Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button></div>{mutationError ? <p className="text-sm text-destructive md:col-span-2">{mutationError}</p> : null}</form> : null}{children}</div>;
 }
 
 function SimpleTable({ headers, rows, loading }: { headers: string[]; rows: Array<Array<React.ReactNode>>; loading: boolean }) {

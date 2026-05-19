@@ -43,6 +43,20 @@ from app.schemas.admissao import (
 
 
 class AdmissaoService:
+    TRANSICOES_SESSAO = {
+        "INICIADA": {"EM_TRANSFERENCIA", "CANCELADA"},
+        "EM_TRANSFERENCIA": {"RECEBIDA", "CANCELADA"},
+        "RECEBIDA": {"EM_QUARENTENA", "CANCELADA"},
+        "EM_QUARENTENA": {"EM_VALIDACAO", "CANCELADA"},
+        "EM_VALIDACAO": {"VALIDADA", "REJEITADA", "CANCELADA"},
+        "VALIDADA": {"NORMALIZANDO", "CANCELADA"},
+        "REJEITADA": {"FINALIZADA", "CANCELADA"},
+        "NORMALIZANDO": {"NORMALIZADA", "CANCELADA"},
+        "NORMALIZADA": {"FINALIZADA", "CANCELADA"},
+        "FINALIZADA": set(),
+        "CANCELADA": set(),
+    }
+
     @staticmethod
     def listar_processos(
         db: Session,
@@ -308,22 +322,30 @@ class AdmissaoService:
         processo = AdmissaoService._obter_processo_ou_erro(db, processo_id)
         if not processo.processo_ativo:
             raise ValueError("Sessões só podem ser criadas para processos ativos.")
-        acordo = db.get(AcordoAdmissao, dados.id_acordo_utilizado)
-        if not acordo or acordo.id_processo_admissao != processo.id:
-            raise LookupError("Acordo de admissão não encontrado para o processo.")
-        payload = dados.model_dump(exclude={"numero_sessao"})
+        acordo = AdmissaoService._obter_acordo_vigente(db, processo.id)
+        if not acordo:
+            raise LookupError("Acordo de admissão vigente não encontrado para o processo.")
+        payload = dados.model_dump(exclude={"numero_sessao", "id_acordo_utilizado"})
         numero = dados.numero_sessao or AdmissaoService._proximo_numero(db, SessaoSubmissao, processo_id, "numero_sessao")
-        sessao = SessaoSubmissao(id_processo_admissao=processo.id, numero_sessao=numero, **payload)
+        sessao = SessaoSubmissao(id_processo_admissao=processo.id, id_acordo_utilizado=acordo.id, numero_sessao=numero, **payload)
         db.add(sessao)
         db.flush()
-        AdmissaoService._registrar_evento(db, processo.id, TipoEventoAdmissao.INICIO_SESSAO, f"Sessão de submissão {numero} iniciada.", id_sessao_submissao=sessao.id, agente=dados.criado_por)
+        AdmissaoService._registrar_evento(db, processo.id, TipoEventoAdmissao.SESSAO_INICIADA, f"Sessão de submissão {numero} iniciada.", id_sessao_submissao=sessao.id, agente=dados.criado_por)
         db.commit()
         db.refresh(sessao)
         return sessao
 
     @staticmethod
-    def listar_sessoes(db: Session, processo_id: uuid.UUID) -> list[SessaoSubmissao]:
-        return db.query(SessaoSubmissao).filter(SessaoSubmissao.id_processo_admissao == processo_id).order_by(SessaoSubmissao.numero_sessao.desc()).all()
+    def listar_sessoes(db: Session, processo_id: uuid.UUID, limit: int = 20, offset: int = 0) -> tuple[list[SessaoSubmissao], int]:
+        query = db.query(SessaoSubmissao).filter(SessaoSubmissao.id_processo_admissao == processo_id)
+        total = query.count()
+        items = (
+            query.order_by(SessaoSubmissao.numero_sessao.desc())
+            .offset(max(offset, 0))
+            .limit(min(max(limit, 1), 100))
+            .all()
+        )
+        return items, total
 
     @staticmethod
     def obter_sessao(db: Session, id: uuid.UUID) -> SessaoSubmissao | None:
@@ -335,8 +357,82 @@ class AdmissaoService:
         if not sessao:
             return None
         payload = dados.model_dump(exclude_unset=True)
+        if "status" in payload:
+            raise ValueError("Use a funcionalidade de alteração de status da sessão.")
+        if "id_acordo_utilizado" in payload:
+            acordo = db.get(AcordoAdmissao, payload["id_acordo_utilizado"])
+            if not acordo or acordo.id_processo_admissao != sessao.id_processo_admissao:
+                raise LookupError("Acordo de admissão não encontrado para o processo.")
+        status_anterior = sessao.status
         for campo, valor in payload.items():
             setattr(sessao, campo, valor)
+        if "status" in payload and sessao.status != status_anterior:
+            AdmissaoService._registrar_evento(
+                db,
+                sessao.id_processo_admissao,
+                TipoEventoAdmissao.SESSAO_FINALIZADA,
+                f"Status da sessão de submissão {sessao.numero_sessao} alterado para {AdmissaoService._enum_value(sessao.status)}.",
+                id_sessao_submissao=sessao.id,
+                agente=payload.get("atualizado_por"),
+            )
+        elif AdmissaoService._enum_value(status_anterior) == "FINALIZADA" and payload:
+            AdmissaoService._registrar_evento(
+                db,
+                sessao.id_processo_admissao,
+                TipoEventoAdmissao.SESSAO_FINALIZADA,
+                f"Sessão de submissão {sessao.numero_sessao} finalizada alterada com registro de evento.",
+                id_sessao_submissao=sessao.id,
+                agente=payload.get("atualizado_por"),
+            )
+        db.commit()
+        db.refresh(sessao)
+        return sessao
+
+    @staticmethod
+    def alterar_status_sessao(
+        db: Session,
+        id: uuid.UUID,
+        status: StatusSessaoSubmissao,
+        atualizado_por: str | None = None,
+        volume_recebido: str | None = None,
+        resultado_validacao: str | None = None,
+    ) -> SessaoSubmissao | None:
+        sessao = db.get(SessaoSubmissao, id)
+        if not sessao:
+            return None
+
+        origem = AdmissaoService._enum_value(sessao.status)
+        destino = AdmissaoService._enum_value(status)
+        if destino == origem:
+            return sessao
+        if destino not in AdmissaoService.TRANSICOES_SESSAO.get(origem, set()):
+            raise ValueError(f"Transição de status inválida: {origem} -> {destino}.")
+        if destino == "RECEBIDA" and not (volume_recebido or "").strip():
+            raise ValueError("Informe o volume recebido para marcar a sessão como recebida.")
+        if destino in {"VALIDADA", "REJEITADA"} and not (resultado_validacao or "").strip():
+            raise ValueError("Informe o resultado da validação para validar ou rejeitar a sessão.")
+
+        agora = datetime.now(timezone.utc)
+        if destino == "RECEBIDA":
+            sessao.volume_recebido = volume_recebido.strip() if volume_recebido else None
+        if destino in {"VALIDADA", "REJEITADA"}:
+            sessao.resultado_validacao = resultado_validacao.strip() if resultado_validacao else None
+        if destino == "FINALIZADA":
+            sessao.data_fim = sessao.data_fim or agora
+
+        sessao.status = status
+        sessao.atualizado_por = atualizado_por
+        for tipo_evento, descricao, resultado in AdmissaoService._eventos_transicao_sessao(sessao, origem, destino, agora):
+            AdmissaoService._registrar_evento(
+                db,
+                sessao.id_processo_admissao,
+                tipo_evento,
+                descricao,
+                resultado=resultado,
+                id_sessao_submissao=sessao.id,
+                agente=atualizado_por,
+            )
+
         db.commit()
         db.refresh(sessao)
         return sessao
@@ -349,11 +445,7 @@ class AdmissaoService:
         pendentes = db.query(SipAdmissao.id).filter(SipAdmissao.id_sessao_submissao == id, SipAdmissao.status.in_([StatusSipAdmissao.RECEBIDO, StatusSipAdmissao.EM_QUARENTENA, StatusSipAdmissao.EM_VALIDACAO])).first()
         if pendentes:
             raise ValueError("Não é possível finalizar sessão com SIPs pendentes de validação.")
-        sessao.status = StatusSessaoSubmissao.FINALIZADA
-        sessao.data_fim = sessao.data_fim or datetime.now(timezone.utc)
-        db.commit()
-        db.refresh(sessao)
-        return sessao
+        return AdmissaoService.alterar_status_sessao(db, id, StatusSessaoSubmissao.FINALIZADA)
 
     @staticmethod
     def criar_sip(db: Session, sessao_id: uuid.UUID, dados: SipAdmissaoCreate) -> SipAdmissao:
@@ -481,6 +573,67 @@ class AdmissaoService:
         )
         if maior and numero_versao < maior[0]:
             raise ValueError("Apenas a última versão do acordo de admissão pode ficar ativa.")
+
+    @staticmethod
+    def _obter_acordo_vigente(db: Session, processo_id: uuid.UUID) -> AcordoAdmissao | None:
+        hoje = datetime.now(timezone.utc).date()
+        return (
+            db.query(AcordoAdmissao)
+            .filter(
+                AcordoAdmissao.id_processo_admissao == processo_id,
+                AcordoAdmissao.status == StatusAcordoAdmissao.ATIVO,
+                or_(AcordoAdmissao.data_inicio_vigencia.is_(None), AcordoAdmissao.data_inicio_vigencia <= hoje),
+                or_(AcordoAdmissao.data_fim_vigencia.is_(None), AcordoAdmissao.data_fim_vigencia >= hoje),
+            )
+            .order_by(AcordoAdmissao.numero_versao.desc())
+            .first()
+        )
+
+    @staticmethod
+    def _eventos_transicao_sessao(
+        sessao: SessaoSubmissao,
+        origem: str | None,
+        destino: str | None,
+        data_evento: datetime,
+    ) -> list[tuple[TipoEventoAdmissao, str, ResultadoEventoAdmissao]]:
+        momento = data_evento.isoformat()
+        prefixo = f"Sessão de submissão {sessao.numero_sessao}"
+        eventos: dict[tuple[str | None, str | None], list[tuple[TipoEventoAdmissao, str, ResultadoEventoAdmissao]]] = {
+            ("INICIADA", "EM_TRANSFERENCIA"): [
+                (TipoEventoAdmissao.SESSAO_EM_TRANSFERENCIA, f"{prefixo}: transferência iniciada em {momento}.", ResultadoEventoAdmissao.SUCESSO),
+            ],
+            ("EM_TRANSFERENCIA", "RECEBIDA"): [
+                (TipoEventoAdmissao.SESSAO_RECEBIDA, f"{prefixo}: transferência finalizada em {momento}.", ResultadoEventoAdmissao.SUCESSO),
+            ],
+            ("RECEBIDA", "EM_QUARENTENA"): [
+                (TipoEventoAdmissao.SESSAO_EM_QUARENTENA, f"{prefixo}: quarentena iniciada em {momento}.", ResultadoEventoAdmissao.SUCESSO),
+            ],
+            ("EM_QUARENTENA", "EM_VALIDACAO"): [
+                (TipoEventoAdmissao.SESSAO_EM_VALIDACAO, f"{prefixo}: quarentena finalizada em {momento}.", ResultadoEventoAdmissao.SUCESSO),
+                (TipoEventoAdmissao.SESSAO_EM_VALIDACAO, f"{prefixo}: validação iniciada em {momento}.", ResultadoEventoAdmissao.SUCESSO),
+            ],
+            ("EM_VALIDACAO", "VALIDADA"): [
+                (TipoEventoAdmissao.SESSAO_VALIDADA, f"{prefixo}: validação concluída com aprovação em {momento}.", ResultadoEventoAdmissao.SUCESSO),
+            ],
+            ("EM_VALIDACAO", "REJEITADA"): [
+                (TipoEventoAdmissao.SESSAO_REJEITADA, f"{prefixo}: validação concluída com rejeição em {momento}.", ResultadoEventoAdmissao.SUCESSO),
+            ],
+            ("VALIDADA", "NORMALIZANDO"): [
+                (TipoEventoAdmissao.SESSAO_NORMALIZANDO, f"{prefixo}: normalização iniciada em {momento}.", ResultadoEventoAdmissao.SUCESSO),
+            ],
+            ("NORMALIZANDO", "NORMALIZADA"): [
+                (TipoEventoAdmissao.SESSAO_NORMALIZADA, f"{prefixo}: normalização finalizada em {momento}.", ResultadoEventoAdmissao.SUCESSO),
+            ],
+            ("NORMALIZADA", "FINALIZADA"): [
+                (TipoEventoAdmissao.SESSAO_FINALIZADA, f"{prefixo}: finalizada em {momento}.", ResultadoEventoAdmissao.SUCESSO),
+            ],
+            ("REJEITADA", "FINALIZADA"): [
+                (TipoEventoAdmissao.SESSAO_FINALIZADA, f"{prefixo}: finalizada em {momento}.", ResultadoEventoAdmissao.SUCESSO),
+            ],
+        }
+        if destino == "CANCELADA":
+            return [(TipoEventoAdmissao.SESSAO_CANCELADA, f"{prefixo}: cancelada em {momento}.", ResultadoEventoAdmissao.ALERTA)]
+        return eventos.get((origem, destino), [])
 
     @staticmethod
     def _validar_referencias_processo(db: Session, valores: dict) -> None:
