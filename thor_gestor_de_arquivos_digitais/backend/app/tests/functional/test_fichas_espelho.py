@@ -113,3 +113,36 @@ def test_modelo_ficha_espelho_crud_e_geracao(client: TestClient, unique_code: st
     client.delete(f"/api/v1/descricao-arquivistica/registros/{fundo.json()['id']}", params={"cascade": True})
     client.delete(f"/api/v1/unidades-acondicionamento/{unidade.json()['id']}")
     client.delete(f"/api/v1/fichas-espelho/modelos/{modelo.json()['id']}")
+
+
+def test_ficha_espelho_rejeita_unidade_digital(client: TestClient, unique_code: str):
+    modelo = client.post(
+        "/api/v1/fichas-espelho/modelos",
+        json={
+            "nome": f"Modelo ficha digital bloqueada {unique_code}",
+            "campos": ["identificador_caixa"],
+            "tamanho_papel": "A4",
+            "orientacao": "RETRATO",
+            "colunas": 1,
+            "largura_cm": 18.0,
+            "altura_cm": 12.0,
+            "ativo": True,
+        },
+    )
+    unidade = client.post(
+        "/api/v1/unidades-acondicionamento",
+        json=unidade_payload(unique_code, tipo_suporte="DIGITAL", tipo_unidade="AIP"),
+    )
+
+    generated = client.post(
+        "/api/v1/fichas-espelho/gerar",
+        json={"modelo_id": modelo.json()["id"], "unidade_ids": [unidade.json()["id"]]},
+    )
+
+    assert modelo.status_code == 201
+    assert unidade.status_code == 201
+    assert generated.status_code == 422
+    assert "Apenas unidades que não são digitais" in generated.json()["detail"]
+
+    client.delete(f"/api/v1/unidades-acondicionamento/{unidade.json()['id']}")
+    client.delete(f"/api/v1/fichas-espelho/modelos/{modelo.json()['id']}")

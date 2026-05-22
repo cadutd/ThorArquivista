@@ -15,7 +15,7 @@ import {
   redirectToLoginAfterSessionLoss,
   type AuthSession,
 } from "@/lib/auth/session";
-import { keycloakLogoutUrl, startLogin } from "@/lib/auth/oidc";
+import { keycloakLogoutUrl, refreshLogin, startLogin } from "@/lib/auth/oidc";
 
 type AuthContextValue = {
   session: AuthSession | null;
@@ -36,18 +36,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let isMounted = true;
 
     queueMicrotask(() => {
-      if (!isMounted) {
-        return;
-      }
+      void (async () => {
+        if (!isMounted) {
+          return;
+        }
 
-      const stored = getStoredSession();
-      if (stored && !isSessionActive(stored)) {
-        redirectToLoginAfterSessionLoss();
-        setSession(null);
-      } else {
-        setSession(stored);
-      }
-      setIsLoading(false);
+        const stored = getStoredSession();
+        if (stored && !isSessionActive(stored)) {
+          if (stored.refreshToken) {
+            try {
+              const refreshed = await refreshLogin(stored.refreshToken);
+              if (isMounted) {
+                setSession(refreshed);
+              }
+            } catch {
+              redirectToLoginAfterSessionLoss();
+              setSession(null);
+            }
+          } else {
+            redirectToLoginAfterSessionLoss();
+            setSession(null);
+          }
+        } else {
+          setSession(stored);
+        }
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      })();
     });
 
     return () => {
@@ -62,12 +78,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const timeoutMs = Math.max(session.expiresAt - Date.now() - 30_000, 0);
     const timeoutId = window.setTimeout(() => {
-      setSession(null);
-      redirectToLoginAfterSessionLoss();
+      if (!session.refreshToken) {
+        setSession(null);
+        redirectToLoginAfterSessionLoss();
+        return;
+      }
+
+      refreshLogin(session.refreshToken)
+        .then(setSession)
+        .catch(() => {
+          setSession(null);
+          redirectToLoginAfterSessionLoss();
+        });
     }, timeoutMs);
 
     return () => window.clearTimeout(timeoutId);
   }, [session]);
+
+  useEffect(() => {
+    const handleSessionChange = (event: Event) => {
+      setSession((event as CustomEvent<AuthSession | null>).detail);
+    };
+
+    window.addEventListener("thor.auth.session-changed", handleSessionChange);
+
+    return () => {
+      window.removeEventListener("thor.auth.session-changed", handleSessionChange);
+    };
+  }, []);
 
   const login = useCallback(async (nextPath?: string | null) => {
     await startLogin(nextPath);

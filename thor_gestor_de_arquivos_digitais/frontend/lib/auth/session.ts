@@ -29,10 +29,12 @@ export function getStoredSession(): AuthSession | null {
 
 export function storeSession(session: AuthSession) {
   window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  window.dispatchEvent(new CustomEvent("thor.auth.session-changed", { detail: session }));
 }
 
 export function clearStoredSession() {
   window.localStorage.removeItem(SESSION_KEY);
+  window.dispatchEvent(new CustomEvent("thor.auth.session-changed", { detail: null }));
 }
 
 export function redirectToLoginAfterSessionLoss() {

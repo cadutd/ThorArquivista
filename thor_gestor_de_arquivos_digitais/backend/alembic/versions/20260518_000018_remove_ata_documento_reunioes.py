@@ -17,7 +17,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.drop_column("reunioes_admissao", "ata_documento")
+    op.drop_column("reunioes_admissao", "ata_documento", if_exists=True)
 
 
 def downgrade() -> None:

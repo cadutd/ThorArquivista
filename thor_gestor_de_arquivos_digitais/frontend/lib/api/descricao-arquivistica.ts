@@ -1,4 +1,5 @@
 import { apiRequest } from "@/lib/api/client";
+import { refreshLogin } from "@/lib/auth/oidc";
 import { getStoredSession, isSessionActive, redirectToLoginAfterSessionLoss } from "@/lib/auth/session";
 import { config } from "@/lib/config";
 import { queryString } from "@/lib/api/storage-query";
@@ -119,9 +120,17 @@ export async function importarEAD2002(content: string) {
   return (await response.json()) as EAD2002ImportResult;
 }
 
-function authenticatedFetch(path: string, init: RequestInit) {
+async function authenticatedFetch(path: string, init: RequestInit) {
   const headers = new Headers(init.headers);
-  const session = getStoredSession();
+  let session = getStoredSession();
+  if (session && !isSessionActive(session) && session.refreshToken) {
+    try {
+      session = await refreshLogin(session.refreshToken);
+    } catch {
+      session = getStoredSession();
+    }
+  }
+
   if (session && isSessionActive(session)) {
     headers.set("Authorization", `Bearer ${session.accessToken}`);
   } else {

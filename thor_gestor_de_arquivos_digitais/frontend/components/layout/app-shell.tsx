@@ -8,6 +8,7 @@ import {
   BookOpenText,
   Building2,
   Boxes,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Database,
@@ -17,39 +18,97 @@ import {
   HardDrive,
   Inbox,
   LogOut,
-  MapPinned,
+  Search,
   Settings,
   ShieldCheck,
   Users,
+  Warehouse,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth/auth-provider";
 import { cn } from "@/lib/utils";
 
-const navigation = [
+type NavigationLink = {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+};
+
+type NavigationGroup = {
+  key: string;
+  label: string;
+  icon: LucideIcon;
+  items: NavigationLink[];
+};
+
+type NavigationItem = NavigationLink | NavigationGroup;
+
+const navigation: NavigationItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
   { href: "/admissao", label: "Admissão", icon: Inbox },
-  { href: "/unidades", label: "Unidades", icon: Archive },
-  { href: "/entidades-produtoras", label: "Entidades Produtoras", icon: Building2 },
-  { href: "/usuarios", label: "Usuários", icon: Users },
-  { href: "/descricao-arquivistica", label: "Descrição Arquivística", icon: BookOpenText },
-  { href: "/instrumentos-pesquisa", label: "Instrumentos de Pesquisa", icon: FileSearch },
-  { href: "/midias", label: "Mídias", icon: HardDrive },
-  { href: "/enderecamento", label: "Endereçamento", icon: MapPinned },
-  { href: "/modelos-ficha-espelho", label: "Modelos de Ficha", icon: FileText },
-  { href: "/eventos", label: "Eventos", icon: Boxes },
-  { href: "/admin", label: "Administração", icon: Settings },
+  {
+    key: "gestao-acervos",
+    label: "Gestão de Acervos",
+    icon: Archive,
+    items: [
+      { href: "/unidades", label: "Acondicionamentos", icon: Archive },
+      { href: "/descricao-arquivistica", label: "Descrição Arquivística", icon: BookOpenText },
+      { href: "/entidades-produtoras", label: "Entidades Produtoras", icon: Building2 },
+      { href: "/enderecamento", label: "Gestão de Armazém", icon: Warehouse },
+      { href: "/instrumentos-pesquisa", label: "Instrumentos de Pesquisa", icon: FileSearch },
+      { href: "/modelos-ficha-espelho", label: "Modelos de Ficha Espelho", icon: FileText },
+    ],
+  },
+  {
+    key: "pesquisa",
+    label: "Pesquisa",
+    icon: Search,
+    items: [
+      { href: "/descricao-arquivistica", label: "Descrição Arquivística", icon: BookOpenText },
+      { href: "/instrumentos-pesquisa", label: "Instrumentos de Pesquisa", icon: FileSearch },
+    ],
+  },
+  {
+    key: "preservacao-digital",
+    label: "Preservação Digital",
+    icon: HardDrive,
+    items: [{ href: "/midias", label: "Gestão de Mídias", icon: HardDrive }],
+  },
+  {
+    key: "administracao",
+    label: "Administração",
+    icon: Settings,
+    items: [
+      { href: "/admin", label: "Administração Geral", icon: Settings },
+      { href: "/usuarios", label: "Gestão de Usuários", icon: Users },
+      { href: "/eventos", label: "Eventos", icon: Boxes },
+    ],
+  },
 ];
+
+function isNavigationGroup(item: NavigationItem): item is NavigationGroup {
+  return "items" in item;
+}
+
+function isActivePath(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { logout, session } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const [openGroup, setOpenGroup] = useState<string | null>("gestao-acervos");
   const claims = session?.claims ?? {};
   const username =
     typeof claims.preferred_username === "string"
       ? claims.preferred_username
       : "Usuário";
+
+  const toggleGroup = (key: string) => {
+    setOpenGroup((current) => (current === key ? null : key));
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -92,10 +151,68 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </Button>
         </div>
 
-        <nav className="space-y-1 p-3">
+        <nav className="space-y-1 overflow-y-auto p-3">
           {navigation.map((item) => {
             const Icon = item.icon;
-            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+
+            if (isNavigationGroup(item)) {
+              const isOpen = openGroup === item.key;
+              const groupActive = item.items.some((child) => isActivePath(pathname, child.href));
+
+              return (
+                <div key={item.key} className="space-y-1">
+                  <button
+                    type="button"
+                    title={collapsed ? item.label : undefined}
+                    className={cn(
+                      "flex h-10 w-full items-center rounded-md text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+                      collapsed ? "justify-center px-0" : "gap-3 px-3",
+                      groupActive && "text-foreground",
+                    )}
+                    aria-expanded={isOpen}
+                    onClick={() => toggleGroup(item.key)}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className={cn("min-w-0 flex-1 truncate text-left", collapsed && "sr-only")}>
+                      {item.label}
+                    </span>
+                    <ChevronDown
+                      className={cn(
+                        "h-4 w-4 shrink-0 transition-transform",
+                        collapsed && "hidden",
+                        !isOpen && "-rotate-90",
+                      )}
+                    />
+                  </button>
+                  {(isOpen || collapsed) && (
+                    <div className={cn("space-y-1", collapsed ? "pt-1" : "pl-5")}>
+                      {item.items.map((child) => {
+                        const ChildIcon = child.icon;
+                        const active = isActivePath(pathname, child.href);
+
+                        return (
+                          <Link
+                            key={`${item.key}-${child.href}`}
+                            href={child.href}
+                            title={collapsed ? child.label : undefined}
+                            className={cn(
+                              "flex h-9 items-center rounded-md text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground",
+                              collapsed ? "justify-center px-0" : "gap-3 px-3",
+                              active && "bg-secondary text-secondary-foreground",
+                            )}
+                          >
+                            <ChildIcon className="h-4 w-4 shrink-0" />
+                            <span className={cn("min-w-0 truncate", collapsed && "sr-only")}>{child.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            const active = isActivePath(pathname, item.href);
 
             return (
               <Link

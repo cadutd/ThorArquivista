@@ -114,6 +114,73 @@ export async function completeLogin(code: string, state: string) {
   return session;
 }
 
+let refreshSessionPromise: Promise<ReturnType<typeof storeRefreshedSession>> | null = null;
+
+function storeRefreshedSession(
+  token: {
+    access_token: string;
+    refresh_token?: string;
+    id_token?: string;
+    expires_in: number;
+  },
+  previousRefreshToken: string,
+) {
+  const session = {
+    accessToken: token.access_token,
+    refreshToken: token.refresh_token ?? previousRefreshToken,
+    idToken: token.id_token,
+    expiresAt: Date.now() + token.expires_in * 1000,
+    claims: decodeJwtClaims(token.access_token),
+  };
+
+  storeSession(session);
+  return session;
+}
+
+export async function refreshLogin(refreshToken: string) {
+  if (refreshSessionPromise) {
+    return refreshSessionPromise;
+  }
+
+  refreshSessionPromise = (async () => {
+    const body = new URLSearchParams({
+      grant_type: "refresh_token",
+      client_id: config.keycloakClientId,
+      refresh_token: refreshToken,
+    });
+
+    const response = await fetch(
+      `${keycloakRealmUrl()}/protocol/openid-connect/token`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body,
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error("Não foi possível renovar a sessão.");
+    }
+
+    const token = (await response.json()) as {
+      access_token: string;
+      refresh_token?: string;
+      id_token?: string;
+      expires_in: number;
+    };
+
+    return storeRefreshedSession(token, refreshToken);
+  })();
+
+  try {
+    return await refreshSessionPromise;
+  } finally {
+    refreshSessionPromise = null;
+  }
+}
+
 export function consumeLoginRedirectPath() {
   const nextPath = window.sessionStorage.getItem(AUTH_NEXT_KEY);
   window.sessionStorage.removeItem(AUTH_NEXT_KEY);

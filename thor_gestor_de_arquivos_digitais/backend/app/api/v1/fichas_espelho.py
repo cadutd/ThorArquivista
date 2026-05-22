@@ -71,5 +71,7 @@ def excluir_modelo(modelo_id: int, db: Session = Depends(db_dep)):
 def gerar_fichas(dados: FichaEspelhoGerarRequest, db: Session = Depends(db_dep)):
     try:
         return FichaEspelhoService.gerar(db, dados)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except LookupError as e:
         raise HTTPException(status_code=404, detail=str(e))

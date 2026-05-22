@@ -1,5 +1,11 @@
 import { config } from "@/lib/config";
-import { getStoredSession, isSessionActive, redirectToLoginAfterSessionLoss } from "@/lib/auth/session";
+import { refreshLogin } from "@/lib/auth/oidc";
+import {
+  getStoredSession,
+  isSessionActive,
+  redirectToLoginAfterSessionLoss,
+  type AuthSession,
+} from "@/lib/auth/session";
 
 type ApiRequestOptions = RequestInit & {
   authenticated?: boolean;
@@ -9,7 +15,7 @@ export async function apiRequest<T>(
   path: string,
   options: ApiRequestOptions = {},
 ): Promise<T> {
-  const session = getStoredSession();
+  const session = await getActiveSession();
   const headers = new Headers(options.headers);
 
   headers.set("Accept", "application/json");
@@ -45,4 +51,22 @@ export async function apiRequest<T>(
   }
 
   return (await response.json()) as T;
+}
+
+async function getActiveSession(): Promise<AuthSession | null> {
+  const session = getStoredSession();
+
+  if (!session || isSessionActive(session)) {
+    return session;
+  }
+
+  if (!session.refreshToken) {
+    return session;
+  }
+
+  try {
+    return await refreshLogin(session.refreshToken);
+  } catch {
+    return session;
+  }
 }

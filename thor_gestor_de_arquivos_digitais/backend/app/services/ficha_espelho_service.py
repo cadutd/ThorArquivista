@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.models.configuracao import ParametroSistema
 from app.models.descricao_arquivistica import RegistroDescritivo
+from app.models.enums import TipoSuporte
 from app.models.ficha_espelho import ModeloFichaEspelho
 from app.models.unidade_acondicionamento import UnidadeAcondicionamento
 from app.schemas.ficha_espelho import (
@@ -135,6 +136,13 @@ class FichaEspelhoService:
         faltantes = [unidade_id for unidade_id in dados.unidade_ids if unidade_id not in encontrados]
         if faltantes:
             raise LookupError(f"Unidades não encontradas: {', '.join(str(item) for item in faltantes)}.")
+
+        unidades_digitais = [unidade.identificador for unidade in unidades if unidade.tipo_suporte == TipoSuporte.DIGITAL]
+        if unidades_digitais:
+            raise ValueError(
+                "Apenas unidades que não são digitais podem ter ficha espelho impressa: "
+                f"{', '.join(unidades_digitais)}."
+            )
 
         instituicao = FichaEspelhoService._instituicao(db)
         fichas = [FichaEspelhoService._dados_unidade(unidade) for unidade in unidades]

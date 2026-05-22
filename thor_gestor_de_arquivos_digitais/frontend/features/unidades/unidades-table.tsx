@@ -6,10 +6,10 @@ import {
   useReactTable,
   type ColumnDef,
 } from "@tanstack/react-table";
-import { Edit, Eye, Filter, Printer, Search, Trash2 } from "lucide-react";
+import { Edit, Eye, Filter, Printer, Search } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -30,8 +30,8 @@ import {
 } from "@/components/ui/table";
 import { StatusBadge } from "@/components/status-badge";
 import { listarModelosFichaEspelho } from "@/lib/api/ficha-espelho";
-import { deleteUnidade, type UnidadeFilters } from "@/lib/api/domain";
-import type { CopiaDigital, UnidadeAcondicionamento } from "@/types/domain";
+import type { UnidadeFilters } from "@/lib/api/domain";
+import type { UnidadeAcondicionamento } from "@/types/domain";
 
 type Props = {
   data: UnidadeAcondicionamento[];
@@ -45,6 +45,12 @@ type Props = {
   onPageSizeChange: (pageSize: number) => void;
 };
 
+const FICHA_ESPELHO_DIGITAL_BLOCK_MESSAGE = "Apenas unidades que não são digitais podem ter ficha espelho impressa.";
+
+function canPrintFichaEspelho(unidade: UnidadeAcondicionamento) {
+  return unidade.tipo_suporte !== "DIGITAL";
+}
+
 export function UnidadesTable({
   data,
   filters,
@@ -56,27 +62,21 @@ export function UnidadesTable({
   onPageChange,
   onPageSizeChange,
 }: Props) {
-  const queryClient = useQueryClient();
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [draftFilters, setDraftFilters] = useState<UnidadeFilters>(filters);
-  const [selected, setSelected] = useState<UnidadeAcondicionamento | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [printIds, setPrintIds] = useState<number[]>([]);
   const [printDialogOpen, setPrintDialogOpen] = useState(false);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const currentPage = Math.min(pageIndex + 1, totalPages);
+  const printableSelectedIds = useMemo(
+    () => data.filter((item) => selectedIds.has(item.id) && canPrintFichaEspelho(item)).map((item) => item.id),
+    [data, selectedIds],
+  );
 
   useEffect(() => {
     setDraftFilters(filters);
   }, [filters]);
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteUnidade,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["unidades"] });
-      setSelected(null);
-    },
-  });
 
   const openPrintDialog = (ids: number[]) => {
     setPrintIds(ids);
@@ -88,13 +88,14 @@ export function UnidadesTable({
       {
         id: "selecao",
         header: () => {
-          const pageIds = data.map((item) => item.id);
+          const pageIds = data.filter(canPrintFichaEspelho).map((item) => item.id);
           const allSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
           return (
             <input
               aria-label="Selecionar unidades da página"
               type="checkbox"
               checked={allSelected}
+              disabled={!pageIds.length}
               onChange={(event) => {
                 setSelectedIds((current) => {
                   const next = new Set(current);
@@ -111,36 +112,41 @@ export function UnidadesTable({
             />
           );
         },
-        cell: ({ row }) => (
-          <input
-            aria-label={`Selecionar ${row.original.identificador}`}
-            type="checkbox"
-            checked={selectedIds.has(row.original.id)}
-            onChange={(event) =>
-              setSelectedIds((current) => {
-                const next = new Set(current);
-                if (event.target.checked) {
-                  next.add(row.original.id);
-                } else {
-                  next.delete(row.original.id);
-                }
-                return next;
-              })
-            }
-          />
-        ),
+        cell: ({ row }) => {
+          const printable = canPrintFichaEspelho(row.original);
+
+          return (
+            <input
+              aria-label={`Selecionar ${row.original.identificador}`}
+              title={printable ? undefined : FICHA_ESPELHO_DIGITAL_BLOCK_MESSAGE}
+              type="checkbox"
+              checked={selectedIds.has(row.original.id)}
+              disabled={!printable}
+              onChange={(event) =>
+                setSelectedIds((current) => {
+                  const next = new Set(current);
+                  if (event.target.checked) {
+                    next.add(row.original.id);
+                  } else {
+                    next.delete(row.original.id);
+                  }
+                  return next;
+                })
+              }
+            />
+          );
+        },
       },
       {
         accessorKey: "identificador",
         header: "Identificador",
         cell: ({ row }) => (
-          <button
+          <Link
+            href={`/unidades/${row.original.id}`}
             className="font-medium text-primary hover:underline"
-            onClick={() => setSelected(row.original)}
-            type="button"
           >
             {row.original.identificador}
-          </button>
+          </Link>
         ),
       },
       { accessorKey: "titulo", header: "Título" },
@@ -159,25 +165,26 @@ export function UnidadesTable({
       {
         id: "acoes",
         header: "",
-        cell: ({ row }) => (
-          <div className="flex justify-end gap-1">
-            <Button
-              aria-label="Imprimir ficha espelho"
-              size="icon"
-              type="button"
-              variant="ghost"
-              onClick={() => openPrintDialog([row.original.id])}
-            >
-              <Printer className="h-4 w-4" />
-            </Button>
-            <Button
-              aria-label="Visualizar unidade"
-              size="icon"
-              type="button"
-              variant="ghost"
-              onClick={() => setSelected(row.original)}
-            >
-              <Eye className="h-4 w-4" />
+        cell: ({ row }) => {
+          const printable = canPrintFichaEspelho(row.original);
+
+          return (
+            <div className="flex justify-end gap-1">
+              <Button
+                aria-label="Imprimir ficha espelho"
+                disabled={!printable}
+                size="icon"
+                title={printable ? "Imprimir ficha espelho" : FICHA_ESPELHO_DIGITAL_BLOCK_MESSAGE}
+                type="button"
+                variant="ghost"
+                onClick={() => openPrintDialog([row.original.id])}
+              >
+                <Printer className="h-4 w-4" />
+              </Button>
+            <Button asChild aria-label="Visualizar unidade" size="icon" variant="ghost">
+              <Link href={`/unidades/${row.original.id}`}>
+                <Eye className="h-4 w-4" />
+              </Link>
             </Button>
             <Button
               asChild
@@ -189,8 +196,9 @@ export function UnidadesTable({
                 <Edit className="h-4 w-4" />
               </Link>
             </Button>
-          </div>
-        ),
+            </div>
+          );
+        },
       },
     ],
     [data, selectedIds],
@@ -238,11 +246,12 @@ export function UnidadesTable({
         <Button
           type="button"
           variant="outline"
-          disabled={!selectedIds.size}
-          onClick={() => openPrintDialog(Array.from(selectedIds))}
+          disabled={!printableSelectedIds.length}
+          title={printableSelectedIds.length ? undefined : FICHA_ESPELHO_DIGITAL_BLOCK_MESSAGE}
+          onClick={() => openPrintDialog(printableSelectedIds)}
         >
           <Printer className="h-4 w-4" />
-          Imprimir fichas ({selectedIds.size})
+          Imprimir fichas ({printableSelectedIds.length})
         </Button>
       </div>
 
@@ -478,134 +487,11 @@ export function UnidadesTable({
         onPageSizeChange={onPageSizeChange}
       />
 
-      <Dialog open={Boolean(selected)} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Metadados da unidade</DialogTitle>
-            <DialogDescription>
-              Visualização completa dos campos registrados.
-            </DialogDescription>
-          </DialogHeader>
-          {selected ? (
-            <UnidadeDetails
-              unidade={selected}
-              onPrint={() => openPrintDialog([selected.id])}
-              onDelete={() => {
-                if (window.confirm("Excluir esta unidade de acondicionamento?")) {
-                  deleteMutation.mutate(selected.id);
-                }
-              }}
-              isDeleting={deleteMutation.isPending}
-            />
-          ) : null}
-        </DialogContent>
-      </Dialog>
-
       <PrintDialog
         open={printDialogOpen}
         unidadeIds={printIds}
         onOpenChange={setPrintDialogOpen}
       />
-    </div>
-  );
-}
-
-function UnidadeDetails({
-  unidade,
-  onDelete,
-  onPrint,
-  isDeleting,
-}: {
-  unidade: UnidadeAcondicionamento;
-  onDelete: () => void;
-  onPrint: () => void;
-  isDeleting: boolean;
-}) {
-  const fields: Array<[string, React.ReactNode]> = [
-    ["ID", unidade.id],
-    ["Identificador", unidade.identificador],
-    ["Título", unidade.titulo],
-    ["Descrição", unidade.descricao || "-"],
-    ["Produtor", unidade.produtor || "-"],
-    ["Unidade", unidade.unidade || "-"],
-    ["Data-limite", unidade.data_limite || "-"],
-    ["Código de classificação", unidade.codigo_classificacao || "-"],
-    ["Assunto", unidade.assunto || "-"],
-    ["Código de barra", unidade.codigo_barra || "-"],
-    ["Informações do pacote", unidade.informacoes_pacote || "-"],
-    ["Suporte", unidade.tipo_suporte],
-    ["Tipo", unidade.tipo_unidade],
-    ["Nível de acesso", unidade.nivel_acesso],
-    ["Status", unidade.status],
-    ["Unidade pai", unidade.id_unidade_pai ?? "-"],
-    ["Representa", unidade.id_representa ?? "-"],
-    ["Criado em", formatDateTime(unidade.criado_em)],
-    ["Atualizado em", formatDateTime(unidade.atualizado_em)],
-  ];
-
-  return (
-    <div className="space-y-5">
-      <div className="grid gap-3 md:grid-cols-2">
-        {fields.map(([label, value]) => (
-          <div key={label} className="rounded-md border p-3">
-            <p className="text-xs font-medium uppercase text-muted-foreground">{label}</p>
-            <div className="mt-1 text-sm">{value}</div>
-          </div>
-        ))}
-      </div>
-
-      <section className="space-y-3">
-        <h3 className="text-sm font-semibold">Metadados digitais</h3>
-        {unidade.digital ? (
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="rounded-md border p-3">
-              <p className="text-xs font-medium uppercase text-muted-foreground">Tamanho</p>
-              <div className="mt-1 text-sm">{unidade.digital.tamanho_bytes ?? "-"}</div>
-            </div>
-            <div className="rounded-md border p-3">
-              <p className="text-xs font-medium uppercase text-muted-foreground">Status de fixidez</p>
-              <div className="mt-1 text-sm">{unidade.digital.status_fixidez ?? "-"}</div>
-            </div>
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">Nenhum metadado digital registrado.</p>
-        )}
-      </section>
-
-      <section className="space-y-3">
-        <h3 className="text-sm font-semibold">Cópias digitais</h3>
-        {unidade.copias_digitais?.length ? (
-          <div className="space-y-2">
-            {unidade.copias_digitais.map((copia) => (
-              <CopiaDetails key={copia.id} copia={copia} />
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">Nenhuma cópia digital vinculada.</p>
-        )}
-      </section>
-
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onPrint}>
-          <Printer className="h-4 w-4" />
-          Ficha espelho
-        </Button>
-        <Button asChild variant="outline">
-          <Link href={`/unidades/${unidade.id}/editar`}>
-            <Edit className="h-4 w-4" />
-            Editar
-          </Link>
-        </Button>
-        <Button
-          type="button"
-          variant="destructive"
-          disabled={isDeleting}
-          onClick={onDelete}
-        >
-          <Trash2 className="h-4 w-4" />
-          {isDeleting ? "Excluindo..." : "Excluir"}
-        </Button>
-      </div>
     </div>
   );
 }
@@ -678,30 +564,6 @@ function PrintDialog({
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function CopiaDetails({ copia }: { copia: CopiaDigital }) {
-  return (
-    <div className="grid gap-2 rounded-md border p-3 text-sm md:grid-cols-2">
-      <DetailLine label="Mídia" value={copia.id_midia_armazenamento} />
-      <DetailLine label="URI" value={copia.uri_copia} />
-      <DetailLine label="Função" value={copia.funcao_copia} />
-      <DetailLine label="Status" value={copia.status_copia} />
-      <DetailLine label="Algoritmo" value={copia.algoritmo_fixidez ?? "-"} />
-      <DetailLine label="Hash" value={copia.hash_fixidez ?? "-"} />
-      <DetailLine label="Última verificação" value={formatDateTime(copia.ultima_verificacao_em)} />
-      <DetailLine label="Criada em" value={formatDateTime(copia.criada_em)} />
-    </div>
-  );
-}
-
-function DetailLine({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div>
-      <span className="text-muted-foreground">{label}: </span>
-      <span>{value}</span>
-    </div>
   );
 }
 
@@ -910,15 +772,4 @@ function endOfDay(value: string) {
 
 function toDateInputValue(value?: string) {
   return value?.slice(0, 10) ?? "";
-}
-
-function formatDateTime(value?: string | null) {
-  if (!value) {
-    return "-";
-  }
-
-  return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(new Date(value));
 }
