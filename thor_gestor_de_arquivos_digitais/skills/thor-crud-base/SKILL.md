@@ -92,7 +92,7 @@ Forneça busca avançada:
 - controles de texto, enum, booleano, numérico e intervalo de datas conforme apropriado
 - ação de limpar filtros que redefine o rascunho e submete um objeto de filtros vazio
 
-Renderize a paginação acima e abaixo da tabela para conjuntos longos de resultados. Inclua contagem exibida, contagem total, página atual, total de páginas, seletor de tamanho de página, controles de primeira/anterior/numeradas/próxima/última e estados desabilitados durante a busca.
+Renderize a paginação acima e abaixo da tabela para conjuntos longos de resultados. Inclua contagem exibida, contagem total, página atual, total de páginas, seletor de tamanho de página, controles de primeira/anterior/próxima/última e links diretos para páginas numeradas da pesquisa. Para muitas páginas, mostre sempre a primeira, a última, a atual e as páginas vizinhas, usando reticências para lacunas entre grupos de páginas.
 
 ## Formulários
 

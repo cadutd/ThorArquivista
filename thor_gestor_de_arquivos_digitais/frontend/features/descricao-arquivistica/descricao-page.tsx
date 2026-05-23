@@ -734,6 +734,21 @@ function DetailedSearchView({ onOpenManagement }: { onOpenManagement: (id: strin
             </div>
           </div>
           {query.isLoading ? <LoadingLine /> : null}
+          {submittedFilters ? (
+            <DetailedSearchPagination
+              currentPage={currentPage + 1}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              displayedCount={records.length}
+              total={total}
+              isLoading={query.isFetching}
+              onPageChange={setPageIndex}
+              onPageSizeChange={(value) => {
+                setPageSize(value);
+                setPageIndex(0);
+              }}
+            />
+          ) : null}
           <div className="max-h-[62vh] overflow-auto rounded-md border">
             <table className="w-full min-w-[760px] text-sm">
               <thead className="sticky top-0 bg-muted text-left">
@@ -810,12 +825,33 @@ function DetailedSearchPagination({
   onPageChange: (pageIndex: number) => void;
   onPageSizeChange: (pageSize: number) => void;
 }) {
+  const pages = getPaginationItems(currentPage, totalPages);
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2">
       <p className="text-sm text-muted-foreground">{displayedCount} registros de {total} | página {currentPage} de {totalPages}</p>
       <div className="flex flex-wrap items-center gap-2">
         <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage <= 1} onClick={() => onPageChange(0)}>Primeira</Button>
         <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage <= 1} onClick={() => onPageChange(currentPage - 2)}>Anterior</Button>
+        {pages.map((page, index) =>
+          page === "ellipsis" ? (
+            <span key={`consulta-ellipsis-${index}`} className="flex h-9 min-w-9 items-center justify-center px-2 text-sm text-muted-foreground">
+              ...
+            </span>
+          ) : (
+            <Button
+              key={`consulta-page-${page}`}
+              type="button"
+              variant={page === currentPage ? "default" : "outline"}
+              size="sm"
+              className="min-w-9 px-2"
+              disabled={isLoading || page === currentPage}
+              onClick={() => onPageChange(page - 1)}
+            >
+              {page}
+            </Button>
+          ),
+        )}
         <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage >= totalPages} onClick={() => onPageChange(currentPage)}>Próxima</Button>
         <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage >= totalPages} onClick={() => onPageChange(totalPages - 1)}>Última</Button>
         <Label htmlFor="descricao-consulta-page-size" className="text-sm text-muted-foreground">Por página:</Label>
@@ -913,6 +949,19 @@ function AssociatedUnitsList({ registroId, records, isRecordsLoading }: { regist
             <SummaryMetric label="Digitais" value={digitalCount} />
             <SummaryMetric label="Total" value={total} />
           </div>
+          <AssociatedUnitsPagination
+            currentPage={currentPage + 1}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            displayedCount={pageItems.length}
+            total={total}
+            isLoading={query.isFetching}
+            onPageChange={setPageIndex}
+            onPageSizeChange={(value) => {
+              setPageSize(value);
+              setPageIndex(0);
+            }}
+          />
           <div className="overflow-auto rounded-md border">
             <table className="w-full min-w-[760px] text-sm">
               <thead className="bg-muted text-left">
@@ -991,12 +1040,33 @@ function AssociatedUnitsPagination({
   onPageChange: (pageIndex: number) => void;
   onPageSizeChange: (pageSize: number) => void;
 }) {
+  const pages = getPaginationItems(currentPage, totalPages);
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2">
       <p className="text-sm text-muted-foreground">{displayedCount} unidades de {total} | página {currentPage} de {totalPages}</p>
       <div className="flex flex-wrap items-center gap-2">
         <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage <= 1} onClick={() => onPageChange(0)}>Primeira</Button>
         <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage <= 1} onClick={() => onPageChange(currentPage - 2)}>Anterior</Button>
+        {pages.map((page, index) =>
+          page === "ellipsis" ? (
+            <span key={`unidades-ellipsis-${index}`} className="flex h-9 min-w-9 items-center justify-center px-2 text-sm text-muted-foreground">
+              ...
+            </span>
+          ) : (
+            <Button
+              key={`unidades-page-${page}`}
+              type="button"
+              variant={page === currentPage ? "default" : "outline"}
+              size="sm"
+              className="min-w-9 px-2"
+              disabled={isLoading || page === currentPage}
+              onClick={() => onPageChange(page - 1)}
+            >
+              {page}
+            </Button>
+          ),
+        )}
         <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage >= totalPages} onClick={() => onPageChange(currentPage)}>Próxima</Button>
         <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage >= totalPages} onClick={() => onPageChange(totalPages - 1)}>Última</Button>
         <Label htmlFor="descricao-unidades-associadas-page-size" className="text-sm text-muted-foreground">Por página:</Label>
@@ -1013,6 +1083,27 @@ function AssociatedUnitsPagination({
       </div>
     </div>
   );
+}
+
+function getPaginationItems(currentPage: number, totalPages: number) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const pages = new Set([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
+  const sortedPages = Array.from(pages)
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((left, right) => left - right);
+
+  return sortedPages.flatMap((page, index) => {
+    const previousPage = sortedPages[index - 1];
+
+    if (previousPage && page - previousPage > 1) {
+      return ["ellipsis" as const, page];
+    }
+
+    return [page];
+  });
 }
 
 function ReadOnlyField({ label, value, multiline }: { label: string; value?: string | null; multiline?: boolean }) {

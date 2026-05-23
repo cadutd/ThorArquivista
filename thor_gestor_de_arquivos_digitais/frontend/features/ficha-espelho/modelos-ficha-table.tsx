@@ -273,6 +273,8 @@ function PaginationControls({
   onPageChange: (pageIndex: number) => void;
   onPageSizeChange: (pageSize: number) => void;
 }) {
+  const pages = getPaginationItems(currentPage, totalPages);
+
   return (
     <div className="flex flex-col gap-3 rounded-md border px-3 py-2 lg:flex-row lg:items-center lg:justify-between">
       <p className="text-sm text-muted-foreground">
@@ -285,6 +287,25 @@ function PaginationControls({
         <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage <= 1} onClick={() => onPageChange(currentPage - 2)}>
           Anterior
         </Button>
+        {pages.map((page, index) =>
+          page === "ellipsis" ? (
+            <span key={`ellipsis-${index}`} className="flex h-9 min-w-9 items-center justify-center px-2 text-sm text-muted-foreground">
+              ...
+            </span>
+          ) : (
+            <Button
+              key={page}
+              type="button"
+              variant={page === currentPage ? "default" : "outline"}
+              size="sm"
+              className="min-w-9 px-2"
+              disabled={isLoading || page === currentPage}
+              onClick={() => onPageChange(page - 1)}
+            >
+              {page}
+            </Button>
+          ),
+        )}
         <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage >= totalPages} onClick={() => onPageChange(currentPage)}>
           Próxima
         </Button>
@@ -303,4 +324,25 @@ function PaginationControls({
       </div>
     </div>
   );
+}
+
+function getPaginationItems(currentPage: number, totalPages: number) {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const pages = new Set([1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
+  const sortedPages = Array.from(pages)
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((left, right) => left - right);
+
+  return sortedPages.flatMap((page, index) => {
+    const previousPage = sortedPages[index - 1];
+
+    if (previousPage && page - previousPage > 1) {
+      return ["ellipsis" as const, page];
+    }
+
+    return [page];
+  });
 }
