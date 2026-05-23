@@ -11,6 +11,7 @@ import {
   Eye,
   HelpCircle,
   Loader2,
+  Link2,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -19,6 +20,7 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -772,10 +774,17 @@ function DetailedSearchView({ onOpenManagement }: { onOpenManagement: (id: strin
                     <td className="max-w-[220px] px-3 py-3 text-muted-foreground">
                       <span className="block truncate">{record.produtor || "-"}</span>
                     </td>
-                    <td className="px-3 py-3 text-right">
-                      <Button variant="outline" size="icon" title="Visualizar descrição" aria-label={`Visualizar ${record.titulo}`} onClick={() => onOpenManagement(record.id)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                    <td className="px-3 py-3">
+                      <div className="flex justify-end gap-1">
+                        <Button variant="outline" size="icon" title="Visualizar descrição" aria-label={`Visualizar ${record.titulo}`} onClick={() => onOpenManagement(record.id)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button asChild variant="outline" size="icon" title="Associar unidades" aria-label={`Associar unidades a ${record.titulo}`}>
+                          <Link href={`/descricao-arquivistica/unidades?registroId=${record.id}`}>
+                            <Link2 className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1153,6 +1162,11 @@ function TreeNode({ node, level, selectedId, expanded, loadingIds, onToggle, onS
         </button>
         <Button variant="outline" size="icon" className="h-8 w-8" title="Visualizar descrição" aria-label={`Visualizar ${node.titulo}`} onClick={() => onOpenManagement(node.id)}>
           <Eye className="h-4 w-4" />
+        </Button>
+        <Button asChild variant="outline" size="icon" className="h-8 w-8" title="Associar unidades" aria-label={`Associar unidades a ${node.titulo}`}>
+          <Link href={`/descricao-arquivistica/unidades?registroId=${node.id}`}>
+            <Link2 className="h-4 w-4" />
+          </Link>
         </Button>
       </div>
       {hasChildren && isOpen ? node.children.map((child) => <TreeNode key={child.id} node={child} level={level + 1} selectedId={selectedId} expanded={expanded} loadingIds={loadingIds} onToggle={onToggle} onSelect={onSelect} onOpenManagement={onOpenManagement} />) : null}

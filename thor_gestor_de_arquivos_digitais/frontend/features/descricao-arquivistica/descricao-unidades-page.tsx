@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight, Filter, Link2, Loader2, Save, Search } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, Filter, Link2, Loader2, Save, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   atualizarUnidadesAssociadasDescricao,
   listarArvoreDescricao,
@@ -34,6 +36,9 @@ const nivelLabels: Record<NivelDescricao, string> = {
 
 export function DescricaoUnidadesPage() {
   const queryClient = useQueryClient();
+  const searchParams = useSearchParams();
+  const initialRegistroId = searchParams.get("registroId");
+  const isFocusedAssociation = Boolean(initialRegistroId);
   const [selectedRegistroId, setSelectedRegistroId] = useState<string | null>(null);
   const [unidadeFilters, setUnidadeFilters] = useState<UnidadeFilters>({});
   const [unidadePageIndex, setUnidadePageIndex] = useState(0);
@@ -94,6 +99,12 @@ export function DescricaoUnidadesPage() {
       });
   };
 
+  useEffect(() => {
+    if (initialRegistroId && initialRegistroId !== selectedRegistroId) {
+      selectRegistro(initialRegistroId);
+    }
+  }, [initialRegistroId, selectedRegistroId]);
+
   const toggleUnidade = (id: number) => {
     setSelectedUnidades((current) => {
       const next = new Set(current);
@@ -109,19 +120,40 @@ export function DescricaoUnidadesPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold tracking-normal">Associação de Unidades</h1>
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-normal">
+              {isFocusedAssociation ? "Associar unidades à descrição arquivística" : "Associação de Unidades"}
+            </h1>
+            {isFocusedAssociation ? (
+              <p className="mt-1 text-lg font-semibold">{selectedRegistro?.titulo ?? "Carregando descrição..."}</p>
+            ) : null}
+          </div>
+          {isFocusedAssociation ? (
+            <Button asChild variant="outline">
+              <Link href="/descricao-arquivistica">
+                <ArrowLeft className="h-4 w-4" />
+                Voltar para edição e consulta
+              </Link>
+            </Button>
+          ) : null}
+        </div>
         <p className="text-sm text-muted-foreground">
-          Vincule uma ou mais unidades de acondicionamento a uma descrição arquivística.
+          {isFocusedAssociation
+            ? "Selecione as unidades de acondicionamento que devem ficar vinculadas a esta descrição."
+            : "Vincule uma ou mais unidades de acondicionamento a uma descrição arquivística."}
         </p>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[420px_minmax(0,1fr)]">
-        <DescricaoRegistroSelector
-          records={registros.data ?? []}
-          recordsLoading={registros.isLoading}
-          selectedId={selectedRegistroId}
-          onSelect={selectRegistro}
-        />
+      <div className={isFocusedAssociation ? "space-y-4" : "grid gap-4 xl:grid-cols-[420px_minmax(0,1fr)]"}>
+        {isFocusedAssociation ? null : (
+          <DescricaoRegistroSelector
+            records={registros.data ?? []}
+            recordsLoading={registros.isLoading}
+            selectedId={selectedRegistroId}
+            onSelect={selectRegistro}
+          />
+        )}
 
         <Card>
           <CardHeader>
@@ -163,7 +195,11 @@ export function DescricaoUnidadesPage() {
             />
             {associadas.isLoading || unidades.isLoading ? <LoadingLine /> : null}
             {mutation.error ? <p className="text-sm text-destructive">{mutation.error.message}</p> : null}
-            {mutation.isSuccess ? <p className="text-sm text-muted-foreground">Associações salvas.</p> : null}
+            {mutation.isSuccess ? (
+              <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800" role="alert">
+                Associação gravada com sucesso.
+              </div>
+            ) : null}
             <div className="max-h-[52vh] space-y-2 overflow-y-auto pr-1">
               {(unidades.data?.items ?? []).map((unidade) => (
                 <UnidadeAssociationRow
