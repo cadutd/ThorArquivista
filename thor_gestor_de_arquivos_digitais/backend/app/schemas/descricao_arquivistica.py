@@ -103,6 +103,13 @@ class RegistroDescritivoRead(RegistroDescritivoBase):
     has_children: bool = False
 
 
+class RegistroDescritivoPage(BaseModel):
+    items: list[RegistroDescritivoRead]
+    total: int
+    limit: int
+    offset: int
+
+
 class RegistroDescritivoTreeNode(BaseModel):
     id: uuid.UUID
     parent_id: uuid.UUID | None = None

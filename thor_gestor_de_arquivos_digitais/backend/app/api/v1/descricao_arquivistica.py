@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session
@@ -12,6 +13,7 @@ from app.schemas.descricao_arquivistica import (
     RegistroDescritivoDuplicate,
     EAD2002ImportResult,
     RegistroDescritivoMove,
+    RegistroDescritivoPage,
     RegistroDescritivoRead,
     RegistroDescritivoTreeNode,
     RegistroDescritivoUpdate,
@@ -35,6 +37,39 @@ def listar_registros(
         _with_children_flag(db, registro)
         for registro in DescricaoArquivisticaService.listar(db, q=q, nivel=nivel)
     ]
+
+
+@router.get("/registros/consulta", response_model=RegistroDescritivoPage)
+def consultar_registros(
+    db: Session = Depends(db_dep),
+    q: str | None = Query(default=None),
+    nivel: str | None = Query(default=None),
+    norma: str | None = Query(default=None),
+    data_inicial_de: date | None = Query(default=None),
+    data_inicial_ate: date | None = Query(default=None),
+    produtor: str | None = Query(default=None),
+    assunto: str | None = Query(default=None),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+):
+    items, total = DescricaoArquivisticaService.listar_paginado(
+        db,
+        q=q,
+        nivel=nivel,
+        norma=norma,
+        data_inicial_de=data_inicial_de,
+        data_inicial_ate=data_inicial_ate,
+        produtor=produtor,
+        assunto=assunto,
+        limit=limit,
+        offset=offset,
+    )
+    return {
+        "items": [_with_children_flag(db, registro) for registro in items],
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
 
 
 @router.get("/registros/arvore", response_model=list[RegistroDescritivoTreeNode])

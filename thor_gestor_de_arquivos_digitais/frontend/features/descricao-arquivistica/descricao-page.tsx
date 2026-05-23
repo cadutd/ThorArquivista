@@ -3,12 +3,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  ArrowLeft,
   ChevronDown,
   ChevronRight,
   Copy,
   Download,
+  Eye,
   HelpCircle,
   Loader2,
+  MoreHorizontal,
+  Pencil,
   Plus,
   Save,
   Search,
@@ -23,6 +27,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   atualizarRegistroDescricao,
+  consultarRegistrosDescricao,
   criarRegistroDescricao,
   criarRegistrosDescricaoLote,
   duplicarRegistroDescricao,
@@ -31,6 +36,7 @@ import {
   importarEAD2002,
   listarArvoreDescricao,
   listarRegistrosDescricao,
+  listarUnidadesAssociadasDescricao,
   moverRegistroDescricao,
   obterRegistroDescricao,
 } from "@/lib/api/descricao-arquivistica";
@@ -42,6 +48,7 @@ import type {
   RegistroDescritivoPayload,
   RegistroDescritivoTreeNode,
 } from "@/types/descricao-arquivistica";
+import type { UnidadeAcondicionamento } from "@/types/domain";
 
 const nivelLabels: Record<NivelDescricao, string> = {
   "1": "Fundo / Coleção",
@@ -173,12 +180,13 @@ export function DescricaoArquivisticaPage() {
   const [draft, setDraft] = useState<RegistroDescritivoPayload | null>(null);
   const [search, setSearch] = useState("");
   const [levelFilter, setLevelFilter] = useState("");
-  const [detailSelectionId, setDetailSelectionId] = useState<string | null>(null);
+  const [managementOpen, setManagementOpen] = useState(false);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [treeChildren, setTreeChildren] = useState<Record<string, RegistroDescritivoTreeNode[]>>({});
   const [loadingTreeNodes, setLoadingTreeNodes] = useState<Set<string>>(new Set());
   const [batchOpen, setBatchOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
+  const [moreActionsOpen, setMoreActionsOpen] = useState(false);
   const [eadMessage, setEadMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const tree = useQuery({
@@ -198,14 +206,17 @@ export function DescricaoArquivisticaPage() {
     queryFn: () => selectedId ? obterRegistroDescricao(selectedId) : Promise.resolve(null),
     enabled: Boolean(selectedId),
   });
-  const current = draft ?? (selected.data ? toPayload(selected.data) : null);
+  const isFormMode = draft !== null;
+  const current = draft;
   const selectedParent = selected.data ?? null;
+  const formParent = current?.parent_id ? flatRecords.data?.find((item) => item.id === current.parent_id) : null;
   const mutation = useMutation({
     mutationFn: (payload: RegistroDescritivoPayload) =>
       selectedId ? atualizarRegistroDescricao(selectedId, payload) : criarRegistroDescricao(payload),
     onSuccess: async (record) => {
       setSelectedId(record.id);
       setDraft(null);
+      setManagementOpen(true);
       await invalidateDescricao(queryClient);
     },
   });
@@ -213,6 +224,7 @@ export function DescricaoArquivisticaPage() {
     mutationFn: (id: string) => duplicarRegistroDescricao(id),
     onSuccess: async (record) => {
       setSelectedId(record.id);
+      setManagementOpen(true);
       await invalidateDescricao(queryClient);
     },
   });
@@ -221,6 +233,7 @@ export function DescricaoArquivisticaPage() {
     onSuccess: async () => {
       setSelectedId(null);
       setDraft(null);
+      setManagementOpen(false);
       await invalidateDescricao(queryClient);
     },
   });
@@ -230,6 +243,7 @@ export function DescricaoArquivisticaPage() {
       setEadMessage(`${result.imported} registro(s) importado(s) de EAD2002.`);
       setSelectedId(result.root_ids[0] ?? null);
       setDraft(null);
+      setManagementOpen(Boolean(result.root_ids[0]));
       await invalidateDescricao(queryClient);
     },
   });
@@ -251,6 +265,8 @@ export function DescricaoArquivisticaPage() {
   const createRoot = () => {
     setSelectedId(null);
     setDraft({ ...emptyPayload, nivel: "1", parent_id: null, norma: "NOBRADE" });
+    setMoreActionsOpen(false);
+    setManagementOpen(true);
   };
 
   const createChild = () => {
@@ -268,6 +284,15 @@ export function DescricaoArquivisticaPage() {
       idioma: selectedParent.idioma ?? "",
       regras_convencoes: selectedParent.regras_convencoes ?? "",
     });
+    setMoreActionsOpen(false);
+    setManagementOpen(true);
+  };
+
+  const openManagement = (id: string) => {
+    setSelectedId(id);
+    setDraft(null);
+    setMoreActionsOpen(false);
+    setManagementOpen(true);
   };
 
   const saveAndNewSibling = async () => {
@@ -350,23 +375,104 @@ export function DescricaoArquivisticaPage() {
         </p>
       ) : null}
 
-      <Tabs defaultValue="edicao">
+      {managementOpen ? (
+        <div className="space-y-4">
+          <div>
+            <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold tracking-normal">Gestão de descrição</h2>
+                <p className="text-sm text-muted-foreground">Visualize, edite e execute ações sobre o registro descritivo selecionado.</p>
+              </div>
+              <Button variant="outline" onClick={() => { setManagementOpen(false); setDraft(null); setMoreActionsOpen(false); }}>
+                <ArrowLeft className="h-4 w-4" />
+                Voltar para consulta
+              </Button>
+            </div>
+          </div>
+          <div>
+            <Card>
+              <CardHeader>
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <CardTitle>{isFormMode ? current?.titulo || "Registro descritivo" : selectedParent?.titulo || "Registro descritivo"}</CardTitle>
+                    <CardDescription>
+                      {isFormMode && current
+                        ? `Modo de edição - Nível ${current.nivel} - ${nivelLabels[current.nivel]}`
+                        : selectedParent
+                          ? `Visualização - Nível ${selectedParent.nivel} - ${nivelLabels[selectedParent.nivel]}`
+                          : "Selecione um registro ou crie um novo."}
+                    </CardDescription>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {isFormMode ? (
+                      <Button variant="outline" onClick={() => setDraft(null)}>Cancelar</Button>
+                    ) : (
+                      <>
+                        <Button disabled={!selectedParent} onClick={() => selectedParent && setDraft(toPayload(selectedParent))}><Pencil className="h-4 w-4" />Editar</Button>
+                        <Button variant="outline" disabled={!selectedParent || !childLevels[selectedParent.nivel].length} onClick={createChild}><Plus className="h-4 w-4" />Novo filho</Button>
+                        <Button variant="outline" disabled={!selectedId} onClick={() => setMoreActionsOpen((value) => !value)}><MoreHorizontal className="h-4 w-4" />Mais ações</Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+                {!isFormMode && moreActionsOpen ? (
+                  <div className="mt-3 flex flex-wrap gap-2 rounded-md border bg-muted/40 p-3">
+                    <Button variant="outline" size="sm" disabled={!selectedId} onClick={() => selectedId && duplicate.mutate(selectedId)}><Copy className="h-4 w-4" />Duplicar</Button>
+                    <Button variant="outline" size="sm" disabled={!selectedId || exportEad.isPending} onClick={() => selectedId && exportEad.mutate(selectedId)}>
+                      {exportEad.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                      EAD2002
+                    </Button>
+                    <Button variant="outline" size="sm" disabled={!selectedId} onClick={() => setMoveOpen(true)}>Mover</Button>
+                    <Button variant="outline" size="sm" disabled={!selectedId} onClick={() => setBatchOpen(true)}>Lote</Button>
+                    <Button variant="destructive" size="sm" disabled={!selectedId || remove.isPending} onClick={() => selectedId && remove.mutate({ id: selectedId, cascade: window.confirm("Excluir também todos os filhos deste registro?") })}><Trash2 className="h-4 w-4" />Excluir</Button>
+                  </div>
+                ) : null}
+              </CardHeader>
+              <CardContent>
+                {isFormMode && current ? (
+                  <DescricaoForm
+                    value={current}
+                    parent={formParent}
+                    isSaving={mutation.isPending}
+                    error={mutation.error?.message}
+                    onChange={setDraft}
+                    onSave={() => mutation.mutate(current)}
+                    onSaveAndNewSibling={saveAndNewSibling}
+                    onSaveAndNewChild={saveAndNewChild}
+                  />
+                ) : selected.isLoading ? (
+                  <LoadingLine />
+                ) : selectedParent ? (
+                  <div className="space-y-6">
+                    <DescriptionReadOnly record={selectedParent} />
+                    <AssociatedUnitsList registroId={selectedParent.id} records={flatRecords.data ?? []} isRecordsLoading={flatRecords.isLoading} />
+                  </div>
+                ) : (
+                  <div className="flex h-96 items-center justify-center rounded-md border text-sm text-muted-foreground">Selecione um registro pela árvore ou pela consulta detalhada.</div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      ) : null}
+
+      <Tabs defaultValue="arvore" className={managementOpen ? "hidden" : ""}>
         <TabsList>
-          <TabsTrigger value="edicao">Edição</TabsTrigger>
-          <TabsTrigger value="consulta">Consulta detalhada</TabsTrigger>
+          <TabsTrigger value="arvore">Árvore Descritiva</TabsTrigger>
+          <TabsTrigger value="consulta">Consulta Detalhada</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="edicao">
-          <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
+        <TabsContent value="arvore">
+          <div className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Árvore descritiva</CardTitle>
-                <CardDescription>Navegue, filtre e selecione registros.</CardDescription>
+                <CardDescription>Navegue pela hierarquia descritiva e abra a gestão do registro quando necessário.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <TreeFilters search={search} levelFilter={levelFilter} onSearch={setSearch} onLevelFilter={setLevelFilter} />
                 {tree.isLoading ? <LoadingLine /> : null}
-                <div className="max-h-[68vh] overflow-y-auto pr-1">
+                <div className="max-h-[68vh] overflow-y-auto rounded-md border p-2">
                   {treeNodes.map((node) => (
                     <TreeNode
                       key={node.id}
@@ -376,49 +482,12 @@ export function DescricaoArquivisticaPage() {
                       expanded={expanded}
                       loadingIds={loadingTreeNodes}
                       onToggle={toggleTreeNode}
-                      onSelect={(id) => { setSelectedId(id); setDraft(null); }}
+                      onSelect={(id) => { setSelectedId(id); setDraft(null); setMoreActionsOpen(false); }}
+                      onOpenManagement={openManagement}
                     />
                   ))}
                   {!tree.isLoading && !(tree.data ?? []).length ? <p className="py-6 text-center text-sm text-muted-foreground">Nenhum registro encontrado.</p> : null}
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <CardTitle>{current?.titulo || "Registro descritivo"}</CardTitle>
-                    <CardDescription>{current ? `Nível ${current.nivel} - ${nivelLabels[current.nivel]}` : "Selecione um registro ou crie um novo."}</CardDescription>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" disabled={!selectedParent || !childLevels[selectedParent.nivel].length} onClick={createChild}><Plus className="h-4 w-4" />Filho</Button>
-                    <Button variant="outline" disabled={!selectedId} onClick={() => selectedId && duplicate.mutate(selectedId)}><Copy className="h-4 w-4" />Duplicar</Button>
-                    <Button variant="outline" disabled={!selectedId || exportEad.isPending} onClick={() => selectedId && exportEad.mutate(selectedId)}>
-                      {exportEad.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                      EAD2002
-                    </Button>
-                    <Button variant="outline" disabled={!selectedId} onClick={() => setMoveOpen(true)}>Mover</Button>
-                    <Button variant="outline" disabled={!selectedId} onClick={() => setBatchOpen(true)}>Lote</Button>
-                    <Button variant="destructive" disabled={!selectedId || remove.isPending} onClick={() => selectedId && remove.mutate({ id: selectedId, cascade: window.confirm("Excluir também todos os filhos deste registro?") })}><Trash2 className="h-4 w-4" />Excluir</Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {current ? (
-                  <DescricaoForm
-                    value={current}
-                    parent={selectedParent?.parent_id ? flatRecords.data?.find((item) => item.id === selectedParent.parent_id) : null}
-                    isSaving={mutation.isPending}
-                    error={mutation.error?.message}
-                    onChange={setDraft}
-                    onSave={() => mutation.mutate(current)}
-                    onSaveAndNewSibling={saveAndNewSibling}
-                    onSaveAndNewChild={saveAndNewChild}
-                  />
-                ) : (
-                  <div className="flex h-96 items-center justify-center rounded-md border text-sm text-muted-foreground">Selecione um nó na árvore para editar.</div>
-                )}
               </CardContent>
             </Card>
           </div>
@@ -426,10 +495,7 @@ export function DescricaoArquivisticaPage() {
 
         <TabsContent value="consulta">
           <DetailedSearchView
-            records={flatRecords.data ?? []}
-            isLoading={flatRecords.isLoading}
-            selectedId={detailSelectionId}
-            onSelect={setDetailSelectionId}
+            onOpenManagement={openManagement}
           />
         </TabsContent>
       </Tabs>
@@ -478,11 +544,15 @@ function DescricaoForm({
   onSaveAndNewSibling: () => void;
   onSaveAndNewChild: () => void;
 }) {
+  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set([sections[0]?.title ?? ""]));
   const setField = (field: keyof RegistroDescritivoPayload, fieldValue: string | null) => {
     onChange({ ...value, [field]: fieldValue });
   };
   const inherited = (field: keyof RegistroDescritivoPayload) =>
     Boolean(parent && ["produtor", "condicoes_acesso", "idioma", "regras_convencoes"].includes(field) && value[field] === parent[field]);
+  const toggleSection = (title: string) => {
+    setOpenSections((current) => toggleSet(current, title));
+  };
 
   return (
     <div className="space-y-5">
@@ -506,27 +576,36 @@ function DescricaoForm({
       </div>
 
       {sections.map((section) => (
-        <section key={section.title} className="space-y-3">
-          <h3 className="border-b pb-2 text-sm font-semibold">{section.title}</h3>
-          <div className="grid gap-3 md:grid-cols-2">
-            {section.fields.map((field) => (
-              <FieldShell key={field.key} field={field.key} label={field.label} norma={value.norma} inherited={inherited(field.key)}>
-                {field.type === "textarea" ? (
-                  <textarea
-                    className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    value={String(value[field.key] ?? "")}
-                    onChange={(event) => setField(field.key, event.target.value)}
-                  />
-                ) : (
-                  <Input
-                    type={field.type ?? "text"}
-                    value={dateInputValue(value[field.key])}
-                    onChange={(event) => setField(field.key, event.target.value || null)}
-                  />
-                )}
-              </FieldShell>
-            ))}
-          </div>
+        <section key={section.title} className="overflow-hidden rounded-md border">
+          <button
+            type="button"
+            className="flex w-full items-center justify-between gap-3 bg-muted/40 px-4 py-3 text-left text-sm font-semibold hover:bg-muted"
+            onClick={() => toggleSection(section.title)}
+          >
+            <span>{section.title}</span>
+            {openSections.has(section.title) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </button>
+          {openSections.has(section.title) ? (
+            <div className="grid gap-3 p-4 md:grid-cols-2">
+              {section.fields.map((field) => (
+                <FieldShell key={field.key} field={field.key} label={field.label} norma={value.norma} inherited={inherited(field.key)}>
+                  {field.type === "textarea" ? (
+                    <textarea
+                      className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      value={String(value[field.key] ?? "")}
+                      onChange={(event) => setField(field.key, event.target.value)}
+                    />
+                  ) : (
+                    <Input
+                      type={field.type ?? "text"}
+                      value={dateInputValue(value[field.key])}
+                      onChange={(event) => setField(field.key, event.target.value || null)}
+                    />
+                  )}
+                </FieldShell>
+              ))}
+            </div>
+          ) : null}
         </section>
       ))}
 
@@ -565,17 +644,7 @@ function TreeFilters({
   );
 }
 
-function DetailedSearchView({
-  records,
-  isLoading,
-  selectedId,
-  onSelect,
-}: {
-  records: RegistroDescritivo[];
-  isLoading: boolean;
-  selectedId: string | null;
-  onSelect: (id: string) => void;
-}) {
+function DetailedSearchView({ onOpenManagement }: { onOpenManagement: (id: string) => void }) {
   const [filters, setFilters] = useState({
     q: "",
     nivel: "",
@@ -585,41 +654,44 @@ function DetailedSearchView({
     produtor: "",
     assunto: "",
   });
-  const filtered = useMemo(() => {
-    const q = normalize(filters.q);
-    const produtor = normalize(filters.produtor);
-    const assunto = normalize(filters.assunto);
-
-    return records.filter((record) => {
-      const searchable = normalize([
-        record.codigo_referencia,
-        record.titulo,
-        record.produtor,
-        record.ambito_conteudo,
-        record.assuntos,
-        record.pessoas,
-        record.locais,
-        record.entidades,
-        record.eventos,
-      ].filter(Boolean).join(" "));
-      return (
-        (!q || searchable.includes(q)) &&
-        (!filters.nivel || record.nivel === filters.nivel) &&
-        (!filters.norma || record.norma === filters.norma) &&
-        (!filters.dataInicialDe || (record.data_inicial ?? "") >= filters.dataInicialDe) &&
-        (!filters.dataInicialAte || (record.data_inicial ?? "") <= filters.dataInicialAte) &&
-        (!produtor || normalize(record.produtor ?? "").includes(produtor)) &&
-        (!assunto || normalize(record.assuntos ?? "").includes(assunto))
-      );
-    });
-  }, [records, filters]);
-  const selected = filtered.find((record) => record.id === selectedId) ?? filtered[0] ?? null;
+  const [submittedFilters, setSubmittedFilters] = useState<typeof filters | null>(null);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(20);
+  const query = useQuery({
+    queryKey: ["descricao-arquivistica", "consulta-detalhada", submittedFilters, pageIndex, pageSize],
+    queryFn: () => consultarRegistrosDescricao({
+      q: submittedFilters?.q || undefined,
+      nivel: submittedFilters?.nivel || undefined,
+      norma: submittedFilters?.norma || undefined,
+      data_inicial_de: submittedFilters?.dataInicialDe || undefined,
+      data_inicial_ate: submittedFilters?.dataInicialAte || undefined,
+      produtor: submittedFilters?.produtor || undefined,
+      assunto: submittedFilters?.assunto || undefined,
+      limit: pageSize,
+      offset: pageIndex * pageSize,
+    }),
+    enabled: submittedFilters !== null,
+  });
+  const records = query.data?.items ?? [];
+  const total = query.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const currentPage = Math.min(pageIndex, totalPages - 1);
+  const submitSearch = () => {
+    setSubmittedFilters(filters);
+    setPageIndex(0);
+  };
+  const clearFilters = () => {
+    const empty = { q: "", nivel: "", norma: "", dataInicialDe: "", dataInicialAte: "", produtor: "", assunto: "" };
+    setFilters(empty);
+    setSubmittedFilters(null);
+    setPageIndex(0);
+  };
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[420px_minmax(0,1fr)]">
+    <div className="space-y-4">
       <Card>
         <CardHeader>
-          <CardTitle>Consulta</CardTitle>
+          <CardTitle>Consulta detalhada</CardTitle>
           <CardDescription>Pesquise registros por elementos descritivos e filtros normativos.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -630,6 +702,9 @@ function DetailedSearchView({
               placeholder="Buscar por título, código, conteúdo, índice..."
               value={filters.q}
               onChange={(event) => setFilters({ ...filters, q: event.target.value })}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") submitSearch();
+              }}
             />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -648,42 +723,108 @@ function DetailedSearchView({
             <Input placeholder="Produtor" value={filters.produtor} onChange={(event) => setFilters({ ...filters, produtor: event.target.value })} />
             <Input placeholder="Assunto" value={filters.assunto} onChange={(event) => setFilters({ ...filters, assunto: event.target.value })} />
           </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">{filtered.length} registros encontrados</span>
-            <Button variant="outline" size="sm" onClick={() => setFilters({ q: "", nivel: "", norma: "", dataInicialDe: "", dataInicialAte: "", produtor: "", assunto: "" })}>Limpar filtros</Button>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <span className="text-muted-foreground">{submittedFilters ? `${total} registros encontrados` : "Informe os filtros e acione a pesquisa para carregar os registros."}</span>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" disabled={query.isFetching} onClick={submitSearch}>
+                {query.isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                Pesquisar
+              </Button>
+              <Button variant="outline" type="button" onClick={clearFilters}>Limpar filtros</Button>
+            </div>
           </div>
-          {isLoading ? <LoadingLine /> : null}
-          <div className="max-h-[56vh] space-y-2 overflow-y-auto pr-1">
-            {filtered.map((record) => (
-              <button
-                key={record.id}
-                type="button"
-                className={`w-full rounded-md border p-3 text-left transition-colors hover:bg-muted ${selected?.id === record.id ? "border-primary bg-secondary/60" : "bg-background"}`}
-                onClick={() => onSelect(record.id)}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold">{record.titulo}</p>
-                    <p className="mt-1 truncate text-xs text-muted-foreground">{record.codigo_referencia}</p>
-                  </div>
-                  <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs">Nível {record.nivel}</span>
-                </div>
-                <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">{record.ambito_conteudo || record.produtor || "Sem resumo de conteúdo."}</p>
-              </button>
-            ))}
-            {!isLoading && !filtered.length ? <p className="py-8 text-center text-sm text-muted-foreground">Nenhum registro encontrado.</p> : null}
+          {query.isLoading ? <LoadingLine /> : null}
+          <div className="max-h-[62vh] overflow-auto rounded-md border">
+            <table className="w-full min-w-[760px] text-sm">
+              <thead className="sticky top-0 bg-muted text-left">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Título</th>
+                  <th className="px-3 py-2 font-medium">Código</th>
+                  <th className="px-3 py-2 font-medium">Nível</th>
+                  <th className="px-3 py-2 font-medium">Produtor</th>
+                  <th className="px-3 py-2 text-right font-medium">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {records.map((record) => (
+                  <tr key={record.id} className="border-t">
+                    <td className="max-w-[280px] px-3 py-3">
+                      <p className="truncate font-medium">{record.titulo}</p>
+                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{record.ambito_conteudo || "Sem resumo de conteúdo."}</p>
+                    </td>
+                    <td className="px-3 py-3 text-muted-foreground">{record.codigo_referencia || "-"}</td>
+                    <td className="px-3 py-3">Nível {record.nivel}</td>
+                    <td className="max-w-[220px] px-3 py-3 text-muted-foreground">
+                      <span className="block truncate">{record.produtor || "-"}</span>
+                    </td>
+                    <td className="px-3 py-3 text-right">
+                      <Button variant="outline" size="icon" title="Visualizar descrição" aria-label={`Visualizar ${record.titulo}`} onClick={() => onOpenManagement(record.id)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!submittedFilters ? <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma pesquisa realizada.</p> : null}
+            {submittedFilters && !query.isLoading && !records.length ? <p className="py-8 text-center text-sm text-muted-foreground">Nenhum registro encontrado.</p> : null}
           </div>
+          {submittedFilters ? (
+            <DetailedSearchPagination
+              currentPage={currentPage + 1}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              displayedCount={records.length}
+              total={total}
+              isLoading={query.isFetching}
+              onPageChange={setPageIndex}
+              onPageSizeChange={(value) => {
+                setPageSize(value);
+                setPageIndex(0);
+              }}
+            />
+          ) : null}
+          {query.error ? <p className="text-sm text-destructive">{query.error.message}</p> : null}
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>{selected?.titulo ?? "Ficha descritiva"}</CardTitle>
-          <CardDescription>{selected ? `${selected.codigo_referencia} - Nível ${selected.nivel} - ${nivelLabels[selected.nivel]}` : "Selecione um resultado para consultar."}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {selected ? <DescriptionReadOnly record={selected} /> : <div className="flex h-96 items-center justify-center rounded-md border text-sm text-muted-foreground">Nenhum registro selecionado.</div>}
-        </CardContent>
-      </Card>
+    </div>
+  );
+}
+
+function DetailedSearchPagination({
+  currentPage,
+  totalPages,
+  pageSize,
+  displayedCount,
+  total,
+  isLoading,
+  onPageChange,
+  onPageSizeChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  pageSize: number;
+  displayedCount: number;
+  total: number;
+  isLoading: boolean;
+  onPageChange: (pageIndex: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2">
+      <p className="text-sm text-muted-foreground">{displayedCount} registros de {total} | página {currentPage} de {totalPages}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage <= 1} onClick={() => onPageChange(0)}>Primeira</Button>
+        <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage <= 1} onClick={() => onPageChange(currentPage - 2)}>Anterior</Button>
+        <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage >= totalPages} onClick={() => onPageChange(currentPage)}>Próxima</Button>
+        <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage >= totalPages} onClick={() => onPageChange(totalPages - 1)}>Última</Button>
+        <Label htmlFor="descricao-consulta-page-size" className="text-sm text-muted-foreground">Por página:</Label>
+        <select id="descricao-consulta-page-size" className="h-9 rounded-md border bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" value={pageSize} onChange={(event) => onPageSizeChange(Number(event.target.value))}>
+          <option value={20}>20</option>
+          <option value={50}>50</option>
+          <option value={100}>100</option>
+        </select>
+      </div>
     </div>
   );
 }
@@ -707,6 +848,169 @@ function DescriptionReadOnly({ record }: { record: RegistroDescritivo }) {
           </div>
         </section>
       ))}
+    </div>
+  );
+}
+
+function AssociatedUnitsList({ registroId, records, isRecordsLoading }: { registroId: string; records: RegistroDescritivo[]; isRecordsLoading: boolean }) {
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const [shouldLoad, setShouldLoad] = useState(false);
+  const registroIds = useMemo(() => getDescendantRecordIds(records, registroId), [records, registroId]);
+  const query = useQuery({
+    queryKey: ["descricao-arquivistica", "registro", registroId, "unidades-associadas-recursivas", registroIds],
+    queryFn: async () => {
+      const results = await Promise.all(registroIds.map((id) => listarUnidadesAssociadasDescricao(id)));
+      const unique = new Map<number, UnidadeAcondicionamento>();
+      for (const result of results) {
+        for (const unidade of result.unidades) {
+          unique.set(unidade.id, unidade);
+        }
+      }
+      return Array.from(unique.values());
+    },
+    enabled: shouldLoad && Boolean(registroId) && !isRecordsLoading,
+  });
+  const unidades = query.data ?? [];
+  const physicalCount = unidades.filter((unidade) => unidade.tipo_suporte === "FISICO" || unidade.tipo_suporte === "HIBRIDO").length;
+  const digitalCount = unidades.filter((unidade) => unidade.tipo_suporte === "DIGITAL" || unidade.tipo_suporte === "HIBRIDO").length;
+  const total = unidades.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const currentPage = Math.min(pageIndex, totalPages - 1);
+  const pageItems: UnidadeAcondicionamento[] = unidades.slice(currentPage * pageSize, currentPage * pageSize + pageSize);
+
+  useEffect(() => {
+    setPageIndex(0);
+  }, [registroId, pageSize, registroIds.length]);
+
+  useEffect(() => {
+    setShouldLoad(false);
+  }, [registroId]);
+
+  return (
+    <section className="space-y-3">
+      <div className="flex flex-col gap-1">
+        <h3 className="text-sm font-semibold">Unidades de acondicionamento associadas</h3>
+        <p className="text-xs text-muted-foreground">Listagem paginada das unidades vinculadas a esta descrição arquivística e a todas as suas descrições descendentes.</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={isRecordsLoading || query.isFetching}
+          onClick={() => shouldLoad ? query.refetch() : setShouldLoad(true)}
+        >
+          {query.isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+          {shouldLoad ? "Atualizar unidades" : "Carregar unidades"}
+        </Button>
+        {isRecordsLoading ? <span className="text-sm text-muted-foreground">Preparando hierarquia de descrições...</span> : null}
+      </div>
+      {shouldLoad && (query.isLoading || isRecordsLoading) ? <LoadingLine /> : null}
+      {shouldLoad && query.data ? (
+        <>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <SummaryMetric label="Físicas" value={physicalCount} />
+            <SummaryMetric label="Digitais" value={digitalCount} />
+            <SummaryMetric label="Total" value={total} />
+          </div>
+          <div className="overflow-auto rounded-md border">
+            <table className="w-full min-w-[760px] text-sm">
+              <thead className="bg-muted text-left">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Identificador</th>
+                  <th className="px-3 py-2 font-medium">Título</th>
+                  <th className="px-3 py-2 font-medium">Tipo</th>
+                  <th className="px-3 py-2 font-medium">Suporte</th>
+                  <th className="px-3 py-2 font-medium">Status</th>
+                  <th className="px-3 py-2 font-medium">Acesso</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pageItems.map((unidade) => (
+                  <tr key={unidade.id} className="border-t">
+                    <td className="px-3 py-3 font-medium">{unidade.identificador}</td>
+                    <td className="max-w-[280px] px-3 py-3">
+                      <p className="truncate">{unidade.titulo}</p>
+                      {unidade.descricao ? <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{unidade.descricao}</p> : null}
+                    </td>
+                    <td className="px-3 py-3">{formatEnum(unidade.tipo_unidade)}</td>
+                    <td className="px-3 py-3">{formatEnum(unidade.tipo_suporte)}</td>
+                    <td className="px-3 py-3">{formatEnum(unidade.status)}</td>
+                    <td className="px-3 py-3">{formatEnum(unidade.nivel_acesso)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {!query.isLoading && !isRecordsLoading && !pageItems.length ? <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma unidade associada nesta descrição ou em suas descendentes.</p> : null}
+          </div>
+          <AssociatedUnitsPagination
+            currentPage={currentPage + 1}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            displayedCount={pageItems.length}
+            total={total}
+            isLoading={query.isFetching}
+            onPageChange={setPageIndex}
+            onPageSizeChange={(value) => {
+              setPageSize(value);
+              setPageIndex(0);
+            }}
+          />
+        </>
+      ) : null}
+      {query.error ? <p className="text-sm text-destructive">{query.error.message}</p> : null}
+    </section>
+  );
+}
+
+function SummaryMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="rounded-md border bg-background p-3">
+      <p className="text-xs font-medium uppercase text-muted-foreground">{label}</p>
+      <p className="mt-1 text-2xl font-semibold">{value}</p>
+    </div>
+  );
+}
+
+function AssociatedUnitsPagination({
+  currentPage,
+  totalPages,
+  pageSize,
+  displayedCount,
+  total,
+  isLoading,
+  onPageChange,
+  onPageSizeChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  pageSize: number;
+  displayedCount: number;
+  total: number;
+  isLoading: boolean;
+  onPageChange: (pageIndex: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2">
+      <p className="text-sm text-muted-foreground">{displayedCount} unidades de {total} | página {currentPage} de {totalPages}</p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage <= 1} onClick={() => onPageChange(0)}>Primeira</Button>
+        <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage <= 1} onClick={() => onPageChange(currentPage - 2)}>Anterior</Button>
+        <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage >= totalPages} onClick={() => onPageChange(currentPage)}>Próxima</Button>
+        <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage >= totalPages} onClick={() => onPageChange(totalPages - 1)}>Última</Button>
+        <Label htmlFor="descricao-unidades-associadas-page-size" className="text-sm text-muted-foreground">Por página:</Label>
+        <select
+          id="descricao-unidades-associadas-page-size"
+          className="h-9 rounded-md border bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          value={pageSize}
+          onChange={(event) => onPageSizeChange(Number(event.target.value))}
+        >
+          <option value={10}>10</option>
+          <option value={20}>20</option>
+          <option value={50}>50</option>
+        </select>
+      </div>
     </div>
   );
 }
@@ -742,7 +1046,7 @@ function FieldShell({ field, label, norma, inherited, children }: { field: strin
   );
 }
 
-function TreeNode({ node, level, selectedId, expanded, loadingIds, onToggle, onSelect }: { node: RegistroDescritivoTreeNode; level: number; selectedId: string | null; expanded: Set<string>; loadingIds: Set<string>; onToggle: (node: RegistroDescritivoTreeNode) => void; onSelect: (id: string) => void }) {
+function TreeNode({ node, level, selectedId, expanded, loadingIds, onToggle, onSelect, onOpenManagement }: { node: RegistroDescritivoTreeNode; level: number; selectedId: string | null; expanded: Set<string>; loadingIds: Set<string>; onToggle: (node: RegistroDescritivoTreeNode) => void; onSelect: (id: string) => void; onOpenManagement: (id: string) => void }) {
   const hasChildren = node.has_children;
   const isOpen = expanded.has(node.id) || level < 1;
   const isLoading = loadingIds.has(node.id);
@@ -756,8 +1060,11 @@ function TreeNode({ node, level, selectedId, expanded, loadingIds, onToggle, onS
           <span className="block truncate font-medium">{node.titulo}</span>
           <span className="block truncate text-xs text-muted-foreground">Nível {node.nivel} - {node.codigo_referencia}</span>
         </button>
+        <Button variant="outline" size="icon" className="h-8 w-8" title="Visualizar descrição" aria-label={`Visualizar ${node.titulo}`} onClick={() => onOpenManagement(node.id)}>
+          <Eye className="h-4 w-4" />
+        </Button>
       </div>
-      {hasChildren && isOpen ? node.children.map((child) => <TreeNode key={child.id} node={child} level={level + 1} selectedId={selectedId} expanded={expanded} loadingIds={loadingIds} onToggle={onToggle} onSelect={onSelect} />) : null}
+      {hasChildren && isOpen ? node.children.map((child) => <TreeNode key={child.id} node={child} level={level + 1} selectedId={selectedId} expanded={expanded} loadingIds={loadingIds} onToggle={onToggle} onSelect={onSelect} onOpenManagement={onOpenManagement} />) : null}
     </div>
   );
 }
@@ -856,6 +1163,30 @@ function hydrateTreeNodes(
   }));
 }
 
+function getDescendantRecordIds(records: RegistroDescritivo[], rootId: string) {
+  const childrenByParent = new Map<string, RegistroDescritivo[]>();
+  for (const record of records) {
+    if (!record.parent_id) continue;
+    const children = childrenByParent.get(record.parent_id) ?? [];
+    children.push(record);
+    childrenByParent.set(record.parent_id, children);
+  }
+
+  const ids: string[] = [];
+  const stack = [rootId];
+  const visited = new Set<string>();
+  while (stack.length) {
+    const id = stack.pop();
+    if (!id || visited.has(id)) continue;
+    visited.add(id);
+    ids.push(id);
+    for (const child of childrenByParent.get(id) ?? []) {
+      stack.push(child.id);
+    }
+  }
+  return ids;
+}
+
 async function invalidateDescricao(queryClient: ReturnType<typeof useQueryClient>) {
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: ["descricao-arquivistica", "arvore"] }),
@@ -886,6 +1217,15 @@ function formatDate(value?: string | null) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat("pt-BR").format(date);
+}
+
+function formatEnum(value?: string | null) {
+  if (!value) return "-";
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function normalize(value: string) {

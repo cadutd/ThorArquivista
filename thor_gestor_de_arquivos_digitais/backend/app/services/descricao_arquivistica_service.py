@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import date
 from typing import Any
 
 from sqlalchemy import or_
@@ -45,6 +46,57 @@ class DescricaoArquivisticaService:
         if nivel:
             query = query.filter(RegistroDescritivo.nivel == nivel)
         return query.order_by(RegistroDescritivo.codigo_referencia, RegistroDescritivo.titulo).all()
+
+    @staticmethod
+    def listar_paginado(
+        db: Session,
+        q: str | None = None,
+        nivel: str | None = None,
+        norma: str | None = None,
+        data_inicial_de: date | None = None,
+        data_inicial_ate: date | None = None,
+        produtor: str | None = None,
+        assunto: str | None = None,
+        limit: int = 20,
+        offset: int = 0,
+    ) -> tuple[list[RegistroDescritivo], int]:
+        query = db.query(RegistroDescritivo)
+        if q:
+            like = f"%{q}%"
+            query = query.filter(
+                or_(
+                    RegistroDescritivo.titulo.ilike(like),
+                    RegistroDescritivo.codigo_referencia.ilike(like),
+                    RegistroDescritivo.produtor.ilike(like),
+                    RegistroDescritivo.ambito_conteudo.ilike(like),
+                    RegistroDescritivo.assuntos.ilike(like),
+                    RegistroDescritivo.pessoas.ilike(like),
+                    RegistroDescritivo.locais.ilike(like),
+                    RegistroDescritivo.entidades.ilike(like),
+                    RegistroDescritivo.eventos.ilike(like),
+                )
+            )
+        if nivel:
+            query = query.filter(RegistroDescritivo.nivel == nivel)
+        if norma:
+            query = query.filter(RegistroDescritivo.norma == norma)
+        if data_inicial_de:
+            query = query.filter(RegistroDescritivo.data_inicial >= data_inicial_de)
+        if data_inicial_ate:
+            query = query.filter(RegistroDescritivo.data_inicial <= data_inicial_ate)
+        if produtor:
+            query = query.filter(RegistroDescritivo.produtor.ilike(f"%{produtor}%"))
+        if assunto:
+            query = query.filter(RegistroDescritivo.assuntos.ilike(f"%{assunto}%"))
+
+        total = query.count()
+        items = (
+            query.order_by(RegistroDescritivo.codigo_referencia, RegistroDescritivo.titulo)
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+        return items, total
 
     @staticmethod
     def arvore(

@@ -23,6 +23,15 @@ export function listarRegistrosDescricao(params: Record<string, string | undefin
   );
 }
 
+export function consultarRegistrosDescricao(params: Record<string, string | number | undefined | null> = {}) {
+  return apiRequest<{
+    items: RegistroDescritivo[];
+    total: number;
+    limit: number;
+    offset: number;
+  }>(`/descricao-arquivistica/registros/consulta${queryString(params)}`);
+}
+
 export function obterRegistroDescricao(id: string) {
   return apiRequest<RegistroDescritivo>(`/descricao-arquivistica/registros/${id}`);
 }
