@@ -2,13 +2,34 @@
 
 Manual de desenvolvimento do sistema Thor, uma aplicação para gestão de unidades de acondicionamento físicas e digitais, admissão de acervos, endereçamento de armazenamento, mídias, cópias digitais, instrumentos de pesquisa, pesquisa consultiva, fichas espelho e eventos de preservação.
 
+## Índice
+
+- [Visão Geral](#visão-geral)
+- [Arquitetura](#arquitetura)
+- [Estrutura do Repositório](#estrutura-do-repositório)
+- [Requisitos](#requisitos)
+- [Primeira Subida com Docker](#primeira-subida-com-docker)
+- [Configuração do Keycloak](#configuração-do-keycloak)
+- [Como Carregar as Massas de Teste](#como-carregar-as-massas-de-teste)
+- [Como Executar Testes Funcionais e de Integração](#como-executar-testes-funcionais-e-de-integração)
+- [Backend](#backend)
+- [Frontend](#frontend)
+- [Docker Compose](#docker-compose)
+- [Banco de Dados e Migrations](#banco-de-dados-e-migrations)
+- [Observações de Desenvolvimento](#observações-de-desenvolvimento)
+- [Validação Local](#validação-local)
+- [Problemas Comuns](#problemas-comuns)
+
 ## Visão Geral
 
-O projeto é dividido em duas aplicações principais:
+O projeto é um monorepo composto por aplicações, serviços de apoio e scripts operacionais. A arquitetura foi desenhada para separar claramente interface, regras de negócio, persistência relacional, persistência documental, autenticação, indexação e processamento assíncrono.
 
-- `backend/`: API em FastAPI responsável pelas regras de negócio, persistência, validação de tokens Keycloak e acesso ao PostgreSQL.
-- `frontend/`: interface administrativa em Next.js, React, TypeScript e Tailwind CSS.
-- `workers/`: documenta os workers assíncronos. O worker ativo de indexação roda pelo serviço `index_worker` no Docker Compose.
+Aplicações principais:
+
+- `backend/`: API em FastAPI responsável pelas regras de negócio, validação de autenticação, orquestração das persistências, publicação de eventos assíncronos e exposição dos endpoints REST.
+- `frontend/`: interface administrativa em Next.js, React, TypeScript e Tailwind CSS, responsável pela experiência de operação, autenticação OIDC no navegador e consumo da API.
+- `index_worker`: worker Celery definido no `docker-compose.yml`, construído a partir da mesma imagem do backend, responsável por consumir eventos de indexação e manter o Meilisearch sincronizado.
+- `workers/`: documentação histórica e operacional dos workers. O worker ativo vive hoje no pacote `backend/app`.
 
 Serviços auxiliares sobem via Docker Compose:
 
@@ -22,7 +43,41 @@ Serviços auxiliares sobem via Docker Compose:
 
 ## Arquitetura
 
-Fluxo principal:
+### Decisão Arquitetural
+
+O Thor usa uma arquitetura modular em camadas, empacotada como monorepo e executada localmente por Docker Compose. A escolha principal é manter o domínio central em uma API REST única, com frontend desacoplado, banco relacional para dados transacionais, banco documental para registros de estrutura dinâmica, motor de busca dedicado para consulta avançada e fila assíncrona para trabalhos que não devem bloquear a operação do usuário.
+
+Essa composição foi escolhida porque o sistema combina necessidades diferentes:
+
+- operações administrativas transacionais, como CRUDs, admissão, endereçamento e movimentações, que exigem integridade, constraints, migrations e consistência forte;
+- registros de instrumentos de pesquisa com campos configuráveis por instrumento, que mudam de forma sem exigir alteração de schema relacional a cada novo instrumento;
+- busca consultiva e avançada sobre campos dinâmicos, facetas e texto consolidado, que é mais eficiente em um motor especializado do que em consultas relacionais genéricas;
+- autenticação centralizada via OIDC, para permitir integração institucional e validação padronizada de identidade;
+- indexação assíncrona, para que cadastro/edição de registros continue responsivo mesmo quando a busca precisa ser atualizada em segundo plano.
+
+### Visão de Alto Nível
+
+```text
+Navegador
+  |
+  | OIDC Authorization Code + PKCE
+  v
+Frontend Next.js  <------------------------>  Keycloak
+  |
+  | HTTP REST + Bearer token
+  v
+Backend FastAPI
+  |       |             |             |
+  |       |             |             +--> Redis/Celery --> index_worker --> Meilisearch
+  |       |             |
+  |       |             +--> MongoDB
+  |       |
+  |       +--> PostgreSQL
+  |
+  +--> JWKS/issuer/audience validation via Keycloak
+```
+
+Fluxo principal de autenticação e uso:
 
 1. O usuário acessa o frontend em `http://localhost:3000`.
 2. Ao clicar em `Entrar com Keycloak`, o frontend inicia o fluxo OIDC Authorization Code + PKCE no Keycloak em `http://localhost:8081`.
@@ -34,6 +89,218 @@ Fluxo principal:
 8. Registros dinâmicos de instrumentos de pesquisa são salvos no MongoDB.
 9. A API publica eventos de indexação no Redis e o `index_worker` processa esses eventos em segundo plano.
 10. O worker envia documentos indexáveis ao Meilisearch, usando um índice por instrumento.
+
+### Camadas do Backend
+
+O backend segue uma divisão explícita por responsabilidades:
+
+| Camada | Diretório | Responsabilidade | Motivo da escolha |
+| --- | --- | --- | --- |
+| Entrada HTTP | `backend/app/api/v1/` | Define rotas FastAPI, parâmetros, status codes, dependências de autenticação e contratos de entrada/saída. | Mantém o protocolo HTTP isolado da regra de negócio e facilita versionamento sob `/api/v1`. |
+| Schemas | `backend/app/schemas/` | Define DTOs Pydantic de criação, atualização, leitura, filtros, paginação e payloads específicos. | Garante validação consistente na borda da API e evita expor diretamente modelos ORM. |
+| Serviços | `backend/app/services/` | Concentra regras de negócio, transações, validações de domínio, composição de consultas e orquestração entre bancos/fila/busca. | Evita que rotas virem scripts procedurais e permite testar comportamento de domínio sem acoplar tudo ao transporte HTTP. |
+| Modelos | `backend/app/models/` | Define entidades SQLAlchemy, enums, relacionamentos, constraints e campos persistidos no PostgreSQL. | Centraliza o modelo relacional e mantém o Alembic alinhado com a evolução do schema. |
+| Banco relacional | `backend/app/db/` | Configura sessão SQLAlchemy, base declarativa e conexão com PostgreSQL. | Separa infraestrutura de persistência do domínio e permite injeção de sessão nas rotas/serviços. |
+| Banco documental | `backend/app/db/mongo.py` | Configura acesso ao MongoDB para registros dinâmicos. | Permite persistir documentos de instrumentos sem alterar tabelas para cada conjunto de campos. |
+| Segurança | `backend/app/security/` | Valida JWT, JWKS, issuer, audience e extrai claims do usuário autenticado. | Mantém autenticação/autorização como preocupação transversal e reutilizável. |
+| Configuração | `backend/app/core/config.py` | Lê variáveis de ambiente por Pydantic Settings. | Padroniza configuração para Docker e execução local, com tipagem e defaults controlados. |
+| Workers e tarefas | `backend/app/worker.py`, `backend/app/tasks/` | Define app Celery e tarefas de indexação. | Reusa código do backend no worker sem duplicar modelos, serviços e configuração. |
+| Scripts operacionais | `backend/app/scripts/` | Seeds idempotentes e cargas auxiliares. | Permite preparar ambientes de teste/demonstração por comandos reproduzíveis. |
+
+### Backend FastAPI
+
+FastAPI foi escolhido por combinar tipagem, validação automática, geração de OpenAPI e boa ergonomia para APIs REST. No Thor, ele atua como a única porta de entrada para as regras de negócio. As rotas sob `/api/v1` usam dependências para autenticação, sessão de banco e autorização básica, enquanto os serviços executam as validações de domínio.
+
+O backend também concentra a integração entre componentes:
+
+- consulta e grava dados relacionais no PostgreSQL;
+- grava registros dinâmicos no MongoDB;
+- publica eventos Celery no Redis;
+- lê configurações de busca e monta documentos indexáveis para o Meilisearch;
+- valida tokens emitidos pelo Keycloak;
+- expõe contratos estáveis para o frontend.
+
+Essa centralização evita que o frontend fale diretamente com bancos, fila ou motor de busca. Com isso, a regra de negócio fica auditável no servidor e o navegador recebe apenas APIs de domínio.
+
+### Frontend Next.js
+
+Next.js foi escolhido para entregar uma aplicação React com roteamento por arquivos, build otimizado, tipagem TypeScript e organização clara entre `app/`, `features/`, `components/` e `lib/`.
+
+No Thor, o frontend é uma aplicação administrativa autenticada. Ele:
+
+- inicia o fluxo OIDC Authorization Code + PKCE;
+- guarda a sessão no navegador;
+- injeta `Authorization: Bearer <access_token>` nas chamadas;
+- organiza telas por módulo funcional;
+- usa clientes em `frontend/lib/api/` para isolar detalhes de endpoints;
+- mantém componentes de domínio em `frontend/features/`;
+- usa React Query para cache, invalidação e estado remoto.
+
+A escolha por frontend desacoplado permite evoluir a experiência de usuário sem alterar diretamente a API e permite que a API seja consumida futuramente por integrações ou ferramentas administrativas alternativas.
+
+### PostgreSQL Principal
+
+PostgreSQL é o banco transacional do sistema. Ele armazena entidades que dependem de integridade referencial, constraints, enums, transações e histórico consistente:
+
+- unidades de acondicionamento;
+- unidades digitais;
+- mídias de armazenamento;
+- cópias digitais;
+- eventos de preservação;
+- endereçamento de armazenamento;
+- movimentações;
+- processos de admissão;
+- reuniões, acordos, sessões, SIPs e vínculos SIP/AIP;
+- usuários administrativos;
+- instituições de arquivo;
+- entidades produtoras;
+- descrições arquivísticas;
+- modelos de ficha espelho;
+- metadados de instrumentos de pesquisa e campos configurados.
+
+O PostgreSQL foi escolhido para essas partes porque o domínio arquivístico possui muitos vínculos formais, estados controlados e necessidade de consistência. Migrations Alembic garantem evolução rastreável do schema.
+
+### MongoDB
+
+MongoDB é usado para os registros dinâmicos dos instrumentos de pesquisa. Esses registros possuem campos configuráveis por instrumento, o que torna inadequado criar uma tabela nova ou uma coluna nova para cada variação de formulário.
+
+A separação adotada é:
+
+- PostgreSQL guarda o instrumento, sua configuração e campos;
+- MongoDB guarda os registros preenchidos conforme essa configuração;
+- Meilisearch guarda uma projeção indexável desses registros.
+
+Essa decisão preserva governança relacional onde ela é necessária e dá flexibilidade documental onde o domínio exige variação estrutural.
+
+### Meilisearch
+
+Meilisearch é o motor de busca local para registros dinâmicos de instrumentos de pesquisa. Ele foi escolhido para busca textual, filtros e facetas em estruturas que mudam por instrumento. Cada instrumento usa um índice próprio no padrão:
+
+```text
+instrumento_{instrumento_id}
+```
+
+A API não depende do Meilisearch para confirmar uma gravação. Primeiro salva no MongoDB, depois publica evento de indexação. Isso evita que uma indisponibilidade momentânea do motor de busca impeça o cadastro operacional.
+
+### Redis e Celery
+
+Redis atua como broker Celery e infraestrutura de coordenação operacional. Celery foi escolhido para processar tarefas assíncronas com semântica simples de fila, separando requisições HTTP de trabalhos em segundo plano.
+
+No fluxo de instrumentos de pesquisa:
+
+1. A API cria, atualiza ou exclui um registro dinâmico.
+2. A operação principal é persistida.
+3. A API publica um evento no Redis.
+4. O `index_worker` consome a fila `indexacao`.
+5. O worker atualiza ou remove o documento no Meilisearch.
+
+Essa arquitetura reduz latência percebida pelo usuário, limita acoplamento entre API e busca e permite reprocessar indexações sem recriar a operação de negócio.
+
+### Worker de Indexação
+
+O `index_worker` usa a mesma imagem do backend e executa:
+
+```bash
+celery -A app.worker.celery_app worker --loglevel=INFO --queues=indexacao --concurrency=1
+```
+
+Ele fica separado da API para que falhas, lentidão ou picos de indexação não consumam os mesmos workers HTTP do Uvicorn. A mesma base de código foi mantida para evitar duplicação de schemas, serviços, configuração e lógica de montagem dos documentos indexáveis.
+
+Eventos suportados:
+
+- `REGISTRO_CRIADO`
+- `REGISTRO_ATUALIZADO`
+- `REGISTRO_EXCLUIDO`
+- `REINDEXAR_INSTRUMENTO`
+
+### Keycloak
+
+Keycloak é o provedor de identidade OIDC. Ele foi escolhido para separar autenticação da aplicação, usar um padrão aberto e permitir futura integração com políticas institucionais de identidade.
+
+No ambiente local:
+
+- o navegador acessa o Keycloak por `http://localhost:8081`;
+- o backend valida tokens usando a URL interna Docker `http://keycloak:8080`;
+- o issuer esperado permanece baseado na URL pública do realm;
+- o serviço `keycloak_config` configura automaticamente o client `thor-api`;
+- o frontend usa Authorization Code + PKCE, adequado para aplicações públicas em navegador.
+
+Essa separação reduz a responsabilidade da aplicação sobre senhas, login e sessão primária. O backend se limita a validar tokens e interpretar claims.
+
+### pgAdmin
+
+pgAdmin é incluído apenas como ferramenta operacional local. Ele facilita inspeção do PostgreSQL durante desenvolvimento, suporte e validação de seeds. Não faz parte do caminho crítico da aplicação.
+
+### Docker Compose
+
+Docker Compose foi escolhido como orquestração local porque o sistema depende de múltiplos serviços com versões específicas. Ele permite subir um ambiente completo com um único comando, mantendo nomes DNS internos previsíveis:
+
+- `postgres`
+- `mongo`
+- `redis`
+- `meilisearch`
+- `keycloak`
+- `backend`
+- `frontend`
+- `index_worker`
+
+O Compose também automatiza dependências de inicialização, healthcheck do PostgreSQL, execução de migrations e configuração do Keycloak.
+
+### Versionamento e Evolução do Banco
+
+Alembic é usado para versionar o PostgreSQL. O container do backend executa automaticamente:
+
+```bash
+alembic -c alembic.ini upgrade head
+```
+
+Essa escolha garante que o banco acompanhe o código na subida do ambiente, reduz divergências entre desenvolvedores e registra a evolução do modelo relacional.
+
+### Fronteiras de Persistência
+
+O sistema usa persistência poliglota, mas com fronteiras claras:
+
+| Componente | Guarda | Não deve guardar |
+| --- | --- | --- |
+| PostgreSQL | Dados transacionais, relacionamentos, enums, configurações, histórico e entidades centrais. | Registros altamente variáveis que mudam por instrumento. |
+| MongoDB | Conteúdo flexível dos registros dinâmicos dos instrumentos. | Entidades com integridade relacional forte ou regras de movimentação transacional. |
+| Meilisearch | Projeções de busca, facetas e texto consolidado. | Fonte canônica de dados. |
+| Redis | Mensagens Celery e estado operacional efêmero. | Dados de negócio permanentes. |
+
+### Consistência e Assincronia
+
+O PostgreSQL e o MongoDB são fontes de verdade para seus respectivos dados. Meilisearch é uma projeção derivada e eventualmente consistente. Isso significa que uma gravação pode estar confirmada na API antes de aparecer na busca avançada. Essa troca é deliberada: privilegia confiabilidade da operação principal e permite reindexação quando necessário.
+
+Para cargas e correções operacionais, a API expõe caminho de reindexação por evento:
+
+```bash
+docker compose exec backend python -c "from app.services.instrumento_indexing_events import InstrumentoIndexingEventPublisher; InstrumentoIndexingEventPublisher.reindexar_instrumento('UUID_DO_INSTRUMENTO')"
+```
+
+### Segurança
+
+As rotas de domínio são protegidas por token Bearer. A rota de health é pública para facilitar verificação de disponibilidade.
+
+Decisões relevantes:
+
+- autenticação delegada ao Keycloak;
+- frontend usa PKCE em vez de client secret, porque roda no navegador;
+- backend valida assinatura via JWKS;
+- backend valida issuer/audience conforme configuração;
+- CORS é restrito ao frontend local no Compose;
+- credenciais do ambiente Docker são de desenvolvimento e não devem ser usadas em produção.
+
+### Observabilidade Local
+
+O ambiente local prioriza diagnósticos simples:
+
+- logs por serviço via `docker compose logs -f <serviço>`;
+- OpenAPI em `http://localhost:8000/docs`;
+- pgAdmin para PostgreSQL;
+- Meilisearch em `http://localhost:7700`;
+- testes backend via `pytest`;
+- testes frontend funcionais via `node --test`;
+- relatório consolidado via `scripts/run-tests-with-reports.ps1`.
 
 URLs locais principais:
 
@@ -119,7 +386,14 @@ O serviço `keycloak_config` usa o script:
 infra/keycloak/configure-client.sh
 ```
 
-Ele autentica no Keycloak usando o admin local e atualiza o client `thor-api` no realm `thor` com:
+Ele autentica no Keycloak usando o admin local e configura o ambiente de identidade do Thor. O script é idempotente e:
+
+- cria o realm `thor` se ele ainda não existir;
+- cria/atualiza o usuário local `admin` no realm `thor`;
+- cria/atualiza o client `thor-api`;
+- ajusta o client para uso pelo frontend público com PKCE.
+
+Configurações aplicadas ao client:
 
 - `redirectUris`: `http://localhost:3000/auth/callback` e `http://localhost:3000/*`
 - `webOrigins`: `http://localhost:3000`
@@ -132,7 +406,44 @@ Se o Keycloak já estava rodando e você quiser reaplicar a configuração:
 docker compose run --rm keycloak_config
 ```
 
-## Massa de Teste
+## Como Carregar as Massas de Teste
+
+As massas de teste ficam em scripts idempotentes no pacote `backend/app/scripts/`. A recomendação é carregá-las com a stack Docker em execução, porque assim os scripts usam as mesmas URLs internas, enums PostgreSQL, migrations e serviços auxiliares usados pela aplicação.
+
+Antes de carregar qualquer massa, suba a stack e aguarde backend, MongoDB, Redis, Meilisearch e worker estabilizarem:
+
+```bash
+docker compose up --build
+```
+
+Em outro terminal, confirme que a API responde:
+
+```bash
+docker compose exec backend python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/api/v1/health').read().decode())"
+```
+
+Se o ambiente já estava rodando, aplique migrations manualmente antes da carga:
+
+```bash
+docker compose exec backend alembic -c alembic.ini upgrade head
+```
+
+### Ordem Recomendada de Carga
+
+Para um ambiente de desenvolvimento completo, use esta ordem:
+
+```bash
+docker compose exec backend python -m app.scripts.seed_instituicao_arquivo_apesp
+docker compose exec backend python -m app.scripts.seed_entidades_produtoras
+docker compose exec backend python -m app.scripts.seed_test_units
+docker compose exec backend python -m app.scripts.seed_storage_addressing
+docker compose exec backend python -m app.scripts.seed_midias_armazenamento
+docker compose exec backend python -m app.scripts.seed_instrumentos_pesquisa
+docker compose exec backend python -m app.scripts.seed_instrumento_campos
+docker compose exec backend python -m app.scripts.seed_instrumento_registros
+```
+
+Essa ordem evita dependências ausentes nos fluxos administrativos: primeiro cadastra dados institucionais e entidades produtoras, depois unidades, endereçamento, mídias e, por fim, instrumentos com campos e registros dinâmicos.
 
 Existe um script idempotente para criar 50 unidades de teste:
 
@@ -209,6 +520,18 @@ Esses scripts são idempotentes e criam:
 
 O seed de registros gera 35 registros por instrumento e publica eventos na fila `indexacao`. O `index_worker` deve estar rodando para que a massa também seja indexada no Meilisearch.
 
+Para acompanhar a indexação:
+
+```bash
+docker compose logs -f index_worker
+```
+
+Para reindexar manualmente um instrumento depois da carga:
+
+```bash
+docker compose exec backend python -c "from app.services.instrumento_indexing_events import InstrumentoIndexingEventPublisher; InstrumentoIndexingEventPublisher.reindexar_instrumento('UUID_DO_INSTRUMENTO')"
+```
+
 Massa de mídias de armazenamento:
 
 ```bash
@@ -216,6 +539,145 @@ docker compose exec backend python -m app.scripts.seed_midias_armazenamento
 ```
 
 O script é idempotente e cria/atualiza 72 mídias de teste, com tipos variados (`FILESYSTEM`, `NAS`, `NFS`, `LTO`, `S3`, `CLOUD`) e status ativo/inativo. Essa massa permite validar busca, filtros por metadado, paginação e lazy load na tela `/midias`.
+
+### Conferências Pós-Carga
+
+Conferir unidades:
+
+```bash
+docker compose exec postgres psql -U thor -d thor_db -c "select tipo_suporte, count(*) from unidades_acondicionamento where identificador like 'TEST-%' group by tipo_suporte order by tipo_suporte;"
+```
+
+Conferir endereçamento:
+
+```bash
+docker compose exec postgres psql -U thor -d thor_db -c "select lg.codigo as local, count(distinct zg.id) zonas, count(distinct ea.id) estruturas, count(distinct ca.id) compartimentos, count(pa.id) posicoes from locais_guarda lg join zonas_guarda zg on zg.id_local_guarda = lg.id join estruturas_armazenamento ea on ea.id_zona_guarda = zg.id join compartimentos_armazenamento ca on ca.id_estrutura_armazenamento = ea.id join posicoes_armazenamento pa on pa.id_compartimento_armazenamento = ca.id where lg.codigo = 'TEST-DEP-01' group by lg.codigo;"
+```
+
+Conferir mídias:
+
+```bash
+docker compose exec postgres psql -U thor -d thor_db -c "select tipo, status, count(*) from midias_armazenamento group by tipo, status order by tipo, status;"
+```
+
+Conferir instrumentos no PostgreSQL:
+
+```bash
+docker compose exec postgres psql -U thor -d thor_db -c "select codigo, nome, status from instrumentos_pesquisa order by codigo;"
+```
+
+Conferir registros dinâmicos no MongoDB:
+
+```bash
+docker compose exec mongo mongosh thor_db --eval "db.instrumento_registros.countDocuments()"
+```
+
+### Reset Completo das Massas
+
+Para recriar o ambiente do zero, remova volumes e suba novamente:
+
+```bash
+docker compose down -v
+docker compose up --build
+```
+
+Depois execute novamente a ordem recomendada de carga. Use `down -v` com cuidado, pois remove dados do PostgreSQL, Keycloak, MongoDB, Redis, Meilisearch e pgAdmin.
+
+## Como Executar Testes Funcionais e de Integração
+
+O projeto possui testes backend em `backend/app/tests`, testes funcionais de contrato no frontend em `frontend/tests/functional` e teste E2E de login Keycloak em `frontend/tests/e2e`.
+
+### Pré-Requisitos
+
+Para testes com maior fidelidade ao ambiente real, use Docker:
+
+```bash
+docker compose up --build
+```
+
+O backend no container já instala `pytest` a partir de `backend/requirements.txt`. O frontend deve ser testado a partir do diretório `frontend/` no ambiente local de desenvolvimento, porque o container `thor-frontend` é uma imagem de produção e não inclui todos os arquivos de teste e fontes usados por `lint`, `typecheck` e `node --test`.
+
+### Testes Backend
+
+Executar toda a suíte backend:
+
+```bash
+docker exec thor-backend pytest /app/app/tests
+```
+
+Executar apenas testes funcionais backend:
+
+```bash
+docker exec thor-backend pytest /app/app/tests/functional
+```
+
+Executar apenas testes de integração backend:
+
+```bash
+docker exec thor-backend pytest /app/app/tests/integration
+```
+
+Executar um fluxo específico de admissão:
+
+```bash
+docker exec thor-backend pytest /app/app/tests/functional/test_crud_admissao.py /app/app/tests/integration/test_admissao_integrado.py
+```
+
+Os testes backend usam `TestClient` do FastAPI e sobrescrevem a dependência de usuário autenticado em `backend/app/tests/conftest.py`, permitindo testar rotas protegidas sem depender de login real no Keycloak.
+
+### Testes Funcionais Frontend
+
+Os testes funcionais do frontend validam contratos locais dos clientes de API e cobertura das funções CRUD expostas para as telas.
+
+```bash
+cd frontend
+npm install
+npm run test:functional
+```
+
+### Teste E2E com Keycloak
+
+O teste E2E usa Playwright e valida o fluxo real de login do usuário via Keycloak:
+
+```bash
+cd frontend
+npm install
+npx playwright install chromium
+npm run test:e2e:keycloak
+```
+
+O `playwright.config.mjs` usa `http://localhost:3000` como `baseURL` por padrão, podendo ser sobrescrito por `E2E_APP_URL`.
+
+### Relatórios de Teste
+
+Existe um script PowerShell para executar backend e frontend funcional, coletar JUnit XML e gerar resumo Markdown/HTML:
+
+```powershell
+.\scripts\run-tests-with-reports.ps1
+```
+
+Saídas geradas:
+
+- `test-reports/backend/junit.xml`
+- `test-reports/frontend/junit.xml`
+- `test-reports/summary.md`
+- `test-reports/summary.html`
+
+### Validação Complementar
+
+Além dos testes funcionais e de integração, rode validações estáticas do frontend:
+
+```bash
+cd frontend
+npm run typecheck
+npm run lint
+```
+
+Para validar o backend fora da suíte completa:
+
+```bash
+docker exec thor-backend python -m py_compile /app/app/api/v1/router.py /app/app/main.py
+```
 
 ## Backend
 
@@ -595,13 +1057,13 @@ cd backend
 python -m pytest app\tests
 ```
 
-Validação recomendada via Docker:
+Validação backend recomendada via Docker:
 
 ```bash
 docker exec thor-backend pytest /app/app/tests
-docker exec -w /app thor-frontend npm run typecheck
-docker exec -w /app thor-frontend npm run lint
 ```
+
+Para frontend, rode `typecheck`, `lint` e testes a partir de `frontend/` no ambiente local. A imagem `thor-frontend` é uma imagem de produção e não é a referência para validações estáticas.
 
 Se `pytest` não estiver instalado no Python local, instale as dependências do backend antes de executar os testes.
 
