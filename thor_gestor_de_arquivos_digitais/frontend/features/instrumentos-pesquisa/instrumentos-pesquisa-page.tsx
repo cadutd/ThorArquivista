@@ -76,7 +76,7 @@ const campoTipoOptions: Array<[TipoCampoInstrumento, string]> = [
 
 const DEFAULT_PAGE_SIZE = 20;
 
-export function InstrumentosPesquisaPage() {
+export function InstrumentosPesquisaPage({ readOnly = false }: { readOnly?: boolean }) {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<InstrumentoPesquisa | null>(null);
@@ -137,19 +137,23 @@ export function InstrumentosPesquisaPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-normal">Instrumentos de Pesquisa</h1>
           <p className="text-sm text-muted-foreground">
-            Cadastro de guias, inventários, catálogos, índices e bases temáticas.
+            {readOnly
+              ? "Pesquisa de guias, inventários, catálogos, índices e bases temáticas."
+              : "Cadastro de guias, inventários, catálogos, índices e bases temáticas."}
           </p>
         </div>
-        <Button
-          onClick={() => {
-            mutation.reset();
-            setEditing(null);
-            setOpen(true);
-          }}
-        >
-          <Plus className="h-4 w-4" />
-          Novo instrumento
-        </Button>
+        {!readOnly ? (
+          <Button
+            onClick={() => {
+              mutation.reset();
+              setEditing(null);
+              setOpen(true);
+            }}
+          >
+            <Plus className="h-4 w-4" />
+            Novo instrumento
+          </Button>
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -230,6 +234,7 @@ export function InstrumentosPesquisaPage() {
           ) : (
             <InstrumentosTable
               data={data}
+              readOnly={readOnly}
               onEdit={(instrumento) => {
                 mutation.reset();
                 setEditing(instrumento);
@@ -417,10 +422,12 @@ function cleanInstrumentoFilters(filters: InstrumentoPesquisaFilters): Instrumen
 
 function InstrumentosTable({
   data,
+  readOnly,
   onEdit,
   onDelete,
 }: {
   data: InstrumentoPesquisa[];
+  readOnly: boolean;
   onEdit: (instrumento: InstrumentoPesquisa) => void;
   onDelete: (instrumento: InstrumentoPesquisa) => void;
 }) {
@@ -434,7 +441,7 @@ function InstrumentosTable({
           <TableHead>Visibilidade</TableHead>
           <TableHead>Responsável</TableHead>
           <TableHead>Atualizado em</TableHead>
-          <TableHead className="text-right">Ações</TableHead>
+          <TableHead className="text-right">{readOnly ? "Consulta" : "Ações"}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -450,27 +457,33 @@ function InstrumentosTable({
             <TableCell>{formatDateTime(instrumento.atualizado_em)}</TableCell>
             <TableCell>
               <div className="flex justify-end gap-1">
-                <Button variant="ghost" size="icon" title="Editar instrumento" onClick={() => onEdit(instrumento)}>
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button asChild variant="ghost" size="icon" title="Cadastro dinâmico">
-                  <Link href={`/instrumentos-pesquisa/${instrumento.id}/cadastro`}>
-                    <FileInput className="h-4 w-4" />
-                  </Link>
-                </Button>
+                {!readOnly ? (
+                  <>
+                    <Button variant="ghost" size="icon" title="Editar instrumento" onClick={() => onEdit(instrumento)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button asChild variant="ghost" size="icon" title="Cadastro dinâmico">
+                      <Link href={`/instrumentos-pesquisa/${instrumento.id}/cadastro`}>
+                        <FileInput className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </>
+                ) : null}
                 <Button asChild variant="ghost" size="icon" title="Listagem dinâmica de registros">
-                  <Link href={`/instrumentos-pesquisa/${instrumento.id}/registros`}>
+                  <Link href={readOnly ? `/pesquisa/instrumentos-pesquisa/${instrumento.id}/registros` : `/instrumentos-pesquisa/${instrumento.id}/registros`}>
                     <ClipboardList className="h-4 w-4" />
                   </Link>
                 </Button>
                 <Button asChild variant="ghost" size="icon" title="Busca avançada">
-                  <Link href={`/instrumentos-pesquisa/${instrumento.id}/busca-avancada`}>
+                  <Link href={readOnly ? `/pesquisa/instrumentos-pesquisa/${instrumento.id}/busca-avancada` : `/instrumentos-pesquisa/${instrumento.id}/busca-avancada`}>
                     <Search className="h-4 w-4" />
                   </Link>
                 </Button>
-                <Button variant="ghost" size="icon" title="Excluir instrumento" onClick={() => onDelete(instrumento)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                {!readOnly ? (
+                  <Button variant="ghost" size="icon" title="Excluir instrumento" onClick={() => onDelete(instrumento)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                ) : null}
               </div>
             </TableCell>
           </TableRow>

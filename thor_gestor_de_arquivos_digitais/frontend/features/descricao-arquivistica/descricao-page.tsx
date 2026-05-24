@@ -176,7 +176,7 @@ const sections: Array<{
   },
 ];
 
-export function DescricaoArquivisticaPage() {
+export function DescricaoArquivisticaPage({ readOnly = false }: { readOnly?: boolean }) {
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<RegistroDescritivoPayload | null>(null);
@@ -356,20 +356,22 @@ export function DescricaoArquivisticaPage() {
           <h1 className="text-2xl font-semibold tracking-normal">Descrição Arquivística</h1>
           <p className="text-sm text-muted-foreground">Registros descritivos multinível aderentes à NOBRADE, ISAD(G) e EAD2002.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xml,application/xml,text/xml"
-            className="hidden"
-            onChange={(event) => handleEadFile(event.target.files?.[0])}
-          />
-          <Button variant="outline" disabled={importEad.isPending} onClick={() => fileInputRef.current?.click()}>
-            {importEad.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-            Importar EAD2002
-          </Button>
-          <Button onClick={createRoot}><Plus className="h-4 w-4" />Novo Fundo/Coleção</Button>
-        </div>
+        {!readOnly ? (
+          <div className="flex flex-wrap gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xml,application/xml,text/xml"
+              className="hidden"
+              onChange={(event) => handleEadFile(event.target.files?.[0])}
+            />
+            <Button variant="outline" disabled={importEad.isPending} onClick={() => fileInputRef.current?.click()}>
+              {importEad.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              Importar EAD2002
+            </Button>
+            <Button onClick={createRoot}><Plus className="h-4 w-4" />Novo Fundo/Coleção</Button>
+          </div>
+        ) : null}
       </div>
       {eadMessage || importEad.error || exportEad.error ? (
         <p className={importEad.error || exportEad.error ? "text-sm text-destructive" : "text-sm text-muted-foreground"}>
@@ -382,8 +384,12 @@ export function DescricaoArquivisticaPage() {
           <div>
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
               <div>
-                <h2 className="text-xl font-semibold tracking-normal">Gestão de descrição</h2>
-                <p className="text-sm text-muted-foreground">Visualize, edite e execute ações sobre o registro descritivo selecionado.</p>
+                <h2 className="text-xl font-semibold tracking-normal">{readOnly ? "Visualização de descrição" : "Gestão de descrição"}</h2>
+                <p className="text-sm text-muted-foreground">
+                  {readOnly
+                    ? "Visualize o registro descritivo selecionado."
+                    : "Visualize, edite e execute ações sobre o registro descritivo selecionado."}
+                </p>
               </div>
               <Button variant="outline" onClick={() => { setManagementOpen(false); setDraft(null); setMoreActionsOpen(false); }}>
                 <ArrowLeft className="h-4 w-4" />
@@ -406,7 +412,7 @@ export function DescricaoArquivisticaPage() {
                     </CardDescription>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {isFormMode ? (
+                    {readOnly ? null : isFormMode ? (
                       <Button variant="outline" onClick={() => setDraft(null)}>Cancelar</Button>
                     ) : (
                       <>
@@ -417,7 +423,7 @@ export function DescricaoArquivisticaPage() {
                     )}
                   </div>
                 </div>
-                {!isFormMode && moreActionsOpen ? (
+                {!readOnly && !isFormMode && moreActionsOpen ? (
                   <div className="mt-3 flex flex-wrap gap-2 rounded-md border bg-muted/40 p-3">
                     <Button variant="outline" size="sm" disabled={!selectedId} onClick={() => selectedId && duplicate.mutate(selectedId)}><Copy className="h-4 w-4" />Duplicar</Button>
                     <Button variant="outline" size="sm" disabled={!selectedId || exportEad.isPending} onClick={() => selectedId && exportEad.mutate(selectedId)}>
@@ -469,7 +475,7 @@ export function DescricaoArquivisticaPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Árvore descritiva</CardTitle>
-                <CardDescription>Navegue pela hierarquia descritiva e abra a gestão do registro quando necessário.</CardDescription>
+                <CardDescription>Navegue pela hierarquia descritiva e visualize o registro quando necessário.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <TreeFilters search={search} levelFilter={levelFilter} onSearch={setSearch} onLevelFilter={setLevelFilter} />
@@ -486,6 +492,7 @@ export function DescricaoArquivisticaPage() {
                       onToggle={toggleTreeNode}
                       onSelect={(id) => { setSelectedId(id); setDraft(null); setMoreActionsOpen(false); }}
                       onOpenManagement={openManagement}
+                      readOnly={readOnly}
                     />
                   ))}
                   {!tree.isLoading && !(tree.data ?? []).length ? <p className="py-6 text-center text-sm text-muted-foreground">Nenhum registro encontrado.</p> : null}
@@ -498,6 +505,7 @@ export function DescricaoArquivisticaPage() {
         <TabsContent value="consulta">
           <DetailedSearchView
             onOpenManagement={openManagement}
+            readOnly={readOnly}
           />
         </TabsContent>
       </Tabs>
@@ -646,7 +654,13 @@ function TreeFilters({
   );
 }
 
-function DetailedSearchView({ onOpenManagement }: { onOpenManagement: (id: string) => void }) {
+function DetailedSearchView({
+  onOpenManagement,
+  readOnly,
+}: {
+  onOpenManagement: (id: string) => void;
+  readOnly: boolean;
+}) {
   const [filters, setFilters] = useState({
     q: "",
     nivel: "",
@@ -779,11 +793,13 @@ function DetailedSearchView({ onOpenManagement }: { onOpenManagement: (id: strin
                         <Button variant="outline" size="icon" title="Visualizar descrição" aria-label={`Visualizar ${record.titulo}`} onClick={() => onOpenManagement(record.id)}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button asChild variant="outline" size="icon" title="Associar unidades" aria-label={`Associar unidades a ${record.titulo}`}>
-                          <Link href={`/descricao-arquivistica/unidades?registroId=${record.id}`}>
-                            <Link2 className="h-4 w-4" />
-                          </Link>
-                        </Button>
+                        {!readOnly ? (
+                          <Button asChild variant="outline" size="icon" title="Associar unidades" aria-label={`Associar unidades a ${record.titulo}`}>
+                            <Link href={`/descricao-arquivistica/unidades?registroId=${record.id}`}>
+                              <Link2 className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -1146,7 +1162,7 @@ function FieldShell({ field, label, norma, inherited, children }: { field: strin
   );
 }
 
-function TreeNode({ node, level, selectedId, expanded, loadingIds, onToggle, onSelect, onOpenManagement }: { node: RegistroDescritivoTreeNode; level: number; selectedId: string | null; expanded: Set<string>; loadingIds: Set<string>; onToggle: (node: RegistroDescritivoTreeNode) => void; onSelect: (id: string) => void; onOpenManagement: (id: string) => void }) {
+function TreeNode({ node, level, selectedId, expanded, loadingIds, onToggle, onSelect, onOpenManagement, readOnly }: { node: RegistroDescritivoTreeNode; level: number; selectedId: string | null; expanded: Set<string>; loadingIds: Set<string>; onToggle: (node: RegistroDescritivoTreeNode) => void; onSelect: (id: string) => void; onOpenManagement: (id: string) => void; readOnly: boolean }) {
   const hasChildren = node.has_children;
   const isOpen = expanded.has(node.id) || level < 1;
   const isLoading = loadingIds.has(node.id);
@@ -1163,13 +1179,15 @@ function TreeNode({ node, level, selectedId, expanded, loadingIds, onToggle, onS
         <Button variant="outline" size="icon" className="h-8 w-8" title="Visualizar descrição" aria-label={`Visualizar ${node.titulo}`} onClick={() => onOpenManagement(node.id)}>
           <Eye className="h-4 w-4" />
         </Button>
-        <Button asChild variant="outline" size="icon" className="h-8 w-8" title="Associar unidades" aria-label={`Associar unidades a ${node.titulo}`}>
-          <Link href={`/descricao-arquivistica/unidades?registroId=${node.id}`}>
-            <Link2 className="h-4 w-4" />
-          </Link>
-        </Button>
+        {!readOnly ? (
+          <Button asChild variant="outline" size="icon" className="h-8 w-8" title="Associar unidades" aria-label={`Associar unidades a ${node.titulo}`}>
+            <Link href={`/descricao-arquivistica/unidades?registroId=${node.id}`}>
+              <Link2 className="h-4 w-4" />
+            </Link>
+          </Button>
+        ) : null}
       </div>
-      {hasChildren && isOpen ? node.children.map((child) => <TreeNode key={child.id} node={child} level={level + 1} selectedId={selectedId} expanded={expanded} loadingIds={loadingIds} onToggle={onToggle} onSelect={onSelect} onOpenManagement={onOpenManagement} />) : null}
+      {hasChildren && isOpen ? node.children.map((child) => <TreeNode key={child.id} node={child} level={level + 1} selectedId={selectedId} expanded={expanded} loadingIds={loadingIds} onToggle={onToggle} onSelect={onSelect} onOpenManagement={onOpenManagement} readOnly={readOnly} />) : null}
     </div>
   );
 }

@@ -12,6 +12,7 @@ import {
   atualizarModeloFichaEspelho,
   criarModeloFichaEspelho,
 } from "@/lib/api/ficha-espelho";
+import { FichaEspelhoPreview } from "@/features/ficha-espelho/ficha-espelho-preview";
 import {
   campoFichaEspelhoLabels,
   camposFichaEspelhoPadrao,
@@ -85,6 +86,8 @@ export function ModeloFichaForm({
   const orientation = form.watch("orientacao");
   // eslint-disable-next-line react-hooks/incompatible-library
   const columns = form.watch("colunas");
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const previewValues = form.watch();
   const limits = getPrintableLimits(paper, orientation, columns || 1);
 
   const mutation = useMutation({
@@ -119,75 +122,85 @@ export function ModeloFichaForm({
 
   return (
     <form className="space-y-5" onSubmit={form.handleSubmit((values) => mutation.mutate(values))}>
-      <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Nome" error={form.formState.errors.nome?.message} required>
-          <Input {...form.register("nome")} />
-        </Field>
-        <Field label="Status">
-          <label className="flex h-10 items-center gap-2 rounded-md border px-3 text-sm">
-            <input type="checkbox" {...form.register("ativo")} />
-            Modelo ativo
-          </label>
-        </Field>
-      </div>
-
-      <Field label="Descrição" error={form.formState.errors.descricao?.message}>
-        <textarea className="min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm" {...form.register("descricao")} />
-      </Field>
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <SelectField label="Papel" {...form.register("tamanho_papel")}>
-          <option value="A4">A4</option>
-          <option value="CARTA">Carta</option>
-        </SelectField>
-        <SelectField label="Orientação" {...form.register("orientacao")}>
-          <option value="RETRATO">Retrato</option>
-          <option value="PAISAGEM">Paisagem</option>
-        </SelectField>
-        <Field label="Largura do modelo (cm)" error={form.formState.errors.largura_cm?.message} required>
-          <Input type="number" step="0.1" min="0.1" max={limits.maxWidthCm} {...form.register("largura_cm", { valueAsNumber: true })} />
-        </Field>
-        <Field label="Altura do modelo (cm)" error={form.formState.errors.altura_cm?.message} required>
-          <Input type="number" step="0.1" min="0.1" max={limits.maxHeightCm} {...form.register("altura_cm", { valueAsNumber: true })} />
-        </Field>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Colunas por página" error={form.formState.errors.colunas?.message} required>
-          <Input type="number" min="1" max="2" {...form.register("colunas", { valueAsNumber: true })} />
-        </Field>
-        <div className="rounded-md border p-3 text-sm">
-          <p className="text-muted-foreground">Dimensão final</p>
-          <p className="mt-1 font-semibold">
-            {form.watch("largura_cm") || 0} cm x {form.watch("altura_cm") || 0} cm
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Máximo nesta configuração: {limits.maxWidthCm} cm x {limits.maxHeightCm} cm.
-          </p>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <RequiredLabel required>Campos da ficha</RequiredLabel>
-        <div className="grid gap-2 md:grid-cols-2">
-          {camposFichaEspelhoPadrao.map((field) => (
-            <label key={field} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
-              <input type="checkbox" checked={selectedFields.includes(field)} onChange={() => toggleField(field)} />
-              {campoFichaEspelhoLabels[field]}
+      <div className="space-y-5">
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Nome" error={form.formState.errors.nome?.message} required>
+            <Input {...form.register("nome")} />
+          </Field>
+          <Field label="Status">
+            <label className="flex h-10 items-center gap-2 rounded-md border px-3 text-sm">
+              <input type="checkbox" {...form.register("ativo")} />
+              Modelo ativo
             </label>
-          ))}
+          </Field>
         </div>
-        {form.formState.errors.campos?.message ? (
-          <p className="text-xs text-destructive">{form.formState.errors.campos.message}</p>
-        ) : null}
+
+        <Field label="Descrição" error={form.formState.errors.descricao?.message}>
+          <textarea className="min-h-20 w-full rounded-md border bg-background px-3 py-2 text-sm" {...form.register("descricao")} />
+        </Field>
+
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <SelectField label="Papel" {...form.register("tamanho_papel")}>
+            <option value="A4">A4</option>
+            <option value="CARTA">Carta</option>
+          </SelectField>
+          <SelectField label="Orientação" {...form.register("orientacao")}>
+            <option value="RETRATO">Retrato</option>
+            <option value="PAISAGEM">Paisagem</option>
+          </SelectField>
+          <Field label="Largura do modelo (cm)" error={form.formState.errors.largura_cm?.message} required>
+            <Input type="number" step="0.1" min="0.1" max={limits.maxWidthCm} {...form.register("largura_cm", { valueAsNumber: true })} />
+          </Field>
+          <Field label="Altura do modelo (cm)" error={form.formState.errors.altura_cm?.message} required>
+            <Input type="number" step="0.1" min="0.1" max={limits.maxHeightCm} {...form.register("altura_cm", { valueAsNumber: true })} />
+          </Field>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Colunas por página" error={form.formState.errors.colunas?.message} required>
+            <Input type="number" min="1" max="2" {...form.register("colunas", { valueAsNumber: true })} />
+          </Field>
+          <div className="rounded-md border p-3 text-sm">
+            <p className="text-muted-foreground">Dimensão final</p>
+            <p className="mt-1 font-semibold">
+              {form.watch("largura_cm") || 0} cm x {form.watch("altura_cm") || 0} cm
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Máximo nesta configuração: {limits.maxWidthCm} cm x {limits.maxHeightCm} cm.
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <RequiredLabel required>Campos da ficha</RequiredLabel>
+          <div className="grid gap-2 md:grid-cols-2">
+            {camposFichaEspelhoPadrao.map((field) => (
+              <label key={field} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm">
+                <input type="checkbox" checked={selectedFields.includes(field)} onChange={() => toggleField(field)} />
+                {campoFichaEspelhoLabels[field]}
+              </label>
+            ))}
+          </div>
+          {form.formState.errors.campos?.message ? (
+            <p className="text-xs text-destructive">{form.formState.errors.campos.message}</p>
+          ) : null}
+        </div>
+
+        {mutation.error ? <p className="text-sm text-destructive">{mutation.error.message}</p> : null}
+
+        <Button type="submit" disabled={mutation.isPending}>
+          <Save className="h-4 w-4" />
+          {mutation.isPending ? "Salvando..." : isEditing ? "Salvar alterações" : "Salvar modelo"}
+        </Button>
       </div>
 
-      {mutation.error ? <p className="text-sm text-destructive">{mutation.error.message}</p> : null}
-
-      <Button type="submit" disabled={mutation.isPending}>
-        <Save className="h-4 w-4" />
-        {mutation.isPending ? "Salvando..." : isEditing ? "Salvar alterações" : "Salvar modelo"}
-      </Button>
+      <section className="space-y-3 border-t pt-5">
+        <div>
+          <h3 className="text-base font-semibold">Prévia de impressão</h3>
+          <p className="text-sm text-muted-foreground">A visualização acompanha as alterações do modelo.</p>
+        </div>
+        <FichaEspelhoPreview modelo={previewValues} />
+      </section>
     </form>
   );
 }

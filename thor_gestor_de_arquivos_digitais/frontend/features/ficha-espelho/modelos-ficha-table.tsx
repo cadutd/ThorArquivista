@@ -9,7 +9,7 @@ import {
   useReactTable,
   type ColumnDef,
 } from "@tanstack/react-table";
-import { Edit, Filter, Search, Trash2 } from "lucide-react";
+import { Edit, Eye, Filter, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -91,6 +91,11 @@ export function ModelosFichaTable({
         header: "",
         cell: ({ row }) => (
           <div className="flex justify-end gap-1">
+            <Button asChild aria-label="Visualizar modelo" size="icon" variant="ghost" title="Visualizar modelo">
+              <Link href={`/modelos-ficha-espelho/${row.original.id}`}>
+                <Eye className="h-4 w-4" />
+              </Link>
+            </Button>
             <Button asChild aria-label="Editar modelo" size="icon" variant="ghost">
               <Link href={`/modelos-ficha-espelho/${row.original.id}/editar`}>
                 <Edit className="h-4 w-4" />

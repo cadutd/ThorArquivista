@@ -18,7 +18,7 @@ import type { InstrumentoCampoSchema, InstrumentoRegistro, StatusInstrumentoRegi
 
 const PAGE_SIZE = 25;
 
-export function InstrumentoRegistrosPage({ instrumentoId }: { instrumentoId: string }) {
+export function InstrumentoRegistrosPage({ instrumentoId, readOnly = false }: { instrumentoId: string; readOnly?: boolean }) {
   const queryClient = useQueryClient();
   const [cursorStack, setCursorStack] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<StatusInstrumentoRegistro | "">("");
@@ -86,14 +86,18 @@ export function InstrumentoRegistrosPage({ instrumentoId }: { instrumentoId: str
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-normal">{schema.instrumento.nome}</h1>
-          <p className="text-sm text-muted-foreground">Registros dinâmicos cadastrados para este instrumento.</p>
+          <p className="text-sm text-muted-foreground">
+            {readOnly ? "Registros dinâmicos disponíveis para pesquisa." : "Registros dinâmicos cadastrados para este instrumento."}
+          </p>
         </div>
-        <Button asChild>
-          <Link href={`/instrumentos-pesquisa/${instrumentoId}/registros/novo`}>
-            <Plus className="h-4 w-4" />
-            Novo registro
-          </Link>
-        </Button>
+        {!readOnly ? (
+          <Button asChild>
+            <Link href={`/instrumentos-pesquisa/${instrumentoId}/registros/novo`}>
+              <Plus className="h-4 w-4" />
+              Novo registro
+            </Link>
+          </Button>
+        ) : null}
       </div>
       <Card>
         <CardHeader>
@@ -166,7 +170,7 @@ export function InstrumentoRegistrosPage({ instrumentoId }: { instrumentoId: str
                 ))}
                 <TableHead>Status</TableHead>
                 <TableHead>Atualizado em</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                {!readOnly ? <TableHead className="text-right">Ações</TableHead> : null}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -176,6 +180,7 @@ export function InstrumentoRegistrosPage({ instrumentoId }: { instrumentoId: str
                   instrumentoId={instrumentoId}
                   registro={registro}
                   columns={columns}
+                  readOnly={readOnly}
                   isDeleting={remove.isPending}
                   onDelete={() => {
                     if (window.confirm("Excluir logicamente este registro?")) {
@@ -186,8 +191,8 @@ export function InstrumentoRegistrosPage({ instrumentoId }: { instrumentoId: str
               ))}
               {!registros.length ? (
                 <TableRow>
-                  <TableCell colSpan={columns.length + 3} className="h-24 text-center text-muted-foreground">
-                    Nenhum registro cadastrado.
+                  <TableCell colSpan={columns.length + (readOnly ? 2 : 3)} className="h-24 text-center text-muted-foreground">
+                    Nenhum registro encontrado.
                   </TableCell>
                 </TableRow>
               ) : null}
@@ -232,12 +237,14 @@ function RegistroRow({
   instrumentoId,
   registro,
   columns,
+  readOnly,
   isDeleting,
   onDelete,
 }: {
   instrumentoId: string;
   registro: InstrumentoRegistro;
   columns: InstrumentoCampoSchema[];
+  readOnly: boolean;
   isDeleting: boolean;
   onDelete: () => void;
 }) {
@@ -248,18 +255,20 @@ function RegistroRow({
       ))}
       <TableCell>{registro.status}</TableCell>
       <TableCell>{formatDateTime(registro.atualizado_em)}</TableCell>
-      <TableCell>
-        <div className="flex justify-end gap-1">
-          <Button asChild variant="ghost" size="icon" title="Editar registro">
-            <Link href={`/instrumentos-pesquisa/${instrumentoId}/registros/${registro.id}/editar`}>
-              <Edit className="h-4 w-4" />
-            </Link>
-          </Button>
-          <Button variant="ghost" size="icon" title="Excluir registro" disabled={isDeleting} onClick={onDelete}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </TableCell>
+      {!readOnly ? (
+        <TableCell>
+          <div className="flex justify-end gap-1">
+            <Button asChild variant="ghost" size="icon" title="Editar registro">
+              <Link href={`/instrumentos-pesquisa/${instrumentoId}/registros/${registro.id}/editar`}>
+                <Edit className="h-4 w-4" />
+              </Link>
+            </Button>
+            <Button variant="ghost" size="icon" title="Excluir registro" disabled={isDeleting} onClick={onDelete}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        </TableCell>
+      ) : null}
     </TableRow>
   );
 }

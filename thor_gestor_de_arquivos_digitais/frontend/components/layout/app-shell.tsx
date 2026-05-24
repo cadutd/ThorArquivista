@@ -65,8 +65,8 @@ const navigation: NavigationItem[] = [
     label: "Pesquisa",
     icon: Search,
     items: [
-      { href: "/descricao-arquivistica", label: "Descrição Arquivística", icon: BookOpenText },
-      { href: "/instrumentos-pesquisa", label: "Instrumentos de Pesquisa", icon: FileSearch },
+      { href: "/pesquisa/descricao-arquivistica", label: "Descrição Arquivística", icon: BookOpenText },
+      { href: "/pesquisa/instrumentos-pesquisa", label: "Instrumentos de Pesquisa", icon: FileSearch },
     ],
   },
   {
