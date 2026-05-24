@@ -14,6 +14,8 @@ Interface administrativa em Next.js, React, TypeScript e Tailwind CSS para opera
 - Atribuir posições a unidades, mídias e cópias digitais.
 - Gerenciar processos de admissão, reuniões, acordos, sessões de submissão, SIPs e eventos do processo.
 - Gerenciar instrumentos de pesquisa, campos e registros dinâmicos.
+- Disponibilizar telas consultivas de pesquisa sem ações de inclusão, edição ou exclusão.
+- Gerenciar modelos de ficha espelho e pré-visualizar o layout de impressão.
 - Consultar eventos de preservação.
 
 ## Stack
@@ -94,10 +96,19 @@ O Compose expõe o frontend em `http://localhost:3000`, integrado ao backend em 
 - `/midias`: gestão de mídias.
 - `/enderecamento`: módulo de endereçamento de armazenamento.
 - `/instrumentos-pesquisa`: gestão de instrumentos, campos e registros dinâmicos.
+- `/pesquisa/descricao-arquivistica`: consulta de descrições arquivísticas sem ações de gestão.
+- `/pesquisa/instrumentos-pesquisa`: consulta de instrumentos e registros dinâmicos sem ações de gestão.
+- `/modelos-ficha-espelho`: gestão de modelos de ficha espelho.
+- `/modelos-ficha-espelho/[id]`: visualização do modelo com prévia de impressão.
+- `/modelos-ficha-espelho/[id]/editar`: edição do modelo com prévia dinâmica.
+- `/modelos-ficha-espelho/nova`: criação de modelo com prévia dinâmica.
+- `/fichas-espelho/imprimir`: impressão das fichas geradas.
 - `/eventos`: consulta de eventos por unidade.
 - `/admin`: área administrativa inicial.
 
 No shell autenticado, o bloco de marca à esquerda, com ícone e texto `Thor Gestor`, aponta para `/dashboard`.
+
+O grupo `Pesquisa` no menu lateral aponta para rotas sob `/pesquisa`. Essas telas são específicas para perfis de consulta e ocultam botões de criação, edição, exclusão, cadastro dinâmico e associação de unidades.
 
 ## Dashboard
 
@@ -179,6 +190,33 @@ Para popular o módulo no Docker, execute:
 ```bash
 docker compose exec backend python -m app.scripts.seed_storage_addressing
 ```
+
+## Ficha Espelho
+
+O módulo de modelos de ficha espelho está disponível em `/modelos-ficha-espelho`. Ele permite configurar:
+
+- nome, descrição e status do modelo;
+- papel (`A4` ou `Carta`);
+- orientação (`Retrato` ou `Paisagem`);
+- número de colunas por página;
+- largura e altura da ficha;
+- campos exibidos na impressão.
+
+Fluxos principais:
+
+- a listagem possui ações de visualizar, editar e excluir;
+- a visualização em `/modelos-ficha-espelho/[id]` mostra os metadados e uma prévia em escala;
+- a criação e a edição exibem a prévia abaixo do formulário;
+- a prévia é dinâmica e acompanha mudanças em campos, dimensões, papel, orientação e colunas;
+- a impressão final usa `/fichas-espelho/imprimir?modeloId=...&unidadeIds=...`.
+
+Arquivos principais:
+
+- `frontend/features/ficha-espelho/modelos-ficha-table.tsx`
+- `frontend/features/ficha-espelho/modelo-ficha-form.tsx`
+- `frontend/features/ficha-espelho/modelo-ficha-view-page.tsx`
+- `frontend/features/ficha-espelho/ficha-espelho-preview.tsx`
+- `frontend/app/(app)/fichas-espelho/imprimir/page.tsx`
 
 ## Comandos de Qualidade
 

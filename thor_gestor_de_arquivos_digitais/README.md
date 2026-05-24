@@ -1,6 +1,6 @@
 # Thor Gestor de Arquivos Digitais
 
-Manual de desenvolvimento do sistema Thor, uma aplicação para gestão de unidades de acondicionamento físicas e digitais, admissão de acervos, endereçamento de armazenamento, mídias, cópias digitais, instrumentos de pesquisa e eventos de preservação.
+Manual de desenvolvimento do sistema Thor, uma aplicação para gestão de unidades de acondicionamento físicas e digitais, admissão de acervos, endereçamento de armazenamento, mídias, cópias digitais, instrumentos de pesquisa, pesquisa consultiva, fichas espelho e eventos de preservação.
 
 ## Visão Geral
 
@@ -306,6 +306,9 @@ Rotas principais sob `/api/v1`:
 | `/instrumentos-pesquisa/{id}/buscar` | Busca simples inicial no MongoDB, usando campos `aparece_busca` |
 | `/instrumentos-pesquisa/{id}/buscar-avancado` | Busca avançada dinâmica no Meilisearch |
 | `/instrumentos-pesquisa/{id}/facetas` | Valores facetados dinâmicos a partir do índice de busca |
+| `/fichas-espelho/modelos` | CRUD de modelos de ficha espelho |
+| `/fichas-espelho/modelos/padrao` | Modelo padrão ativo de ficha espelho |
+| `/fichas-espelho/gerar` | Geração de fichas espelho para impressão |
 
 Endpoints de atribuição de posição:
 
@@ -360,8 +363,13 @@ Telas principais:
 | Endereçamento | `/enderecamento` |
 | Eventos | `/eventos` |
 | Administração | `/admin` |
+| Pesquisa de descrição arquivística | `/pesquisa/descricao-arquivistica` |
+| Pesquisa de instrumentos | `/pesquisa/instrumentos-pesquisa` |
+| Modelos de ficha espelho | `/modelos-ficha-espelho` |
 
 No layout autenticado, o bloco de marca à esquerda do cabeçalho/sidebar (`Thor Gestor`) aponta para `/dashboard`.
+
+O menu `Pesquisa` usa rotas próprias sob `/pesquisa`. Essas telas são consultivas e não exibem ações de inclusão, edição ou exclusão. As rotas de gestão continuam disponíveis em seus módulos administrativos.
 
 As telas de unidades, mídias, instrumentos de pesquisa e busca avançada de registros usam paginação de backend no formato:
 
@@ -395,6 +403,18 @@ Telas do módulo de endereçamento:
 | Ocupação | `/enderecamento/ocupacao` |
 
 O módulo permite cadastrar a hierarquia `Local > Zona > Estrutura > Compartimento > Posição`, gerar topografia para zonas, consultar posições livres/ocupadas, atribuir posições a unidades/mídias/cópias digitais e acompanhar movimentações.
+
+Telas de ficha espelho:
+
+| Tela | Rota |
+| --- | --- |
+| Modelos de ficha espelho | `/modelos-ficha-espelho` |
+| Novo modelo | `/modelos-ficha-espelho/nova` |
+| Visualização do modelo | `/modelos-ficha-espelho/{id}` |
+| Edição do modelo | `/modelos-ficha-espelho/{id}/editar` |
+| Impressão de fichas | `/fichas-espelho/imprimir` |
+
+Os modelos de ficha espelho definem papel, orientação, colunas, dimensões e campos exibidos. A criação e a edição mostram uma prévia dinâmica de impressão abaixo do formulário, atualizada conforme os campos do modelo mudam. A listagem possui ação de visualização, e a visualização do modelo também exibe a prévia em escala.
 
 Rodar fora do Docker:
 

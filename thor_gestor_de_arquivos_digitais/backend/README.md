@@ -14,6 +14,7 @@ API do Thor Gestor de Arquivos Digitais, implementada em FastAPI com PostgreSQL,
 - Registrar movimentações de armazenamento.
 - Gerenciar processos de admissão de acervos, reuniões, acordos, sessões de submissão, SIPs e eventos do processo.
 - Gerenciar instrumentos de pesquisa, campos configuráveis e registros dinâmicos.
+- Gerenciar modelos de ficha espelho e gerar fichas para impressão.
 - Executar busca simples inicial nos registros dinâmicos.
 - Publicar eventos de indexação assíncrona para o worker Celery.
 - Expor indicadores agregados para o dashboard.
@@ -77,6 +78,7 @@ Todas as rotas abaixo ficam sob `/api/v1`.
 | Movimentações | `/movimentacoes-armazenamento` | Histórico de movimentação |
 | Admissão | `/admissao/processos` | Processos de admissão, filtros e paginação |
 | Instrumentos de pesquisa | `/instrumentos-pesquisa` | Instrumentos, campos, registros dinâmicos e busca |
+| Fichas espelho | `/fichas-espelho` | Modelos e geração de fichas para impressão |
 
 O endpoint `/dashboard` calcula os totais diretamente no banco, evitando contagens incorretas causadas por listagens paginadas.
 
@@ -90,6 +92,15 @@ Rotas principais de instrumentos de pesquisa:
 | `/instrumentos-pesquisa/{instrumento_id}/buscar` | Busca simples inicial por regex nos campos com `aparece_busca` |
 | `/instrumentos-pesquisa/{instrumento_id}/buscar-avancado` | Busca avançada dinâmica no Meilisearch |
 | `/instrumentos-pesquisa/{instrumento_id}/facetas` | Distribuição de facetas dos campos configurados como facetáveis |
+
+Rotas principais de fichas espelho:
+
+| Rota | Finalidade |
+| --- | --- |
+| `/fichas-espelho/modelos` | Listagem, criação e filtros de modelos |
+| `/fichas-espelho/modelos/padrao` | Consulta do modelo padrão ativo |
+| `/fichas-espelho/modelos/{modelo_id}` | Visualização, atualização e exclusão do modelo |
+| `/fichas-espelho/gerar` | Geração dos dados de fichas para unidades selecionadas |
 
 Endpoints de atribuição:
 
