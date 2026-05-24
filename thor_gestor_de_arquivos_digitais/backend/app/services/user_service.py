@@ -4,8 +4,9 @@ import uuid
 
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
+from app.models.permissao import Perfil
 from app.models.user import User
 from app.schemas.user import UserCreate, UserRole, UserUpdate
 
@@ -16,6 +17,7 @@ class UserService:
         payload = UserService._normalizar_payload(dados.model_dump())
         UserService._validar_unicidade(db, payload)
 
+        UserService._validar_perfil(db, payload)
         usuario = User(**payload)
         db.add(usuario)
         db.commit()
@@ -34,7 +36,7 @@ class UserService:
         papel: UserRole | None = None,
         ativo: bool | None = None,
     ) -> tuple[list[User], int]:
-        query = db.query(User)
+        query = db.query(User).options(selectinload(User.perfil).selectinload(Perfil.permissoes))
 
         if q:
             termo = f"%{q.strip()}%"
@@ -68,7 +70,7 @@ class UserService:
 
     @staticmethod
     def obter_por_id(db: Session, id: uuid.UUID) -> User | None:
-        return db.get(User, id)
+        return db.query(User).options(selectinload(User.perfil).selectinload(Perfil.permissoes)).filter(User.id == id).first()
 
     @staticmethod
     def atualizar(db: Session, id: uuid.UUID, dados: UserUpdate) -> User | None:
@@ -78,6 +80,7 @@ class UserService:
 
         payload = UserService._normalizar_payload(dados.model_dump(exclude_unset=True))
         UserService._validar_unicidade(db, payload, usuario_id=id)
+        UserService._validar_perfil(db, payload)
 
         for campo, valor in payload.items():
             setattr(usuario, campo, valor)
@@ -111,6 +114,17 @@ class UserService:
         if "email" in normalized and normalized["email"]:
             normalized["email"] = normalized["email"].lower()
         return normalized
+
+    @staticmethod
+    def _validar_perfil(db: Session, valores: dict) -> None:
+        perfil_id = valores.get("id_perfil")
+        if not perfil_id:
+            return
+        perfil = db.get(Perfil, perfil_id)
+        if not perfil:
+            raise ValueError("Perfil informado não encontrado.")
+        if not perfil.ativo:
+            raise ValueError("Perfil informado está inativo.")
 
     @staticmethod
     def _validar_unicidade(

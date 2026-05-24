@@ -435,6 +435,7 @@ Para um ambiente de desenvolvimento completo, use esta ordem:
 ```bash
 docker compose exec backend python -m app.scripts.seed_instituicao_arquivo_apesp
 docker compose exec backend python -m app.scripts.seed_entidades_produtoras
+docker compose exec backend python -m app.scripts.seed_perfis_permissoes
 docker compose exec backend python -m app.scripts.seed_test_units
 docker compose exec backend python -m app.scripts.seed_storage_addressing
 docker compose exec backend python -m app.scripts.seed_midias_armazenamento
@@ -443,7 +444,15 @@ docker compose exec backend python -m app.scripts.seed_instrumento_campos
 docker compose exec backend python -m app.scripts.seed_instrumento_registros
 ```
 
-Essa ordem evita dependências ausentes nos fluxos administrativos: primeiro cadastra dados institucionais e entidades produtoras, depois unidades, endereçamento, mídias e, por fim, instrumentos com campos e registros dinâmicos.
+Essa ordem evita dependências ausentes nos fluxos administrativos: primeiro cadastra dados institucionais, entidades produtoras, perfis e permissões, depois unidades, endereçamento, mídias e, por fim, instrumentos com campos e registros dinâmicos.
+
+Massa de permissões e perfis:
+
+```bash
+docker compose exec backend python -m app.scripts.seed_perfis_permissoes
+```
+
+Esse script é idempotente e cria permissões para cada função mapeada do sistema, sempre com as ações `CRIAR`, `EDITAR`, `CONSULTAR` e `EXCLUIR`. Também cria/atualiza os perfis padrão `Administrador`, `Arquivista`, `Admissão`, `Gestor de Armazenamento` e `Consulta`, vincula permissões coerentes a cada perfil e associa usuários legados ao perfil correspondente quando `usuarios.papel` tiver o mesmo código do perfil. O perfil legado `Operador` é removido; usuários com papel legado `OPERADOR` são migrados para `Arquivista`.
 
 Existe um script idempotente para criar 50 unidades de teste:
 

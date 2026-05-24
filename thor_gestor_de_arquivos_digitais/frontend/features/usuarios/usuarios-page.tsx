@@ -195,7 +195,7 @@ function UsuariosTable({
             <TableHead>Nome</TableHead>
             <TableHead>Usuário</TableHead>
             <TableHead>E-mail</TableHead>
-            <TableHead>Papel</TableHead>
+            <TableHead>Perfil</TableHead>
             <TableHead>Situação</TableHead>
             <TableHead className="text-right">Ações</TableHead>
           </TableRow>
@@ -211,7 +211,7 @@ function UsuariosTable({
                 </TableCell>
                 <TableCell>{usuario.username}</TableCell>
                 <TableCell>{usuario.email}</TableCell>
-                <TableCell>{labelPapel(usuario.papel)}</TableCell>
+                <TableCell>{usuario.perfil?.nome ?? labelPapel(usuario.papel)}</TableCell>
                 <TableCell>{usuario.ativo ? "Ativo" : "Inativo"}</TableCell>
                 <TableCell>
                   <div className="flex justify-end gap-1">
@@ -261,7 +261,7 @@ function UsuarioDetails({ usuario, onClose }: { usuario: Usuario; onClose: () =>
     ["Nome", usuario.nome],
     ["Usuário", usuario.username],
     ["E-mail", usuario.email],
-    ["Papel", labelPapel(usuario.papel)],
+    ["Perfil", usuario.perfil?.nome ?? labelPapel(usuario.papel)],
     ["Ativo", usuario.ativo ? "Sim" : "Não"],
     ["Sub Keycloak", usuario.keycloak_sub],
     ["Criado em", formatDate(usuario.criado_em)],

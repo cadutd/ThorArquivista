@@ -12,7 +12,7 @@ def usuario_payload(code: str, **overrides):
         "username": f"usuario_{code}",
         "nome": f"Usuário Funcional {code}",
         "email": f"usuario_{code}@example.com",
-        "papel": "OPERADOR",
+        "papel": "ARQUIVISTA",
         "ativo": True,
         "observacoes": "Cadastro criado por teste funcional.",
     }
@@ -24,7 +24,7 @@ def test_crud_usuario_por_funcao(client: TestClient, unique_code: str):
     created = client.post("/api/v1/usuarios", json=usuario_payload(unique_code))
     invalid = client.post(
         "/api/v1/usuarios",
-        json={"username": "ab", "nome": "", "email": "email-invalido", "papel": "OPERADOR"},
+        json={"username": "ab", "nome": "", "email": "email-invalido", "papel": "ARQUIVISTA"},
     )
     usuario_id = created.json()["id"]
 

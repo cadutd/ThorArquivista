@@ -28,7 +28,10 @@ test("cadastra usuario, cria conta no Keycloak e autentica no Thor", async ({ pa
     await page.locator('input[name="nome"]').fill(name);
     await page.locator('input[name="username"]').fill(username);
     await page.locator('input[name="email"]').fill(email);
-    await page.locator('select[name="papel"]').selectOption("OPERADOR");
+    const perfil = page.locator('select[name="id_perfil"]');
+    if (await perfil.count()) {
+      await perfil.selectOption({ label: "Arquivista" });
+    }
     await page.getByRole("button", { name: "Salvar usuário" }).click();
 
     await expect(page.getByText("Usuário cadastrado.")).toBeVisible();

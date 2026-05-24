@@ -7,6 +7,7 @@ export type UsuarioPayload = {
   nome: string;
   email: string;
   papel: PapelUsuario;
+  id_perfil?: string | null;
   ativo: boolean;
   observacoes?: string | null;
 };

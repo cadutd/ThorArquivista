@@ -17,6 +17,7 @@ import {
   Gauge,
   HardDrive,
   Inbox,
+  KeyRound,
   LogOut,
   Search,
   Settings,
@@ -82,6 +83,8 @@ const navigation: NavigationItem[] = [
     items: [
       { href: "/admin", label: "Administração Geral", icon: Settings },
       { href: "/usuarios", label: "Gestão de Usuários", icon: Users },
+      { href: "/perfis", label: "Perfis", icon: ShieldCheck },
+      { href: "/permissoes", label: "Permissões", icon: KeyRound },
       { href: "/eventos", label: "Eventos", icon: Boxes },
     ],
   },

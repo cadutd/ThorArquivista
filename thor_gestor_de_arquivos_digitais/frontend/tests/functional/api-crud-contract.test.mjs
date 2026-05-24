@@ -6,6 +6,7 @@ const domainApi = readFileSync(new URL("../../lib/api/domain.ts", import.meta.ur
 const storageApi = readFileSync(new URL("../../lib/api/storage-addressing.ts", import.meta.url), "utf8");
 const descricaoApi = readFileSync(new URL("../../lib/api/descricao-arquivistica.ts", import.meta.url), "utf8");
 const clientApi = readFileSync(new URL("../../lib/api/client.ts", import.meta.url), "utf8");
+const perfisPermissoesApi = readFileSync(new URL("../../lib/api/perfis-permissoes.ts", import.meta.url), "utf8");
 
 function assertFunction(source, name) {
   assert.match(source, new RegExp(`export function ${name}\\b|export async function ${name}\\b`));
@@ -99,4 +100,21 @@ test("funcoes CRUD de enderecamento estao cobertas no frontend", () => {
   ["/locais-guarda", "/zonas-guarda", "/estruturas-armazenamento", "/compartimentos-armazenamento", "/posicoes-armazenamento"].forEach((endpoint) =>
     assertEndpoint(storageApi, endpoint),
   );
+});
+
+test("perfis tem CRUD e permissoes sao somente leitura no frontend", () => {
+  [
+    "listPermissoesPage",
+    "getPermissao",
+    "listPerfisPage",
+    "getPerfil",
+    "createPerfil",
+    "updatePerfil",
+    "deletePerfil",
+  ].forEach((name) => assertFunction(perfisPermissoesApi, name));
+  ["createPermissao", "updatePermissao", "deletePermissao"].forEach((name) =>
+    assert.doesNotMatch(perfisPermissoesApi, new RegExp(`export function ${name}\\b|export async function ${name}\\b`)),
+  );
+  assertEndpoint(perfisPermissoesApi, "/permissoes");
+  assertEndpoint(perfisPermissoesApi, "/perfis");
 });

@@ -2,17 +2,18 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { KeyRound } from "lucide-react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { listPerfisPage } from "@/lib/api/perfis-permissoes";
 import { createIdentityAccount, createUsuario, updateUsuario, type IdentityAccount } from "@/lib/api/usuarios";
 import type { PapelUsuario, Usuario } from "@/types/domain";
 
-const papelValues = ["ADMIN", "ARQUIVISTA", "OPERADOR", "CONSULTA"] as const;
+const papelValues = ["ADMIN", "ARQUIVISTA", "ADMISSAO", "GESTOR_ARMAZENAMENTO", "CONSULTA"] as const;
 
 const schema = z.object({
   keycloak_sub: z.string().max(255).optional(),
@@ -20,6 +21,7 @@ const schema = z.object({
   nome: z.string().trim().min(1, "Informe o nome.").max(255),
   email: z.string().trim().email("Informe um e-mail válido.").max(255),
   papel: z.enum(papelValues),
+  id_perfil: z.string().optional(),
   ativo: z.boolean(),
   observacoes: z.string().optional(),
 });
@@ -31,7 +33,8 @@ const defaultValues: FormValues = {
   username: "",
   nome: "",
   email: "",
-  papel: "OPERADOR",
+  papel: "ARQUIVISTA",
+  id_perfil: "",
   ativo: true,
   observacoes: "",
 };
@@ -39,7 +42,8 @@ const defaultValues: FormValues = {
 export const papelUsuarioOptions: Array<{ value: PapelUsuario; label: string }> = [
   { value: "ADMIN", label: "Administrador" },
   { value: "ARQUIVISTA", label: "Arquivista" },
-  { value: "OPERADOR", label: "Operador" },
+  { value: "ADMISSAO", label: "Admissão" },
+  { value: "GESTOR_ARMAZENAMENTO", label: "Gestor de Armazenamento" },
   { value: "CONSULTA", label: "Consulta" },
 ];
 
@@ -52,10 +56,15 @@ export function UsuarioForm({ usuario, onSaved }: { usuario?: Usuario; onSaved?:
     resolver: zodResolver(schema),
     defaultValues,
   });
+  const perfis = useQuery({
+    queryKey: ["perfis", "usuarios-form"],
+    queryFn: () => listPerfisPage({ limit: 100, filters: { ativo: "true" } }),
+  });
 
   useEffect(() => {
     if (!usuario) {
       form.reset(defaultValues);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSavedUsuario(undefined);
       setIdentityAccount(null);
       return;
@@ -68,6 +77,7 @@ export function UsuarioForm({ usuario, onSaved }: { usuario?: Usuario; onSaved?:
       nome: usuario.nome,
       email: usuario.email,
       papel: usuario.papel,
+      id_perfil: usuario.id_perfil ?? "",
       ativo: usuario.ativo,
       observacoes: usuario.observacoes ?? "",
     });
@@ -81,6 +91,7 @@ export function UsuarioForm({ usuario, onSaved }: { usuario?: Usuario; onSaved?:
         nome: values.nome.trim(),
         email: values.email.trim(),
         papel: values.papel,
+        id_perfil: values.id_perfil || null,
         ativo: values.ativo,
         observacoes: values.observacoes?.trim() || null,
       };
@@ -121,13 +132,26 @@ export function UsuarioForm({ usuario, onSaved }: { usuario?: Usuario; onSaved?:
           <Field label="E-mail" error={form.formState.errors.email?.message} required>
             <Input type="email" {...form.register("email")} required />
           </Field>
-          <SelectField label="Papel" error={form.formState.errors.papel?.message} {...form.register("papel")} required>
-            {papelUsuarioOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
+          <SelectField
+            label="Perfil"
+            error={form.formState.errors.id_perfil?.message}
+            {...form.register("id_perfil", {
+              onChange: (event) => {
+                const perfil = perfis.data?.items.find((item) => item.id === event.target.value);
+                if (perfil && (papelValues as readonly string[]).includes(perfil.codigo)) {
+                  form.setValue("papel", perfil.codigo as PapelUsuario);
+                }
+              },
+            })}
+          >
+            <option value="">Selecione um perfil</option>
+            {(perfis.data?.items ?? []).map((perfil) => (
+              <option key={perfil.id} value={perfil.id}>
+                {perfil.nome}
               </option>
             ))}
           </SelectField>
+          <input type="hidden" {...form.register("papel")} />
           <Field label="Sub Keycloak" error={form.formState.errors.keycloak_sub?.message}>
             <Input {...form.register("keycloak_sub")} />
           </Field>

@@ -12,7 +12,8 @@ export type StatusInstrumentoPesquisa = "RASCUNHO" | "PUBLICADO" | "ARQUIVADO";
 export type VisibilidadeInstrumentoPesquisa = "INTERNO" | "PUBLICO" | "RESTRITO";
 export type TipoCampoInstrumento = "TEXTO_CURTO" | "TEXTO_LONGO" | "NUMERO" | "DATA" | "PERIODO" | "BOOLEANO" | "LISTA_SIMPLES" | "LISTA_MULTIPLA" | "VOCABULARIO" | "UNIDADE_ACONDICIONAMENTO" | "REGISTRO_DESCRITIVO" | "URL" | "ARQUIVO" | "IMAGEM" | "CAMPO_CALCULADO";
 export type TipoEntidadeProdutora = "ORGAO_PUBLICO" | "UNIDADE_ADMINISTRATIVA" | "EMPRESA_PUBLICA" | "EMPRESA_PRIVADA" | "PESSOA_FISICA" | "FAMILIA" | "COMISSAO" | "GRUPO_TRABALHO" | "FUNDO" | "COLECAO" | "OUTRO";
-export type PapelUsuario = "ADMIN" | "ARQUIVISTA" | "OPERADOR" | "CONSULTA";
+export type PapelUsuario = "ADMIN" | "ARQUIVISTA" | "ADMISSAO" | "GESTOR_ARMAZENAMENTO" | "CONSULTA";
+export type AcaoPermissao = "CRIAR" | "EDITAR" | "CONSULTAR" | "EXCLUIR";
 
 export type UnidadeAcondicionamento = {
   id: number;
@@ -216,8 +217,35 @@ export type Usuario = {
   nome: string;
   email: string;
   papel: PapelUsuario;
+  id_perfil?: string | null;
+  perfil?: Perfil | null;
   ativo: boolean;
   observacoes?: string | null;
+  criado_em: string;
+  atualizado_em: string;
+};
+
+export type Permissao = {
+  id: string;
+  codigo: string;
+  nome: string;
+  descricao?: string | null;
+  modulo: string;
+  funcao: string;
+  acao: AcaoPermissao;
+  ativo: boolean;
+  criado_em: string;
+  atualizado_em: string;
+};
+
+export type Perfil = {
+  id: string;
+  codigo: string;
+  nome: string;
+  descricao?: string | null;
+  ativo: boolean;
+  sistema: boolean;
+  permissoes: Permissao[];
   criado_em: string;
   atualizado_em: string;
 };
