@@ -38,12 +38,12 @@ export function DescricaoUnidadesPage() {
   const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const initialRegistroId = searchParams.get("registroId");
-  const isFocusedAssociation = Boolean(initialRegistroId);
   const [selectedRegistroId, setSelectedRegistroId] = useState<string | null>(null);
   const [unidadeFilters, setUnidadeFilters] = useState<UnidadeFilters>({});
   const [unidadePageIndex, setUnidadePageIndex] = useState(0);
   const [unidadePageSize, setUnidadePageSize] = useState(20);
   const [selectedUnidades, setSelectedUnidades] = useState<Set<number>>(new Set());
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const registros = useQuery({
     queryKey: ["descricao-arquivistica", "registros"],
     queryFn: () => listarRegistrosDescricao(),
@@ -77,6 +77,7 @@ export function DescricaoUnidadesPage() {
     },
     onSuccess: async (result) => {
       setSelectedUnidades(new Set(result.unidades.map((unidade) => unidade.id)));
+      setShowSuccessAlert(true);
       await queryClient.invalidateQueries({
         queryKey: ["descricao-arquivistica", "registro-unidades", selectedRegistroId],
       });
@@ -89,6 +90,7 @@ export function DescricaoUnidadesPage() {
   const selectRegistro = (id: string) => {
     setSelectedRegistroId(id);
     setSelectedUnidades(new Set());
+    setShowSuccessAlert(false);
     mutation.reset();
     listarUnidadesAssociadasDescricao(id)
       .then((result) => {
@@ -105,6 +107,15 @@ export function DescricaoUnidadesPage() {
     }
   }, [initialRegistroId, selectedRegistroId]);
 
+  useEffect(() => {
+    if (!showSuccessAlert) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => setShowSuccessAlert(false), 5000);
+    return () => window.clearTimeout(timeout);
+  }, [showSuccessAlert]);
+
   const toggleUnidade = (id: number) => {
     setSelectedUnidades((current) => {
       const next = new Set(current);
@@ -117,44 +128,63 @@ export function DescricaoUnidadesPage() {
     });
   };
 
+  if (!initialRegistroId) {
+    return (
+      <div className="space-y-5">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-normal">Associar unidades à descrição arquivística</h1>
+            <p className="text-sm text-muted-foreground">
+              Abra uma descrição pela tela de edição e consulta para gerenciar suas unidades de acondicionamento.
+            </p>
+          </div>
+          <Button asChild variant="outline">
+            <Link href="/descricao-arquivistica">
+              <ArrowLeft className="h-4 w-4" />
+              Voltar para edição e consulta
+            </Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
+      {showSuccessAlert ? (
+        <div className="fixed left-1/2 top-4 z-50 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 items-start gap-3 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800 shadow-lg" role="alert">
+          <span className="min-w-0 flex-1">Associação gravada com sucesso.</span>
+          <button
+            type="button"
+            className="shrink-0 rounded-sm px-2 text-base leading-none text-green-900 hover:bg-green-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-700"
+            aria-label="Fechar alerta"
+            onClick={() => setShowSuccessAlert(false)}
+          >
+            x
+          </button>
+        </div>
+      ) : null}
       <div>
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-normal">
-              {isFocusedAssociation ? "Associar unidades à descrição arquivística" : "Associação de Unidades"}
+              Associar unidades à descrição arquivística
             </h1>
-            {isFocusedAssociation ? (
-              <p className="mt-1 text-lg font-semibold">{selectedRegistro?.titulo ?? "Carregando descrição..."}</p>
-            ) : null}
+            <p className="mt-1 text-lg font-semibold">{selectedRegistro?.titulo ?? "Carregando descrição..."}</p>
           </div>
-          {isFocusedAssociation ? (
-            <Button asChild variant="outline">
-              <Link href="/descricao-arquivistica">
-                <ArrowLeft className="h-4 w-4" />
-                Voltar para edição e consulta
-              </Link>
-            </Button>
-          ) : null}
+          <Button asChild variant="outline">
+            <Link href="/descricao-arquivistica">
+              <ArrowLeft className="h-4 w-4" />
+              Voltar para edição e consulta
+            </Link>
+          </Button>
         </div>
         <p className="text-sm text-muted-foreground">
-          {isFocusedAssociation
-            ? "Selecione as unidades de acondicionamento que devem ficar vinculadas a esta descrição."
-            : "Vincule uma ou mais unidades de acondicionamento a uma descrição arquivística."}
+          Selecione as unidades de acondicionamento que devem ficar vinculadas a esta descrição.
         </p>
       </div>
 
-      <div className={isFocusedAssociation ? "space-y-4" : "grid gap-4 xl:grid-cols-[420px_minmax(0,1fr)]"}>
-        {isFocusedAssociation ? null : (
-          <DescricaoRegistroSelector
-            records={registros.data ?? []}
-            recordsLoading={registros.isLoading}
-            selectedId={selectedRegistroId}
-            onSelect={selectRegistro}
-          />
-        )}
-
+      <div className="space-y-4">
         <Card>
           <CardHeader>
             <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -195,11 +225,6 @@ export function DescricaoUnidadesPage() {
             />
             {associadas.isLoading || unidades.isLoading ? <LoadingLine /> : null}
             {mutation.error ? <p className="text-sm text-destructive">{mutation.error.message}</p> : null}
-            {mutation.isSuccess ? (
-              <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-800" role="alert">
-                Associação gravada com sucesso.
-              </div>
-            ) : null}
             <div className="max-h-[52vh] space-y-2 overflow-y-auto pr-1">
               {(unidades.data?.items ?? []).map((unidade) => (
                 <UnidadeAssociationRow
@@ -641,29 +666,25 @@ function PaginationControls({ currentPage, totalPages, pageSize, displayedCount,
   const pages = getPaginationItems(currentPage, totalPages);
 
   return (
-    <div className="flex flex-col gap-3 rounded-md border px-3 py-2">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <p className="text-sm text-muted-foreground">
-          {displayedCount} registros de {total} | página {currentPage} de {totalPages}
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage <= 1} onClick={() => onPageChange(0)}>Primeira</Button>
-          <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage <= 1} onClick={() => onPageChange(currentPage - 2)}>Anterior</Button>
-          {pages.map((page, index) =>
-            page === "ellipsis" ? (
-              <span key={`ellipsis-${index}`} className="flex h-9 min-w-9 items-center justify-center px-2 text-sm text-muted-foreground">...</span>
-            ) : (
-              <Button key={page} type="button" variant={page === currentPage ? "default" : "outline"} size="sm" className="min-w-9 px-2" disabled={isLoading || page === currentPage} onClick={() => onPageChange(page - 1)}>
-                {page}
-              </Button>
-            ),
-          )}
-          <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage >= totalPages} onClick={() => onPageChange(currentPage)}>Próxima</Button>
-          <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage >= totalPages} onClick={() => onPageChange(totalPages - 1)}>Última</Button>
-        </div>
-      </div>
-      <div className="flex flex-wrap items-center justify-center gap-2">
-        <Label htmlFor="descricao-unidades-page-size" className="text-sm text-muted-foreground">Registros por página:</Label>
+    <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2">
+      <p className="whitespace-nowrap text-sm text-muted-foreground">
+        {displayedCount} registros de {total} | página {currentPage} de {totalPages}
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage <= 1} onClick={() => onPageChange(0)}>Primeira</Button>
+        <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage <= 1} onClick={() => onPageChange(currentPage - 2)}>Anterior</Button>
+        {pages.map((page, index) =>
+          page === "ellipsis" ? (
+            <span key={`ellipsis-${index}`} className="flex h-9 min-w-9 items-center justify-center px-2 text-sm text-muted-foreground">...</span>
+          ) : (
+            <Button key={page} type="button" variant={page === currentPage ? "default" : "outline"} size="sm" className="min-w-9 px-2" disabled={isLoading || page === currentPage} onClick={() => onPageChange(page - 1)}>
+              {page}
+            </Button>
+          ),
+        )}
+        <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage >= totalPages} onClick={() => onPageChange(currentPage)}>Próxima</Button>
+        <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage >= totalPages} onClick={() => onPageChange(totalPages - 1)}>Última</Button>
+        <Label htmlFor="descricao-unidades-page-size" className="text-sm text-muted-foreground">Por página:</Label>
         <select id="descricao-unidades-page-size" className="h-9 rounded-md border bg-background px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring" value={pageSize} onChange={(event) => onPageSizeChange(Number(event.target.value))}>
           <option value={20}>20</option>
           <option value={50}>50</option>
