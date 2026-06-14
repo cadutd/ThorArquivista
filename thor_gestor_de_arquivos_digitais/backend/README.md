@@ -90,8 +90,10 @@ Rotas principais de instrumentos de pesquisa:
 | `/instrumentos-pesquisa/{instrumento_id}/schema` | Schema usado pelo formulário e listagem dinâmica |
 | `/instrumentos-pesquisa/{instrumento_id}/registros` | CRUD e listagem por cursor dos registros no MongoDB |
 | `/instrumentos-pesquisa/{instrumento_id}/buscar` | Busca simples inicial por regex nos campos com `aparece_busca` |
-| `/instrumentos-pesquisa/{instrumento_id}/buscar-avancado` | Busca avançada dinâmica no Meilisearch |
+| `/instrumentos-pesquisa/{instrumento_id}/buscar-avancado` | Busca avançada dinâmica no Meilisearch, com filtros por todos os campos do schema |
 | `/instrumentos-pesquisa/{instrumento_id}/facetas` | Distribuição de facetas dos campos configurados como facetáveis |
+
+Campos dinâmicos de instrumentos podem referenciar entidades do domínio, incluindo `UNIDADE_ACONDICIONAMENTO` e `MIDIA_ARMAZENAMENTO`. Quando esses valores são salvos como objeto `{ id, rotulo }`, a busca avançada filtra pelo identificador em `dados.<campo>.id`; para compatibilidade com registros antigos, também aceita o valor direto em `dados.<campo>`. A listagem dinâmica e a busca avançada retornam os dados brutos do MongoDB, e o frontend transforma essas referências em links de visualização.
 
 Rotas principais de fichas espelho:
 

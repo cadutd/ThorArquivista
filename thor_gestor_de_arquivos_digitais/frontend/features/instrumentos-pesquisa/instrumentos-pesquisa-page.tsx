@@ -67,6 +67,7 @@ const campoTipoOptions: Array<[TipoCampoInstrumento, string]> = [
   ["LISTA_MULTIPLA", "Lista múltipla"],
   ["VOCABULARIO", "Vocabulário"],
   ["UNIDADE_ACONDICIONAMENTO", "Unidade de acondicionamento"],
+  ["MIDIA_ARMAZENAMENTO", "Mídia de armazenamento"],
   ["REGISTRO_DESCRITIVO", "Registro descritivo"],
   ["URL", "URL"],
   ["ARQUIVO", "Arquivo"],
@@ -100,10 +101,14 @@ export function InstrumentosPesquisaPage({ readOnly = false }: { readOnly?: bool
   const mutation = useMutation({
     mutationFn: (payload: InstrumentoPesquisaPayload) =>
       editing ? updateInstrumentoPesquisa(editing.id, payload) : createInstrumentoPesquisa(payload),
-    onSuccess: async () => {
+    onSuccess: async (instrumento) => {
       await queryClient.invalidateQueries({ queryKey: ["instrumentos-pesquisa"] });
-      setOpen(false);
-      setEditing(null);
+      if (editing) {
+        setOpen(false);
+        setEditing(null);
+        return;
+      }
+      setEditing(instrumento);
     },
   });
 
@@ -269,7 +274,7 @@ export function InstrumentosPesquisaPage({ readOnly = false }: { readOnly?: bool
             <DialogDescription>Informe os metadados básicos do instrumento de pesquisa.</DialogDescription>
           </DialogHeader>
           {editing ? (
-            <Tabs defaultValue="dados">
+            <Tabs defaultValue="dados" key={editing.id}>
               <TabsList>
                 <TabsTrigger value="dados">Dados</TabsTrigger>
                 <TabsTrigger value="campos">Campos do Instrumento</TabsTrigger>

@@ -10,6 +10,9 @@ from app.schemas.midia_armazenamento import MidiaArmazenamentoCreate
 
 
 class MidiaArmazenamentoService:
+    @staticmethod
+    def obter(db: Session, midia_id: int) -> MidiaArmazenamento | None:
+        return db.get(MidiaArmazenamento, midia_id)
 
     @staticmethod
     def criar(

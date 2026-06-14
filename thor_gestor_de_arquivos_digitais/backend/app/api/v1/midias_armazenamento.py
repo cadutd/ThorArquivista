@@ -58,3 +58,17 @@ def listar_midias_armazenamento(
         limit=limit,
         offset=offset,
     )
+
+
+@router.get("/{midia_id}", response_model=MidiaArmazenamentoOut)
+def obter_midia_armazenamento(
+    midia_id: int,
+    db: Session = Depends(db_dep),
+):
+    midia = MidiaArmazenamentoService.obter(db, midia_id)
+    if not midia:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Mídia de armazenamento não encontrada.",
+        )
+    return midia

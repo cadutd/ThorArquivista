@@ -251,7 +251,7 @@ function RegistroRow({
   return (
     <TableRow>
       {columns.map((campo) => (
-        <TableCell key={campo.id}>{formatValue(registro.dados[campo.chave])}</TableCell>
+        <TableCell key={campo.id}>{formatCampoValue(campo, registro.dados[campo.chave])}</TableCell>
       ))}
       <TableCell>{registro.status}</TableCell>
       <TableCell>{formatDateTime(registro.atualizado_em)}</TableCell>
@@ -275,9 +275,45 @@ function RegistroRow({
 
 function formatValue(value: unknown) {
   if (Array.isArray(value)) return value.join(", ");
+  const reference = referenceFrom(value);
+  if (reference) return reference.rotulo;
   if (typeof value === "boolean") return value ? "Sim" : "Não";
   if (value === null || value === undefined || value === "") return "-";
   return String(value);
+}
+
+function formatCampoValue(campo: InstrumentoCampoSchema, value: unknown) {
+  if (campo.tipo === "UNIDADE_ACONDICIONAMENTO") {
+    const reference = referenceFrom(value);
+    return reference ? (
+      <Link href={`/unidades/${reference.id}`} className="font-medium text-primary hover:underline">
+        {reference.rotulo}
+      </Link>
+    ) : formatValue(value);
+  }
+
+  if (campo.tipo === "MIDIA_ARMAZENAMENTO") {
+    const reference = referenceFrom(value);
+    return reference ? (
+      <Link href={`/midias/${reference.id}`} className="font-medium text-primary hover:underline">
+        {reference.rotulo}
+      </Link>
+    ) : formatValue(value);
+  }
+
+  return formatValue(value);
+}
+
+function referenceFrom(value: unknown): { id: number; rotulo: string } | null {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>;
+    const id = Number(record.id);
+    const rotulo = String(record.rotulo ?? record.label ?? record.nome ?? record.identificador ?? id);
+    if (Number.isFinite(id) && id > 0 && rotulo) return { id, rotulo };
+  }
+  const id = Number(value);
+  if (Number.isFinite(id) && id > 0) return { id, rotulo: String(id) };
+  return null;
 }
 
 function formatDateTime(value: string) {

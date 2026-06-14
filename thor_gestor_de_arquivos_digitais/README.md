@@ -182,6 +182,8 @@ instrumento_{instrumento_id}
 
 A API não depende do Meilisearch para confirmar uma gravação. Primeiro salva no MongoDB, depois publica evento de indexação. Isso evita que uma indisponibilidade momentânea do motor de busca impeça o cadastro operacional.
 
+Na busca avançada de instrumentos, a tela `Busca por metadado` monta filtros para todos os campos dinâmicos configurados no schema do instrumento. Campos facetáveis usam opções vindas do índice quando disponíveis; campos de intervalo usam limites `De`/`Até`; e campos de referência, como `Unidade de Acondicionamento` e `Mídia de Armazenamento`, usam lookup por lupa para selecionar o registro relacionado. Esses campos de referência são persistidos nos registros dinâmicos como `{ id, rotulo }`, filtrados no Meilisearch pelo `id` e exibidos nas listagens como links para `/unidades/{id}` e `/midias/{id}`.
+
 ### Redis e Celery
 
 Redis atua como broker Celery e infraestrutura de coordenação operacional. Celery foi escolhido para processar tarefas assíncronas com semântica simples de fila, separando requisições HTTP de trabalhos em segundo plano.
@@ -775,7 +777,7 @@ Rotas principais sob `/api/v1`:
 | `/instrumentos-pesquisa` | Cadastro de instrumentos, campos e registros dinâmicos |
 | `/instrumentos-pesquisa/{id}/registros` | Listagem dinâmica por cursor |
 | `/instrumentos-pesquisa/{id}/buscar` | Busca simples inicial no MongoDB, usando campos `aparece_busca` |
-| `/instrumentos-pesquisa/{id}/buscar-avancado` | Busca avançada dinâmica no Meilisearch |
+| `/instrumentos-pesquisa/{id}/buscar-avancado` | Busca avançada dinâmica no Meilisearch, com filtros por todos os campos do instrumento |
 | `/instrumentos-pesquisa/{id}/facetas` | Valores facetados dinâmicos a partir do índice de busca |
 | `/fichas-espelho/modelos` | CRUD de modelos de ficha espelho |
 | `/fichas-espelho/modelos/padrao` | Modelo padrão ativo de ficha espelho |
@@ -848,6 +850,8 @@ As telas de unidades, mídias, instrumentos de pesquisa e busca avançada de reg
 XX registros de YY | página B de C  Primeira Anterior 1 2 3 ... C Próxima Última
 Registros por página: BB
 ```
+
+Em instrumentos de pesquisa, os campos dinâmicos podem ser configurados com tipos como texto, número, data, listas, URL, arquivo, imagem, unidade de acondicionamento e mídia de armazenamento. No cadastro e edição de registros, campos de unidade e mídia usam botão de lupa para pesquisar e selecionar o registro relacionado. Nas listagens dinâmica e de busca avançada, esses campos aparecem como links de visualização para a unidade ou mídia selecionada.
 
 Telas do módulo de admissão:
 

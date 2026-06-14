@@ -447,6 +447,10 @@ export async function listMidias() {
   return page.items;
 }
 
+export function getMidia(id: number) {
+  return apiRequest<MidiaArmazenamento>(`/midias-armazenamento/${id}`);
+}
+
 export function getDashboardStats() {
   return apiRequest<DashboardStats>("/dashboard");
 }

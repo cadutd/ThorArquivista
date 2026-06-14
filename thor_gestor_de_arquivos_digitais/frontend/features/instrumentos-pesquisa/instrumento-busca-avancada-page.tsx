@@ -1,15 +1,25 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Filter, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { advancedSearchInstrumentoRegistros, getInstrumentoPesquisaSchema, getInstrumentoRegistroFacets } from "@/lib/api/domain";
-import type { InstrumentoCampoSchema, InstrumentoRegistro } from "@/types/domain";
+import {
+  advancedSearchInstrumentoRegistros,
+  getInstrumentoPesquisaSchema,
+  getInstrumentoRegistroFacets,
+  listMidiasPage,
+  listUnidadesPage,
+  type MidiaPage,
+  type UnidadePage,
+} from "@/lib/api/domain";
+import type { InstrumentoCampoSchema, InstrumentoRegistro, MidiaArmazenamento, UnidadeAcondicionamento } from "@/types/domain";
 
 const DEFAULT_PAGE_SIZE = 20;
 
@@ -50,10 +60,7 @@ export function InstrumentoBuscaAvancadaPage({ instrumentoId }: { instrumentoId:
   });
 
   const schema = schemaQuery.data;
-  const advancedFields = useMemo(
-    () => schema?.campos.filter((campo) => campo.filtro_avancado) ?? [],
-    [schema],
-  );
+  const advancedFields = useMemo(() => schema?.campos ?? [], [schema]);
   const facetFields = advancedFields.filter((campo) => campo.facetavel);
   const metadataFields = advancedFields.filter((campo) => !campo.facetavel);
   const sortFields = schema?.campos.filter((campo) => campo.ordenavel) ?? [];
@@ -83,7 +90,7 @@ export function InstrumentoBuscaAvancadaPage({ instrumentoId }: { instrumentoId:
   function submitSearch() {
     setPageIndex(0);
     setSubmittedQ(draftQ.trim());
-    setSubmittedFilters(cleanFilters(draftFilters));
+    setSubmittedFilters(normalizeFilters(cleanFilters(draftFilters), advancedFields));
     setSubmittedSort(parseSort(draftSort));
   }
 
@@ -226,6 +233,36 @@ function DynamicFilter({
     );
   }
 
+  if (campo.tipo === "UNIDADE_ACONDICIONAMENTO" || campo.tipo === "MIDIA_ARMAZENAMENTO") {
+    const reference = referenceFrom(value);
+    const label = campo.tipo === "UNIDADE_ACONDICIONAMENTO" ? "unidade de acondicionamento" : "mídia de armazenamento";
+
+    return (
+      <FilterField label={campo.nome}>
+        <ReferenceFilter
+          tipo={campo.tipo}
+          label={label}
+          value={reference}
+          onChange={onChange}
+        />
+      </FilterField>
+    );
+  }
+
+  if (campo.tipo === "BOOLEANO") {
+    return (
+      <SelectFilter
+        label={campo.nome}
+        value={typeof value === "boolean" ? String(value) : ""}
+        onChange={(selected) => onChange(selected === "" ? "" : selected === "true")}
+      >
+        <option value="">Todos</option>
+        <option value="true">Sim</option>
+        <option value="false">Não</option>
+      </SelectFilter>
+    );
+  }
+
   if (campo.tipo === "DATA" || campo.tipo === "PERIODO" || campo.tipo === "NUMERO") {
     const range = typeof value === "object" && value ? value as Record<string, string> : {};
     return (
@@ -292,7 +329,7 @@ function ResultsTable({ registros, columns }: { registros: InstrumentoRegistro[]
         {registros.length ? (
           registros.map((registro) => (
             <TableRow key={registro.id}>
-              {columns.map((campo) => <TableCell key={campo.id}>{formatValue(registro.dados[campo.chave])}</TableCell>)}
+              {columns.map((campo) => <TableCell key={campo.id}>{formatCampoValue(campo, registro.dados[campo.chave])}</TableCell>)}
               <TableCell>{registro.status}</TableCell>
               <TableCell>{formatDateTime(registro.atualizado_em)}</TableCell>
             </TableRow>
@@ -404,6 +441,20 @@ function cleanFilters(filters: Record<string, unknown>) {
   );
 }
 
+function normalizeFilters(filters: Record<string, unknown>, campos: InstrumentoCampoSchema[]) {
+  const camposPorChave = new Map(campos.map((campo) => [campo.chave, campo]));
+
+  return Object.fromEntries(
+    Object.entries(filters).map(([chave, value]) => {
+      const campo = camposPorChave.get(chave);
+      if (campo?.tipo === "UNIDADE_ACONDICIONAMENTO" || campo?.tipo === "MIDIA_ARMAZENAMENTO") {
+        return [chave, referenceFrom(value)?.id ?? value];
+      }
+      return [chave, value];
+    }),
+  );
+}
+
 function parseSort(value: string): Array<Record<string, "asc" | "desc">> {
   if (!value) return [];
   const [field, direction] = value.split(":");
@@ -434,9 +485,211 @@ function filterTextValue(value: unknown) {
 
 function formatValue(value: unknown) {
   if (Array.isArray(value)) return value.join(", ");
+  const reference = referenceFrom(value);
+  if (reference) return reference.rotulo;
   if (typeof value === "boolean") return value ? "Sim" : "Nao";
   if (value === null || value === undefined || value === "") return "-";
   return String(value);
+}
+
+function formatCampoValue(campo: InstrumentoCampoSchema, value: unknown) {
+  if (campo.tipo === "UNIDADE_ACONDICIONAMENTO") {
+    const reference = referenceFrom(value);
+    return reference ? (
+      <Link href={`/unidades/${reference.id}`} className="font-medium text-primary hover:underline">
+        {reference.rotulo}
+      </Link>
+    ) : formatValue(value);
+  }
+
+  if (campo.tipo === "MIDIA_ARMAZENAMENTO") {
+    const reference = referenceFrom(value);
+    return reference ? (
+      <Link href={`/midias/${reference.id}`} className="font-medium text-primary hover:underline">
+        {reference.rotulo}
+      </Link>
+    ) : formatValue(value);
+  }
+
+  return formatValue(value);
+}
+
+function ReferenceFilter({
+  tipo,
+  label,
+  value,
+  onChange,
+}: {
+  tipo: InstrumentoCampoSchema["tipo"];
+  label: string;
+  value: DynamicReferenceValue | null;
+  onChange: (value: unknown) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <div className="flex gap-2">
+        <Input readOnly value={value?.rotulo ?? ""} placeholder={`Selecione uma ${label}`} />
+        <Button type="button" variant="outline" size="icon" title={`Pesquisar ${label}`} onClick={() => setOpen(true)}>
+          <Search className="h-4 w-4" />
+        </Button>
+        {value ? (
+          <Button type="button" variant="outline" onClick={() => onChange("")}>
+            Limpar
+          </Button>
+        ) : null}
+      </div>
+      <ReferenceLookupDialog
+        open={open}
+        tipo={tipo}
+        title={`Pesquisar ${label}`}
+        onOpenChange={setOpen}
+        onSelect={(reference) => {
+          onChange(reference);
+          setOpen(false);
+        }}
+      />
+    </>
+  );
+}
+
+type DynamicReferenceValue = {
+  id: number;
+  rotulo: string;
+};
+
+function ReferenceLookupDialog({
+  open,
+  tipo,
+  title,
+  onOpenChange,
+  onSelect,
+}: {
+  open: boolean;
+  tipo: InstrumentoCampoSchema["tipo"];
+  title: string;
+  onOpenChange: (open: boolean) => void;
+  onSelect: (reference: DynamicReferenceValue) => void;
+}) {
+  const [searchInput, setSearchInput] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const isUnidade = tipo === "UNIDADE_ACONDICIONAMENTO";
+  const query = useQuery<UnidadePage | MidiaPage>({
+    queryKey: ["instrumento-advanced-lookup", tipo, searchTerm],
+    queryFn: () =>
+      isUnidade
+        ? listUnidadesPage({ limit: 10, filters: { q: searchTerm } })
+        : listMidiasPage({ limit: 10, filters: { q: searchTerm } }),
+    enabled: open,
+  });
+  const items = query.data?.items ?? [];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>Busque e selecione um registro cadastrado.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <form
+            className="flex gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setSearchTerm(searchInput.trim());
+            }}
+          >
+            <Input value={searchInput} placeholder="Buscar" onChange={(event) => setSearchInput(event.target.value)} />
+            <Button type="submit">
+              <Search className="h-4 w-4" />
+              Buscar
+            </Button>
+          </form>
+          {query.error ? <p className="text-sm text-destructive">{query.error.message}</p> : null}
+          <div className="max-h-80 overflow-auto rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Identificação</TableHead>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead className="text-right">Ação</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((item) => {
+                  const reference = isUnidade
+                    ? unidadeReference(item as UnidadeAcondicionamento)
+                    : midiaReference(item as MidiaArmazenamento);
+
+                  return (
+                    <TableRow key={reference.id}>
+                      <TableCell className="font-medium">{reference.rotulo}</TableCell>
+                      <TableCell>{itemDescription(item, isUnidade)}</TableCell>
+                      <TableCell className="text-right">
+                        <Button type="button" size="sm" onClick={() => onSelect(reference)}>
+                          Selecionar
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+                {!query.isLoading && !items.length ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className="h-20 text-center text-muted-foreground">
+                      Nenhum registro encontrado.
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+                {query.isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={3} className="h-20 text-center text-muted-foreground">
+                      Carregando...
+                    </TableCell>
+                  </TableRow>
+                ) : null}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function referenceFrom(value: unknown): DynamicReferenceValue | null {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>;
+    const id = Number(record.id);
+    const rotulo = String(record.rotulo ?? record.label ?? record.nome ?? record.identificador ?? id);
+    if (Number.isFinite(id) && id > 0 && rotulo) return { id, rotulo };
+  }
+  const id = Number(value);
+  if (Number.isFinite(id) && id > 0) return { id, rotulo: String(id) };
+  return null;
+}
+
+function unidadeReference(unidade: UnidadeAcondicionamento): DynamicReferenceValue {
+  return {
+    id: unidade.id,
+    rotulo: `${unidade.identificador} - ${unidade.titulo}`,
+  };
+}
+
+function midiaReference(midia: MidiaArmazenamento): DynamicReferenceValue {
+  return {
+    id: midia.id,
+    rotulo: midia.nome,
+  };
+}
+
+function itemDescription(item: UnidadeAcondicionamento | MidiaArmazenamento, isUnidade: boolean) {
+  if (isUnidade) {
+    const unidade = item as UnidadeAcondicionamento;
+    return unidade.produtor || unidade.tipo_unidade || "-";
+  }
+  const midia = item as MidiaArmazenamento;
+  return midia.descricao || midia.tipo || "-";
 }
 
 function formatDateTime(value: string) {

@@ -110,6 +110,18 @@ No shell autenticado, o bloco de marca à esquerda, com ícone e texto `Thor Ges
 
 O grupo `Pesquisa` no menu lateral aponta para rotas sob `/pesquisa`. Essas telas são específicas para perfis de consulta e ocultam botões de criação, edição, exclusão, cadastro dinâmico e associação de unidades.
 
+## Instrumentos de Pesquisa
+
+O módulo de instrumentos permite configurar campos dinâmicos por instrumento e usar esses campos no cadastro, listagem, busca simples e busca avançada de registros.
+
+Fluxos principais:
+
+- no cadastro de instrumento novo, após salvar os metadados básicos, a aba `Campos do Instrumento` fica disponível para cadastrar campos dinâmicos;
+- campos dinâmicos podem usar tipos como texto, número, data, booleano, listas, URL, arquivo, imagem, unidade de acondicionamento e mídia de armazenamento;
+- campos do tipo `Unidade de Acondicionamento` e `Mídia de Armazenamento` usam botão de lupa no cadastro/edição de registros para pesquisar e selecionar a entidade relacionada;
+- a listagem dinâmica e a busca avançada exibem unidade e mídia como links para `/unidades/{id}` e `/midias/{id}`;
+- a função `Busca por metadado` na busca avançada mostra todos os campos dinâmicos disponíveis no schema do instrumento, usando controles compatíveis com o tipo de campo.
+
 ## Dashboard
 
 O dashboard consome `GET /api/v1/dashboard`. Os cartões e o gráfico usam totais calculados no backend, não a primeira página de listagens.

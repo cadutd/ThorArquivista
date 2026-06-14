@@ -169,7 +169,7 @@ class InstrumentoRegistroService:
         offset: int | None = None,
     ) -> InstrumentoRegistroPage:
         campos = InstrumentoRegistroService._schema_campos(db, instrumento_id)
-        filtros_por_chave = {campo.chave: campo for campo in campos if campo.filtro_avancado}
+        filtros_por_chave = {campo.chave: campo for campo in campos}
         ordenaveis = {campo.chave for campo in campos if campo.ordenavel}
 
         meili_filters = ["status != EXCLUIDO"]
@@ -191,7 +191,11 @@ class InstrumentoRegistroService:
         safe_page_size = min(max(page_size, 1), 100)
         InstrumentoSearchService.configure_dynamic_fields(
             instrumento_id,
-            filterable_fields=list(filtros_por_chave.keys()),
+            filterable_fields=[
+                attr
+                for campo in filtros_por_chave.values()
+                for attr in InstrumentoRegistroService._meili_filter_attrs_for_campo(campo)
+            ],
             sortable_fields=list(ordenaveis),
         )
         result = InstrumentoSearchService.buscar_avancado(
@@ -385,7 +389,13 @@ class InstrumentoRegistroService:
     @staticmethod
     def _advanced_filter(campo: InstrumentoCampo, valor: Any) -> str:
         chave = campo.chave
-        attr = f"dados.{chave}"
+        attr = f"dados.{InstrumentoRegistroService._meili_attr_for_campo(campo)}"
+        if campo.tipo in {
+            TipoCampoInstrumento.UNIDADE_ACONDICIONAMENTO,
+            TipoCampoInstrumento.MIDIA_ARMAZENAMENTO,
+        }:
+            value = InstrumentoRegistroService._meili_value_for_campo(campo, valor)
+            return f"({attr} = {value} OR dados.{campo.chave} = {value})"
         if isinstance(valor, list):
             values = [
                 InstrumentoRegistroService._meili_value_for_campo(campo, item)
@@ -410,6 +420,16 @@ class InstrumentoRegistroService:
 
     @staticmethod
     def _meili_value_for_campo(campo: InstrumentoCampo, value: Any) -> str:
+        if campo.tipo in {
+            TipoCampoInstrumento.UNIDADE_ACONDICIONAMENTO,
+            TipoCampoInstrumento.MIDIA_ARMAZENAMENTO,
+        }:
+            if isinstance(value, dict):
+                value = value.get("id")
+            try:
+                return InstrumentoRegistroService._meili_value(int(value))
+            except (TypeError, ValueError):
+                raise ValueError(f"O filtro '{campo.nome}' deve referenciar um ID válido.") from None
         if campo.tipo == TipoCampoInstrumento.NUMERO and isinstance(value, str):
             try:
                 number = float(value) if "." in value else int(value)
@@ -426,6 +446,24 @@ class InstrumentoRegistroService:
             return str(value)
         escaped = str(value).replace("\\", "\\\\").replace('"', '\\"')
         return f'"{escaped}"'
+
+    @staticmethod
+    def _meili_attr_for_campo(campo: InstrumentoCampo) -> str:
+        if campo.tipo in {
+            TipoCampoInstrumento.UNIDADE_ACONDICIONAMENTO,
+            TipoCampoInstrumento.MIDIA_ARMAZENAMENTO,
+        }:
+            return f"{campo.chave}.id"
+        return campo.chave
+
+    @staticmethod
+    def _meili_filter_attrs_for_campo(campo: InstrumentoCampo) -> list[str]:
+        if campo.tipo in {
+            TipoCampoInstrumento.UNIDADE_ACONDICIONAMENTO,
+            TipoCampoInstrumento.MIDIA_ARMAZENAMENTO,
+        }:
+            return [campo.chave, f"{campo.chave}.id"]
+        return [campo.chave]
 
     @staticmethod
     def _is_empty(valor: Any) -> bool:

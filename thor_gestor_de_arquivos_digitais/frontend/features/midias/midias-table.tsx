@@ -6,6 +6,7 @@ import {
   useReactTable,
   type ColumnDef,
 } from "@tanstack/react-table";
+import Link from "next/link";
 import { useMemo } from "react";
 import { StatusBadge } from "@/components/status-badge";
 import {
@@ -24,7 +25,11 @@ export function MidiasTable({ data }: { data: MidiaArmazenamento[] }) {
       {
         accessorKey: "nome",
         header: "Nome",
-        cell: ({ row }) => <span className="font-medium">{row.original.nome}</span>,
+        cell: ({ row }) => (
+          <Link href={`/midias/${row.original.id}`} className="font-medium text-primary hover:underline">
+            {row.original.nome}
+          </Link>
+        ),
       },
       { accessorKey: "tipo", header: "Tipo" },
       {
