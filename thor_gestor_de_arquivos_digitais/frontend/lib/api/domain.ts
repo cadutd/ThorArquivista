@@ -1,6 +1,7 @@
 import { apiRequest } from "@/lib/api/client";
 import type {
   CopiaDigital,
+  EventoMidiaArmazenamento,
   EventoPreservacao,
   InstrumentoCampo,
   InstrumentoPesquisaSchema,
@@ -60,14 +61,35 @@ export type UnidadeFilters = Partial<{
 
 export type MidiaPayload = {
   nome: string;
-  tipo: TipoMidiaArmazenamento;
+  tipo_midia_id: string;
   descricao?: string | null;
   ativo?: boolean;
+  data_aquisicao?: string | null;
+  data_inicio_uso?: string | null;
+  data_validade?: string | null;
+  ultima_checagem_integridade?: string | null;
+  proxima_checagem_integridade?: string | null;
+  capacidade_total_bytes?: number | null;
+  capacidade_utilizada_bytes?: number | null;
+  identificador_fisico?: string | null;
 };
 
 export type MidiaFilters = Partial<{
   q: string;
-  tipo: TipoMidiaArmazenamento;
+  tipo_midia_id: string;
+  ativo: boolean;
+}>;
+
+export type TipoMidiaPayload = {
+  nome: string;
+  descricao?: string | null;
+  tempo_duracao_anos: number;
+  periodicidade_checagem_meses: number;
+  ativo?: boolean;
+};
+
+export type TipoMidiaFilters = Partial<{
+  q: string;
   ativo: boolean;
 }>;
 
@@ -133,6 +155,13 @@ export type InstrumentoPesquisaPage = {
 
 export type MidiaPage = {
   items: MidiaArmazenamento[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export type TipoMidiaPage = {
+  items: TipoMidiaArmazenamento[];
   total: number;
   limit: number;
   offset: number;
@@ -436,7 +465,7 @@ export function listMidiasPage({
       limit,
       offset,
       q: filters.q,
-      tipo: filters.tipo,
+      tipo_midia_id: filters.tipo_midia_id,
       ativo: filters.ativo === undefined ? undefined : String(filters.ativo),
     })}`,
   );
@@ -459,6 +488,67 @@ export function createMidia(payload: MidiaPayload) {
   return apiRequest<MidiaArmazenamento>("/midias-armazenamento", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function updateMidia(id: number, payload: Partial<MidiaPayload>) {
+  return apiRequest<MidiaArmazenamento>(`/midias-armazenamento/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function listEventosMidia(id: number) {
+  return apiRequest<EventoMidiaArmazenamento[]>(
+    `/midias-armazenamento/${id}/eventos-preservacao`,
+  );
+}
+
+export function listTiposMidiaPage({
+  limit = 50,
+  offset = 0,
+  filters = {},
+}: {
+  limit?: number;
+  offset?: number;
+  filters?: TipoMidiaFilters;
+} = {}) {
+  return apiRequest<TipoMidiaPage>(
+    `/tipos-midia-armazenamento${queryString({
+      limit,
+      offset,
+      q: filters.q,
+      ativo: filters.ativo === undefined ? undefined : String(filters.ativo),
+    })}`,
+  );
+}
+
+export async function listTiposMidiaAtivos() {
+  const page = await listTiposMidiaPage({ limit: 100, filters: { ativo: true } });
+  return page.items;
+}
+
+export function getTipoMidia(id: string) {
+  return apiRequest<TipoMidiaArmazenamento>(`/tipos-midia-armazenamento/${id}`);
+}
+
+export function createTipoMidia(payload: TipoMidiaPayload) {
+  return apiRequest<TipoMidiaArmazenamento>("/tipos-midia-armazenamento", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateTipoMidia(id: string, payload: Partial<TipoMidiaPayload>) {
+  return apiRequest<TipoMidiaArmazenamento>(`/tipos-midia-armazenamento/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteTipoMidia(id: string) {
+  return apiRequest<void>(`/tipos-midia-armazenamento/${id}`, {
+    method: "DELETE",
   });
 }
 

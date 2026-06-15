@@ -18,6 +18,7 @@ import {
   createMidia,
   createUnidade,
   listMidias,
+  listTiposMidiaAtivos,
   updateUnidade,
 } from "@/lib/api/domain";
 import type { UnidadeAcondicionamento } from "@/types/domain";
@@ -45,7 +46,7 @@ const schema = z
     modo_midia: z.enum(["existente", "nova"]),
     id_midia_armazenamento: z.string().optional(),
     nova_midia_nome: z.string().max(255).optional(),
-    nova_midia_tipo: z.enum(["FILESYSTEM", "NAS", "NFS", "LTO", "S3", "CLOUD"]),
+    nova_midia_tipo_midia_id: z.string().optional(),
     nova_midia_descricao: z.string().max(2000).optional(),
     uri_copia: z.string().max(1200).optional(),
     funcao_copia: z.enum(["PRESERVACAO", "BACKUP", "ACESSO", "QUARENTENA"]),
@@ -83,6 +84,13 @@ const schema = z
         message: "Informe o nome da nova mídia.",
       });
     }
+    if (values.modo_midia === "nova" && !values.nova_midia_tipo_midia_id) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["nova_midia_tipo_midia_id"],
+        message: "Selecione o tipo da nova midia.",
+      });
+    }
   });
 
 type FormValues = z.infer<typeof schema>;
@@ -109,7 +117,7 @@ const defaultValues: FormValues = {
   modo_midia: "existente",
   id_midia_armazenamento: "",
   nova_midia_nome: "",
-  nova_midia_tipo: "FILESYSTEM",
+  nova_midia_tipo_midia_id: "",
   nova_midia_descricao: "",
   uri_copia: "",
   funcao_copia: "PRESERVACAO",
@@ -129,6 +137,7 @@ export function UnidadeForm({
 }) {
   const queryClient = useQueryClient();
   const midias = useQuery({ queryKey: ["midias"], queryFn: () => listMidias() });
+  const tiposMidia = useQuery({ queryKey: ["tipos-midia", "ativos"], queryFn: () => listTiposMidiaAtivos() });
   const isEditing = Boolean(unidade);
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -217,7 +226,7 @@ export function UnidadeForm({
           values.modo_midia === "nova"
             ? await createMidia({
                 nome: values.nova_midia_nome?.trim() ?? "",
-                tipo: values.nova_midia_tipo,
+                tipo_midia_id: values.nova_midia_tipo_midia_id ?? "",
                 descricao: values.nova_midia_descricao || null,
                 ativo: true,
               })
@@ -376,7 +385,7 @@ export function UnidadeForm({
                   <option value="">Selecione</option>
                   {(midias.data ?? []).map((midia) => (
                     <option key={midia.id} value={midia.id}>
-                      {midia.nome} ({midia.tipo})
+                      {midia.nome} ({midia.tipo_midia?.nome ?? "sem tipo"})
                     </option>
                   ))}
                 </SelectField>
@@ -389,13 +398,18 @@ export function UnidadeForm({
                   >
                     <Input {...form.register("nova_midia_nome")} required />
                   </Field>
-                  <SelectField label="Tipo da mídia" {...form.register("nova_midia_tipo")} required>
-                    <option value="FILESYSTEM">Filesystem</option>
-                    <option value="NAS">NAS</option>
-                    <option value="NFS">NFS</option>
-                    <option value="LTO">LTO</option>
-                    <option value="S3">S3</option>
-                    <option value="CLOUD">Cloud</option>
+                  <SelectField
+                    label="Tipo da midia"
+                    error={form.formState.errors.nova_midia_tipo_midia_id?.message}
+                    {...form.register("nova_midia_tipo_midia_id")}
+                    required
+                  >
+                    <option value="">Selecione</option>
+                    {(tiposMidia.data ?? []).map((tipo) => (
+                      <option key={tipo.id} value={tipo.id}>
+                        {tipo.nome}
+                      </option>
+                    ))}
                   </SelectField>
                   <Field label="Descrição da mídia">
                     <Input {...form.register("nova_midia_descricao")} />

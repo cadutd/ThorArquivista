@@ -6,11 +6,12 @@ from app.models.unidade_acondicionamento import UnidadeAcondicionamento  # noqa:
 from app.models.unidade_acondicionamento_digital import (  # noqa: F401
     UnidadeAcondicionamentoDigital,
 )
-from app.models.midia_armazenamento import MidiaArmazenamento  # noqa: F401
+from app.models.midia_armazenamento import MidiaArmazenamento, TipoMidiaArmazenamento  # noqa: F401
 from app.models.copia_unidade_acondicionamento_digital import (  # noqa: F401
     CopiaUnidadeAcondicionamentoDigital,
 )
 from app.models.evento_preservacao import EventoPreservacao  # noqa: F401
+from app.models.evento_midia_armazenamento import EventoMidiaArmazenamento  # noqa: F401
 from app.models.armazenamento import (  # noqa: F401
     CompartimentoArmazenamento,
     EstruturaArmazenamento,

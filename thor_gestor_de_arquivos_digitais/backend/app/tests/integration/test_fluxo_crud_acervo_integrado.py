@@ -22,9 +22,12 @@ def test_fluxo_integrado_unidade_midia_copia_enderecamento_movimentacao(client: 
         "/api/v1/unidades-acondicionamento",
         json=unidade_payload(f"INT-{unique_code}", titulo="Unidade integrada"),
     )
+    tipos_midia = client.get("/api/v1/tipos-midia-armazenamento", params={"ativo": True})
+    assert tipos_midia.status_code == 200
+    tipo_midia_id = tipos_midia.json()["items"][0]["id"]
     midia = client.post(
         "/api/v1/midias-armazenamento",
-        json={"nome": f"Midia integrada {unique_code}", "tipo": "FILESYSTEM", "ativo": True},
+        json={"nome": f"Midia integrada {unique_code}", "tipo_midia_id": tipo_midia_id, "ativo": True},
     )
     assert posicao.status_code == 201
     assert unidade.status_code == 201

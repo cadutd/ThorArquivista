@@ -689,7 +689,7 @@ function itemDescription(item: UnidadeAcondicionamento | MidiaArmazenamento, isU
     return unidade.produtor || unidade.tipo_unidade || "-";
   }
   const midia = item as MidiaArmazenamento;
-  return midia.descricao || midia.tipo || "-";
+  return midia.descricao || midia.tipo_midia?.nome || "-";
 }
 
 function formatDateTime(value: string) {

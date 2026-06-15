@@ -8,7 +8,7 @@ Interface administrativa em Next.js, React, TypeScript e Tailwind CSS para opera
 - Consumir a API FastAPI com token Bearer.
 - Exibir dashboard operacional com indicadores agregados do backend.
 - Gerenciar unidades de acondicionamento com busca, filtros, paginação, criação, edição, visualização e exclusão.
-- Gerenciar mídias de armazenamento.
+- Gerenciar mídias de armazenamento com ações CRUD, ciclo de vida, validade, checagem e eventos próprios.
 - Gerenciar endereçamento de armazenamento físico e lógico.
 - Gerar topografia, consultar posições e acompanhar ocupação.
 - Atribuir posições a unidades, mídias e cópias digitais.
@@ -93,7 +93,10 @@ O Compose expõe o frontend em `http://localhost:3000`, integrado ao backend em 
 - `/admissao/[id]`: visualização do processo com abas de resumo, reuniões, acordos, sessões, SIPs, AIPs, eventos e documentos.
 - `/admissao/[id]/editar`: edição do processo de admissão.
 - `/unidades`: CRUD de unidades de acondicionamento.
-- `/midias`: gestão de mídias.
+- `/midias`: gestão de mídias, com listagem paginada, ações por registro, visualização, edição e ativação/desativação.
+- `/midias/[id]`: visualização da mídia, metadados de ciclo de vida e eventos PREMIS registrados diretamente sobre a mídia.
+- `/midias/[id]/editar`: edição da mídia.
+- `/admin/tipos-midia`: cadastro administrativo de tipos de mídia.
 - `/enderecamento`: módulo de endereçamento de armazenamento.
 - `/instrumentos-pesquisa`: gestão de instrumentos, campos e registros dinâmicos.
 - `/pesquisa/descricao-arquivistica`: consulta de descrições arquivísticas sem ações de gestão.
@@ -146,6 +149,12 @@ Registros por página: BB
 ```
 
 Há uma paginação entre a busca e a tabela e outra abaixo da tabela.
+
+## Midias de Armazenamento
+
+A tela `/midias` usa paginação de backend, busca simples e busca por metadado. A listagem segue o padrão dos demais CRUDs do sistema e exibe ações por registro para visualizar, editar e ativar/desativar. Os botões usam ícones e tooltip nativo para identificar a ação ao passar o mouse.
+
+O formulário de mídia usa select dinâmico com tipos ativos cadastrados em `/admin/tipos-midia`. A visualização em `/midias/[id]` mostra dados de ciclo de vida, capacidade, localização e uma tabela de eventos PREMIS próprios da mídia, consumidos de `/midias-armazenamento/{id}/eventos-preservacao`.
 
 ## Admissão
 

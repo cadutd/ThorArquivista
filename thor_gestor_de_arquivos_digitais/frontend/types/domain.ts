@@ -2,7 +2,6 @@ export type TipoSuporte = "FISICO" | "DIGITAL" | "HIBRIDO";
 export type TipoUnidade = "CAIXA" | "PASTA" | "VOLUME" | "AIP" | "SIP" | "DIP";
 export type NivelAcesso = "PUBLICO" | "RESTRITO" | "CONFIDENCIAL";
 export type StatusUnidade = "ATIVA" | "INATIVA" | "TRANSFERIDA" | "ELIMINADA";
-export type TipoMidiaArmazenamento = "FILESYSTEM" | "NAS" | "NFS" | "LTO" | "S3" | "CLOUD";
 export type FuncaoCopia = "PRESERVACAO" | "BACKUP" | "ACESSO" | "QUARENTENA";
 export type StatusCopia = "ATIVA" | "INDISPONIVEL" | "CORROMPIDA" | "EM_VERIFICACAO";
 export type TipoEventoPreservacao = "INGESTAO" | "VALIDACAO" | "FIXIDEZ" | "REPLICACAO" | "MIGRACAO" | "ACESSO" | "MOVIMENTACAO" | "OUTRO";
@@ -46,14 +45,35 @@ export type UnidadeAcondicionamentoDigital = {
   status_fixidez?: string | null;
 };
 
+export type TipoMidiaArmazenamento = {
+  id: string;
+  nome: string;
+  descricao?: string | null;
+  tempo_duracao_anos: number;
+  periodicidade_checagem_meses: number;
+  ativo: boolean;
+  criado_em?: string | null;
+  atualizado_em?: string | null;
+};
+
 export type MidiaArmazenamento = {
   id: number;
   nome: string;
-  tipo: TipoMidiaArmazenamento;
+  tipo_midia_id: string;
+  tipo_midia?: TipoMidiaArmazenamento | null;
   descricao?: string | null;
   ativo: boolean;
+  data_aquisicao?: string | null;
+  data_inicio_uso?: string | null;
+  data_validade?: string | null;
+  ultima_checagem_integridade?: string | null;
+  proxima_checagem_integridade?: string | null;
+  capacidade_total_bytes?: number | null;
+  capacidade_utilizada_bytes?: number | null;
+  identificador_fisico?: string | null;
   id_posicao_armazenamento?: number | null;
   criado_em?: string | null;
+  atualizado_em?: string | null;
 };
 
 export type CopiaDigital = {
@@ -73,6 +93,17 @@ export type CopiaDigital = {
 export type EventoPreservacao = {
   id: number;
   id_unidade_acondicionamento: number;
+  tipo_evento: TipoEventoPreservacao;
+  resultado: ResultadoEventoPreservacao;
+  detalhe?: string | null;
+  agente?: string | null;
+  correlacao?: string | null;
+  criado_em?: string | null;
+};
+
+export type EventoMidiaArmazenamento = {
+  id: number;
+  id_midia_armazenamento: number;
   tipo_evento: TipoEventoPreservacao;
   resultado: ResultadoEventoPreservacao;
   detalhe?: string | null;

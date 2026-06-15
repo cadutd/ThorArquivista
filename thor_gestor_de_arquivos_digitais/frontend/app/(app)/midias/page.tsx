@@ -10,19 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MidiaForm } from "@/features/midias/midia-form";
 import { MidiasTable } from "@/features/midias/midias-table";
-import { listMidiasPage, type MidiaFilters } from "@/lib/api/domain";
-import type { TipoMidiaArmazenamento } from "@/types/domain";
+import { listMidiasPage, listTiposMidiaAtivos, type MidiaFilters } from "@/lib/api/domain";
 
 const DEFAULT_PAGE_SIZE = 20;
-
-const tipoOptions: Array<[TipoMidiaArmazenamento, string]> = [
-  ["FILESYSTEM", "Filesystem"],
-  ["NAS", "NAS"],
-  ["NFS", "NFS"],
-  ["LTO", "LTO"],
-  ["S3", "S3"],
-  ["CLOUD", "Cloud"],
-];
 
 export default function MidiasPage() {
   const [open, setOpen] = useState(false);
@@ -32,6 +22,10 @@ export default function MidiasPage() {
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
+  const tiposQuery = useQuery({
+    queryKey: ["tipos-midia", "ativos"],
+    queryFn: listTiposMidiaAtivos,
+  });
   const query = useQuery({
     queryKey: ["midias", filters, pageIndex, pageSize],
     queryFn: () =>
@@ -62,26 +56,28 @@ export default function MidiasPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-normal">Mídias de Armazenamento</h1>
+          <h1 className="text-2xl font-semibold tracking-normal">Midias de Armazenamento</h1>
           <p className="text-sm text-muted-foreground">
-            Repositórios, fitas, NAS e destinos cloud usados nas cópias digitais.
+            Repositorios, fitas, NAS e destinos cloud usados nas copias digitais.
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4" />
-              Nova mídia
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Nova mídia</DialogTitle>
-              <DialogDescription>Cadastre um destino de armazenamento.</DialogDescription>
-            </DialogHeader>
-            <MidiaForm onCreated={() => setOpen(false)} />
-          </DialogContent>
-        </Dialog>
+        <div className="flex flex-wrap gap-2">
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4" />
+                Nova midia
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-3xl">
+              <DialogHeader>
+                <DialogTitle>Nova midia</DialogTitle>
+                <DialogDescription>Cadastre um destino de armazenamento.</DialogDescription>
+              </DialogHeader>
+              <MidiaForm onCreated={() => setOpen(false)} />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
@@ -89,7 +85,7 @@ export default function MidiasPage() {
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
             className="pl-9"
-            placeholder="Buscar mídia"
+            placeholder="Buscar midia"
             value={draftFilters.q ?? ""}
             onChange={(event) => setDraftFilters((current) => ({ ...current, q: event.target.value }))}
             onKeyDown={(event) => {
@@ -125,16 +121,24 @@ export default function MidiasPage() {
         <div className="grid gap-3 rounded-md border p-4 md:grid-cols-2 xl:grid-cols-4">
           <SelectFilter
             label="Tipo"
-            value={draftFilters.tipo ?? ""}
-            onChange={(tipo) => setDraftFilters((current) => ({ ...current, tipo: tipo ? tipo as TipoMidiaArmazenamento : undefined }))}
+            value={draftFilters.tipo_midia_id ?? ""}
+            onChange={(tipo_midia_id) =>
+              setDraftFilters((current) => ({ ...current, tipo_midia_id: tipo_midia_id || undefined }))
+            }
           >
             <option value="">Todos</option>
-            {tipoOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            {(tiposQuery.data ?? []).map((tipo) => (
+              <option key={tipo.id} value={tipo.id}>
+                {tipo.nome}
+              </option>
+            ))}
           </SelectFilter>
           <SelectFilter
             label="Status"
             value={draftFilters.ativo === undefined ? "" : String(draftFilters.ativo)}
-            onChange={(ativo) => setDraftFilters((current) => ({ ...current, ativo: ativo === "" ? undefined : ativo === "true" }))}
+            onChange={(ativo) =>
+              setDraftFilters((current) => ({ ...current, ativo: ativo === "" ? undefined : ativo === "true" }))
+            }
           >
             <option value="">Todos</option>
             <option value="true">Ativa</option>
@@ -152,13 +156,11 @@ export default function MidiasPage() {
         </div>
       ) : null}
 
-      <div className="overflow-hidden rounded-md border">
-        {query.error ? (
-          <p className="p-6 text-sm text-destructive">{query.error.message}</p>
-        ) : (
-          <MidiasTable data={data} />
-        )}
-      </div>
+      {query.error ? (
+        <div className="rounded-md border p-6 text-sm text-destructive">{query.error.message}</div>
+      ) : (
+        <MidiasTable data={data} />
+      )}
 
       <PaginationControls
         currentPage={currentPage}
@@ -226,7 +228,7 @@ function PaginationControls({
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2">
       <p className="whitespace-nowrap text-sm text-muted-foreground">
-        {displayedCount} registros de {total} | página {currentPage} de {totalPages}
+        {displayedCount} registros de {total} | pagina {currentPage} de {totalPages}
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage <= 1} onClick={() => onPageChange(0)}>
@@ -247,13 +249,13 @@ function PaginationControls({
           ),
         )}
         <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage >= totalPages} onClick={() => onPageChange(currentPage)}>
-          Próxima
+          Proxima
         </Button>
         <Button type="button" variant="outline" size="sm" disabled={isLoading || currentPage >= totalPages} onClick={() => onPageChange(totalPages - 1)}>
-          Última
+          Ultima
         </Button>
         <Label htmlFor="midias-page-size" className="text-sm text-muted-foreground">
-          Por página:
+          Por pagina:
         </Label>
         <select
           id="midias-page-size"

@@ -26,3 +26,8 @@ from app.schemas.evento_preservacao import (  # noqa: F401
     EventoPreservacaoCreate,
     EventoPreservacaoOut,
 )
+
+from app.schemas.evento_midia_armazenamento import (  # noqa: F401
+    EventoMidiaArmazenamentoCreate,
+    EventoMidiaArmazenamentoOut,
+)

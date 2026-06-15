@@ -1,11 +1,32 @@
 # app/models/midia_armazenamento.py
 from __future__ import annotations
 
-from sqlalchemy import String, Boolean, DateTime, Enum as SAEnum, ForeignKey, func
+import uuid
+
+from sqlalchemy import BigInteger, Boolean, Date, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
-from app.models.enums import TipoMidiaArmazenamento
+
+
+class TipoMidiaArmazenamento(Base):
+    __tablename__ = "tipos_midia_armazenamento"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    nome: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    descricao: Mapped[str | None] = mapped_column(Text)
+    tempo_duracao_anos: Mapped[int] = mapped_column(Integer)
+    periodicidade_checagem_meses: Mapped[int] = mapped_column(Integer)
+    ativo: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true", index=True)
+    criado_em: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    atualizado_em: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    midias = relationship("MidiaArmazenamento", back_populates="tipo_midia")
 
 
 class MidiaArmazenamento(Base):
@@ -14,17 +35,26 @@ class MidiaArmazenamento(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
 
     nome: Mapped[str] = mapped_column(String(255), unique=True, index=True)
-    tipo: Mapped[TipoMidiaArmazenamento] = mapped_column(
-        SAEnum(
-            TipoMidiaArmazenamento,
-            name="tipo_midia_armazenamento",
-            create_type=False,
-        ),
+
+    tipo_midia_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("tipos_midia_armazenamento.id", ondelete="RESTRICT"),
         index=True,
     )
 
     descricao: Mapped[str | None] = mapped_column(String(2000))
     ativo: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+    data_aquisicao: Mapped[Date | None] = mapped_column(Date)
+    data_inicio_uso: Mapped[Date | None] = mapped_column(Date)
+    data_validade: Mapped[Date | None] = mapped_column(Date, index=True)
+    ultima_checagem_integridade: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True))
+    proxima_checagem_integridade: Mapped[DateTime | None] = mapped_column(
+        DateTime(timezone=True),
+        index=True,
+    )
+    capacidade_total_bytes: Mapped[int | None] = mapped_column(BigInteger)
+    capacidade_utilizada_bytes: Mapped[int | None] = mapped_column(BigInteger)
+    identificador_fisico: Mapped[str | None] = mapped_column(String(255))
 
     id_posicao_armazenamento: Mapped[int | None] = mapped_column(
         ForeignKey("posicoes_armazenamento.id", ondelete="SET NULL"),
@@ -35,10 +65,21 @@ class MidiaArmazenamento(Base):
     criado_em: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+    atualizado_em: Mapped[DateTime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+    tipo_midia = relationship("TipoMidiaArmazenamento", back_populates="midias")
 
     copias = relationship(
         "CopiaUnidadeAcondicionamentoDigital",
         back_populates="midia",
+    )
+
+    eventos = relationship(
+        "EventoMidiaArmazenamento",
     )
 
     posicao_armazenamento = relationship(

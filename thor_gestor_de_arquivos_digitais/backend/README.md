@@ -5,9 +5,10 @@ API do Thor Gestor de Arquivos Digitais, implementada em FastAPI com PostgreSQL,
 ## Responsabilidades
 
 - Gerenciar unidades de acondicionamento físicas, digitais e híbridas.
-- Gerenciar mídias de armazenamento.
+- Gerenciar tipos e mídias de armazenamento, incluindo validade e periodicidade de checagem.
 - Registrar cópias digitais associadas a unidades.
 - Registrar eventos de preservação.
+- Registrar eventos PREMIS próprios de mídias de armazenamento.
 - Gerenciar endereçamento de armazenamento físico e lógico.
 - Gerar topografia de armazenamento.
 - Atribuir posições a unidades, mídias e cópias digitais.
@@ -68,6 +69,8 @@ Todas as rotas abaixo ficam sob `/api/v1`.
 | Dashboard | `/dashboard` | Indicadores agregados |
 | Unidades | `/unidades-acondicionamento` | CRUD, filtros e paginação |
 | Mídias | `/midias-armazenamento` | Cadastro, filtros e paginação |
+| Tipos de mídia | `/tipos-midia-armazenamento` | CRUD, ativação/desativação e parâmetros de ciclo de vida |
+| Eventos de mídia | `/midias-armazenamento/{id}/eventos-preservacao` | Eventos PREMIS vinculados diretamente à mídia |
 | Cópias digitais | `/unidades-acondicionamento/{id}/copias` | Cópias por unidade |
 | Eventos | `/unidades-acondicionamento/{id}/eventos-preservacao` | Eventos por unidade |
 | Locais de guarda | `/locais-guarda` | CRUD lógico com exclusão por inativação |
@@ -81,6 +84,10 @@ Todas as rotas abaixo ficam sob `/api/v1`.
 | Fichas espelho | `/fichas-espelho` | Modelos e geração de fichas para impressão |
 
 O endpoint `/dashboard` calcula os totais diretamente no banco, evitando contagens incorretas causadas por listagens paginadas.
+
+O cadastro de mídias usa `tipo_midia_id` para vincular cada mídia a um tipo cadastrado em `/tipos-midia-armazenamento`. Cada tipo define `tempo_duracao_anos` e `periodicidade_checagem_meses`; quando `data_validade` ou `proxima_checagem_integridade` não são informadas manualmente, o serviço calcula esses valores a partir da aquisição/início de uso e da última checagem disponível.
+
+Eventos de mídia são armazenados em tabela secundária própria (`eventos_midia_armazenamento`), separada dos eventos de unidade (`eventos_preservacao`). Criação e atualização de mídia registram eventos automaticamente e preenchem `agente` com o usuário autenticado a partir dos claims Keycloak `name`, `preferred_username`, `email` ou `sub`, nessa ordem. Também é possível registrar eventos manualmente via `POST /midias-armazenamento/{id}/eventos-preservacao`.
 
 Rotas principais de instrumentos de pesquisa:
 
@@ -295,6 +302,10 @@ A migration `000002_storage_locations` adiciona:
 - `movimentacoes_armazenamento`;
 - vínculo opcional `id_posicao_armazenamento` em unidades, mídias e cópias digitais.
 
+A migration `20260614_000024_tipos_midia_lifecycle` cria `tipos_midia_armazenamento`, migra os valores legados do enum de mídias para a nova tabela, substitui a coluna antiga por `tipo_midia_id` e adiciona campos de validade, checagem, capacidade e identificador físico.
+
+A migration `20260615_000025_eventos_midia_armazenamento` cria `eventos_midia_armazenamento`, uma tabela secundária para eventos PREMIS ligados diretamente a `midias_armazenamento`.
+
 Migrations do módulo de admissão:
 
 - `20260517_000016_admissao`: cria processos de admissão, reuniões, acordos, sessões, SIPs, relações SIP/AIP e eventos.
@@ -342,7 +353,7 @@ Massa de mídias de armazenamento:
 docker compose exec backend python -m app.scripts.seed_midias_armazenamento
 ```
 
-O script é idempotente e cria/atualiza 72 mídias de teste, distribuídas entre os tipos `FILESYSTEM`, `NAS`, `NFS`, `LTO`, `S3` e `CLOUD`, com status ativo/inativo. Ele serve para validar filtros, paginação e lazy load em `/midias`.
+O script é idempotente e cria/atualiza os tipos iniciais `FILESYSTEM`, `NAS`, `NFS`, `LTO`, `S3` e `CLOUD` quando necessário. Em seguida cria/atualiza 72 mídias de teste vinculadas a esses tipos, com status ativo/inativo, para validar filtros, paginação e lazy load em `/midias`.
 
 Massa de instrumentos de pesquisa:
 

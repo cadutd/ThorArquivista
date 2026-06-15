@@ -85,6 +85,7 @@ const navigation: NavigationItem[] = [
       { href: "/usuarios", label: "Gestão de Usuários", icon: Users },
       { href: "/perfis", label: "Perfis", icon: ShieldCheck },
       { href: "/permissoes", label: "Permissões", icon: KeyRound },
+      { href: "/admin/tipos-midia", label: "Tipos de Mídia", icon: HardDrive },
       { href: "/eventos", label: "Eventos", icon: Boxes },
     ],
   },
