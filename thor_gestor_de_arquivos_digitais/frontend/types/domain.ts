@@ -5,7 +5,10 @@ export type StatusUnidade = "ATIVA" | "INATIVA" | "TRANSFERIDA" | "ELIMINADA";
 export type FuncaoCopia = "PRESERVACAO" | "BACKUP" | "ACESSO" | "QUARENTENA";
 export type StatusCopia = "ATIVA" | "INDISPONIVEL" | "CORROMPIDA" | "EM_VERIFICACAO";
 export type TipoEventoPreservacao = "INGESTAO" | "VALIDACAO" | "FIXIDEZ" | "REPLICACAO" | "MIGRACAO" | "ACESSO" | "MOVIMENTACAO" | "OUTRO";
+export type TipoEventoMidiaArmazenamento = "CRIACAO_MIDIA" | "ATUALIZACAO_MIDIA" | "REATIVACAO_MIDIA" | "CHECAGEM_MIDIA" | "MIGRACAO_MIDIA" | "DESATIVACAO_MIDIA" | "VALIDADE_EXPIRADA" | "FALHA_INTEGRIDADE" | "ALERTA_INTEGRIDADE";
 export type ResultadoEventoPreservacao = "SUCESSO" | "FALHA" | "ALERTA" | "INDETERMINADO";
+export type StatusMidiaArmazenamento = "ATIVA" | "EM_VERIFICACAO" | "COM_ALERTA" | "FALHA_INTEGRIDADE" | "EXPIRADA" | "EM_MIGRACAO" | "MIGRADA" | "DESATIVADA" | "PERDIDA";
+export type StatusMigracaoMidia = "PLANEJADA" | "EM_EXECUCAO" | "AGUARDANDO_VALIDACAO" | "CONCLUIDA" | "CANCELADA";
 export type TipoInstrumentoPesquisa = "GUIA" | "INVENTARIO" | "CATALOGO" | "INDICE" | "BASE_TEMATICA" | "EXPOSICAO" | "OUTRO";
 export type StatusInstrumentoPesquisa = "RASCUNHO" | "PUBLICADO" | "ARQUIVADO";
 export type VisibilidadeInstrumentoPesquisa = "INTERNO" | "PUBLICO" | "RESTRITO";
@@ -63,6 +66,7 @@ export type MidiaArmazenamento = {
   tipo_midia?: TipoMidiaArmazenamento | null;
   descricao?: string | null;
   ativo: boolean;
+  status: StatusMidiaArmazenamento;
   data_aquisicao?: string | null;
   data_inicio_uso?: string | null;
   data_validade?: string | null;
@@ -71,9 +75,36 @@ export type MidiaArmazenamento = {
   capacidade_total_bytes?: number | null;
   capacidade_utilizada_bytes?: number | null;
   identificador_fisico?: string | null;
+  midia_origem_id?: number | null;
+  data_desativacao?: string | null;
+  motivo_desativacao?: string | null;
   id_posicao_armazenamento?: number | null;
   criado_em?: string | null;
   atualizado_em?: string | null;
+};
+
+export type MigracaoMidia = {
+  id: string;
+  midia_origem_id: number;
+  midia_destino_id: number;
+  data_inicio: string;
+  data_conclusao?: string | null;
+  usuario_responsavel_id?: string | null;
+  status: StatusMigracaoMidia;
+  motivo_migracao: string;
+  procedimento_utilizado: string;
+  software_utilizado?: string | null;
+  versao_software?: string | null;
+  observacoes?: string | null;
+  relatorio_integridade_origem?: string | null;
+  relatorio_integridade_destino?: string | null;
+  evento_id?: number | null;
+  etapas: Array<Record<string, unknown>>;
+  relatorios: Array<Record<string, unknown>>;
+  criado_em?: string | null;
+  atualizado_em?: string | null;
+  midia_origem?: MidiaArmazenamento | null;
+  midia_destino?: MidiaArmazenamento | null;
 };
 
 export type CopiaDigital = {
@@ -104,11 +135,14 @@ export type EventoPreservacao = {
 export type EventoMidiaArmazenamento = {
   id: number;
   id_midia_armazenamento: number;
-  tipo_evento: TipoEventoPreservacao;
+  tipo_evento: TipoEventoMidiaArmazenamento;
   resultado: ResultadoEventoPreservacao;
+  data_evento?: string | null;
   detalhe?: string | null;
   agente?: string | null;
   correlacao?: string | null;
+  premis_json?: Record<string, unknown> | null;
+  evento_relacionado_id?: number | null;
   criado_em?: string | null;
 };
 

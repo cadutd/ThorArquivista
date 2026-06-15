@@ -8,9 +8,10 @@ from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
-from app.models.enums import ResultadoEventoPreservacao, TipoEventoPreservacao
+from app.models.enums import ResultadoEventoPreservacao, StatusMidiaArmazenamento, TipoEventoMidiaArmazenamento
 from app.models.evento_midia_armazenamento import EventoMidiaArmazenamento
 from app.models.midia_armazenamento import MidiaArmazenamento, TipoMidiaArmazenamento
+from app.services.evento_midia_armazenamento_service import EventoMidiaArmazenamentoService
 from app.schemas.midia_armazenamento import (
     MidiaArmazenamentoCreate,
     MidiaArmazenamentoUpdate,
@@ -166,15 +167,25 @@ class MidiaArmazenamentoService:
         midia_id: int,
         detalhe: str,
         agente: str | None,
-        tipo_evento: TipoEventoPreservacao = TipoEventoPreservacao.OUTRO,
+        tipo_evento: TipoEventoMidiaArmazenamento,
     ) -> None:
+        data_evento = datetime.now(timezone.utc)
         db.add(
             EventoMidiaArmazenamento(
                 id_midia_armazenamento=midia_id,
                 tipo_evento=tipo_evento,
                 resultado=ResultadoEventoPreservacao.SUCESSO,
+                data_evento=data_evento,
                 detalhe=detalhe,
                 agente=agente,
+                premis_json=EventoMidiaArmazenamentoService.montar_premis_json(
+                    midia_id=midia_id,
+                    tipo_evento=tipo_evento,
+                    resultado=ResultadoEventoPreservacao.SUCESSO,
+                    data_evento=data_evento,
+                    detalhe=detalhe,
+                    agente=agente,
+                ),
             )
         )
 
@@ -196,6 +207,7 @@ class MidiaArmazenamentoService:
                 midia.id,
                 "Midia de armazenamento cadastrada.",
                 agente,
+                TipoEventoMidiaArmazenamento.CRIACAO_MIDIA,
             )
             db.commit()
         except IntegrityError:
@@ -215,23 +227,43 @@ class MidiaArmazenamentoService:
         if not midia:
             return None
         payload = dados.model_dump(exclude_unset=True)
+        ativo_anterior = midia.ativo
         tipo = None
         if "tipo_midia_id" in payload:
             tipo = MidiaArmazenamentoService._tipo_ativo(db, payload["tipo_midia_id"])
         for campo, valor in payload.items():
             setattr(midia, campo, valor)
+        if "ativo" in payload and "status" not in payload:
+            midia.status = (
+                StatusMidiaArmazenamento.ATIVA
+                if payload["ativo"]
+                else StatusMidiaArmazenamento.DESATIVADA
+            )
+        if "status" in payload and "ativo" not in payload:
+            midia.ativo = payload["status"] not in {
+                StatusMidiaArmazenamento.DESATIVADA,
+                StatusMidiaArmazenamento.MIGRADA,
+                StatusMidiaArmazenamento.PERDIDA,
+            }
         if tipo is None:
             tipo = db.get(TipoMidiaArmazenamento, midia.tipo_midia_id)
         if tipo:
             MidiaArmazenamentoService._aplicar_calculos(midia, tipo)
         try:
             if payload:
+                tipo_evento = TipoEventoMidiaArmazenamento.ATUALIZACAO_MIDIA
+                if "ativo" in payload:
+                    if payload["ativo"] is False and ativo_anterior:
+                        tipo_evento = TipoEventoMidiaArmazenamento.DESATIVACAO_MIDIA
+                    elif payload["ativo"] is True and not ativo_anterior:
+                        tipo_evento = TipoEventoMidiaArmazenamento.REATIVACAO_MIDIA
                 campos = ", ".join(sorted(payload.keys()))
                 MidiaArmazenamentoService._adicionar_evento(
                     db,
                     midia.id,
                     f"Midia de armazenamento atualizada. Campos alterados: {campos}.",
                     agente,
+                    tipo_evento,
                 )
             db.commit()
         except IntegrityError:

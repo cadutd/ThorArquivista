@@ -1,13 +1,15 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Edit } from "lucide-react";
+import { ArrowLeft, ArrowRightLeft, Edit, FileJson } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MidiaForm } from "@/features/midias/midia-form";
 import { getMidia, listEventosMidia } from "@/lib/api/domain";
@@ -36,6 +38,14 @@ export function MidiaViewPage({ midiaId }: { midiaId: number }) {
         <div className="flex flex-wrap gap-2">
           {midia ? (
             <Button asChild variant="outline">
+              <Link href={`/midias/${midia.id}/migrar`}>
+                <ArrowRightLeft className="h-4 w-4" />
+                Migrar midia
+              </Link>
+            </Button>
+          ) : null}
+          {midia ? (
+            <Button asChild variant="outline">
               <Link href={`/midias/${midia.id}/editar`}>
                 <Edit className="h-4 w-4" />
                 Editar
@@ -51,45 +61,54 @@ export function MidiaViewPage({ midiaId }: { midiaId: number }) {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{midia?.nome ?? "Midia de armazenamento"}</CardTitle>
-          <CardDescription>
-            {query.isLoading
-              ? "Carregando dados da midia."
-              : midia
-                ? midia.tipo_midia?.nome ?? "Tipo nao informado"
-                : "Midia nao encontrada."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {query.isLoading ? (
-            <p className="text-sm text-muted-foreground">Carregando midia...</p>
-          ) : query.error ? (
-            <p className="text-sm text-destructive">{query.error.message}</p>
-          ) : midia ? (
-            <MidiaDetails midia={midia} />
-          ) : (
-            <p className="text-sm text-muted-foreground">Midia nao encontrada.</p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Eventos da midia</CardTitle>
-          <CardDescription>Eventos de preservacao registrados diretamente sobre esta midia.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {eventosQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground">Carregando eventos...</p>
-          ) : eventosQuery.error ? (
-            <p className="text-sm text-destructive">{eventosQuery.error.message}</p>
-          ) : (
-            <EventosMidiaTable data={eventosQuery.data ?? []} />
-          )}
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="dados">
+        <TabsList>
+          <TabsTrigger value="dados">Dados</TabsTrigger>
+          <TabsTrigger value="historico">Historico de eventos</TabsTrigger>
+        </TabsList>
+        <TabsContent value="dados">
+          <Card>
+            <CardHeader>
+              <CardTitle>{midia?.nome ?? "Midia de armazenamento"}</CardTitle>
+              <CardDescription>
+                {query.isLoading
+                  ? "Carregando dados da midia."
+                  : midia
+                    ? midia.tipo_midia?.nome ?? "Tipo nao informado"
+                    : "Midia nao encontrada."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {query.isLoading ? (
+                <p className="text-sm text-muted-foreground">Carregando midia...</p>
+              ) : query.error ? (
+                <p className="text-sm text-destructive">{query.error.message}</p>
+              ) : midia ? (
+                <MidiaDetails midia={midia} />
+              ) : (
+                <p className="text-sm text-muted-foreground">Midia nao encontrada.</p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="historico">
+          <Card>
+            <CardHeader>
+              <CardTitle>Historico de eventos</CardTitle>
+              <CardDescription>Eventos PREMIS registrados diretamente sobre esta midia.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {eventosQuery.isLoading ? (
+                <p className="text-sm text-muted-foreground">Carregando eventos...</p>
+              ) : eventosQuery.error ? (
+                <p className="text-sm text-destructive">{eventosQuery.error.message}</p>
+              ) : (
+                <EventosMidiaTable data={eventosQuery.data ?? []} />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
@@ -143,7 +162,7 @@ function MidiaDetails({ midia }: { midia: MidiaArmazenamento }) {
     ["ID", midia.id],
     ["Nome", midia.nome],
     ["Tipo", midia.tipo_midia?.nome ?? "-"],
-    ["Status", <StatusBadge key="status" value={midia.ativo ? "ATIVA" : "INATIVA"} />],
+    ["Status", <StatusBadge key="status" value={midia.status ?? (midia.ativo ? "ATIVA" : "DESATIVADA")} />],
     ["Descricao", midia.descricao || "-"],
     ["Aquisicao", formatDate(midia.data_aquisicao)],
     ["Inicio de uso", formatDate(midia.data_inicio_uso)],
@@ -153,6 +172,9 @@ function MidiaDetails({ midia }: { midia: MidiaArmazenamento }) {
     ["Capacidade total", formatBytes(midia.capacidade_total_bytes)],
     ["Capacidade utilizada", formatBytes(midia.capacidade_utilizada_bytes)],
     ["Identificador fisico", midia.identificador_fisico || "-"],
+    ["Midia de origem", midia.midia_origem_id ? <Link key="origem" href={`/midias/${midia.midia_origem_id}`} className="text-primary hover:underline">{midia.midia_origem_id}</Link> : "-"],
+    ["Data de desativacao", formatDateTime(midia.data_desativacao)],
+    ["Motivo de desativacao", midia.motivo_desativacao || "-"],
     ["Posicao de armazenamento", midia.id_posicao_armazenamento ?? "-"],
     ["Criado em", formatDateTime(midia.criado_em)],
     ["Atualizado em", formatDateTime(midia.atualizado_em)],
@@ -180,22 +202,39 @@ function EventosMidiaTable({ data }: { data: EventoMidiaArmazenamento[] }) {
             <TableHead>Tipo</TableHead>
             <TableHead>Resultado</TableHead>
             <TableHead>Agente</TableHead>
-            <TableHead>Correlacao</TableHead>
             <TableHead>Detalhe</TableHead>
+            <TableHead>PREMIS</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {data.length ? (
             data.map((evento) => (
               <TableRow key={evento.id}>
-                <TableCell>{formatDateTime(evento.criado_em)}</TableCell>
+                <TableCell>{formatDateTime(evento.data_evento ?? evento.criado_em)}</TableCell>
                 <TableCell>{evento.tipo_evento}</TableCell>
                 <TableCell>
                   <StatusBadge value={evento.resultado} />
                 </TableCell>
                 <TableCell>{evento.agente || "-"}</TableCell>
-                <TableCell>{evento.correlacao || "-"}</TableCell>
                 <TableCell className="max-w-md">{evento.detalhe || "-"}</TableCell>
+                <TableCell>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="icon" title="Visualizar JSON PREMIS" aria-label="Visualizar JSON PREMIS">
+                        <FileJson className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-3xl">
+                      <DialogHeader>
+                        <DialogTitle>JSON PREMIS</DialogTitle>
+                        <DialogDescription>Estrutura PREMIS registrada para o evento {evento.id}.</DialogDescription>
+                      </DialogHeader>
+                      <pre className="max-h-[60vh] overflow-auto rounded-md bg-muted p-3 text-xs">
+                        {JSON.stringify(evento.premis_json ?? {}, null, 2)}
+                      </pre>
+                    </DialogContent>
+                  </Dialog>
+                </TableCell>
               </TableRow>
             ))
           ) : (

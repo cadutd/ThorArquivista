@@ -12,6 +12,7 @@ from app.api.v1.armazenamento import router as armazenamento_router
 from app.api.v1.descricao_arquivistica import router as descricao_arquivistica_router
 from app.api.v1.unidades_acondicionamento import router as unidades_router
 from app.api.v1.midias_armazenamento import router as midias_router
+from app.api.v1.migracoes_midias import router as migracoes_midias_router
 from app.api.v1.tipos_midia_armazenamento import router as tipos_midia_router
 from app.api.v1.copias_unidades_acondicionamento_digitais import router as copias_router
 from app.api.v1.eventos_preservacao import router as eventos_router
@@ -79,6 +80,13 @@ api_router.include_router(
     midias_router,
     prefix="/midias-armazenamento",
     tags=["midias-armazenamento"],
+    dependencies=protecoes,
+)
+
+api_router.include_router(
+    migracoes_midias_router,
+    prefix="/migracoes-midias",
+    tags=["migracoes-midias"],
     dependencies=protecoes,
 )
 

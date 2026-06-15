@@ -71,6 +71,8 @@ Todas as rotas abaixo ficam sob `/api/v1`.
 | Mídias | `/midias-armazenamento` | Cadastro, filtros e paginação |
 | Tipos de mídia | `/tipos-midia-armazenamento` | CRUD, ativação/desativação e parâmetros de ciclo de vida |
 | Eventos de mídia | `/midias-armazenamento/{id}/eventos-preservacao` | Eventos PREMIS vinculados diretamente à mídia |
+| Início de migração | `/midias-armazenamento/{id}/migrar` | Cria mídia destino e registra processo de migração |
+| Migrações de mídia | `/migracoes-midias` | Consulta, atualização, etapas, relatórios e conclusão |
 | Cópias digitais | `/unidades-acondicionamento/{id}/copias` | Cópias por unidade |
 | Eventos | `/unidades-acondicionamento/{id}/eventos-preservacao` | Eventos por unidade |
 | Locais de guarda | `/locais-guarda` | CRUD lógico com exclusão por inativação |
@@ -87,7 +89,9 @@ O endpoint `/dashboard` calcula os totais diretamente no banco, evitando contage
 
 O cadastro de mídias usa `tipo_midia_id` para vincular cada mídia a um tipo cadastrado em `/tipos-midia-armazenamento`. Cada tipo define `tempo_duracao_anos` e `periodicidade_checagem_meses`; quando `data_validade` ou `proxima_checagem_integridade` não são informadas manualmente, o serviço calcula esses valores a partir da aquisição/início de uso e da última checagem disponível.
 
-Eventos de mídia são armazenados em tabela secundária própria (`eventos_midia_armazenamento`), separada dos eventos de unidade (`eventos_preservacao`). Criação e atualização de mídia registram eventos automaticamente e preenchem `agente` com o usuário autenticado a partir dos claims Keycloak `name`, `preferred_username`, `email` ou `sub`, nessa ordem. Também é possível registrar eventos manualmente via `POST /midias-armazenamento/{id}/eventos-preservacao`.
+Eventos de mídia são armazenados em tabela secundária própria (`eventos_midia_armazenamento`), separada dos eventos de unidade (`eventos_preservacao`). Criação, atualização, ativação/desativação, reativação e migração de mídia registram eventos automaticamente e preenchem `agente` com o usuário autenticado a partir dos claims Keycloak `name`, `preferred_username`, `email` ou `sub`, nessa ordem. Também é possível registrar eventos manualmente via `POST /midias-armazenamento/{id}/eventos-preservacao`.
+
+O ciclo de migração usa a tabela `migracoes_midias`. `POST /midias-armazenamento/{id}/migrar` cria a mídia destino, vincula `midia_origem_id`, coloca origem e destino em `EM_MIGRACAO` e registra evento PREMIS `MIGRACAO_MIDIA`. As rotas de `/migracoes-midias/{id}/etapas`, `/relatorios` e `/concluir` permitem registrar execução, evidências, relatórios e conclusão. Ao concluir com sucesso, a origem fica `MIGRADA` e inativa, com `data_desativacao` e `motivo_desativacao`, e o destino passa para `ATIVA`.
 
 Rotas principais de instrumentos de pesquisa:
 
@@ -305,6 +309,8 @@ A migration `000002_storage_locations` adiciona:
 A migration `20260614_000024_tipos_midia_lifecycle` cria `tipos_midia_armazenamento`, migra os valores legados do enum de mídias para a nova tabela, substitui a coluna antiga por `tipo_midia_id` e adiciona campos de validade, checagem, capacidade e identificador físico.
 
 A migration `20260615_000025_eventos_midia_armazenamento` cria `eventos_midia_armazenamento`, uma tabela secundária para eventos PREMIS ligados diretamente a `midias_armazenamento`.
+
+A migration `20260615_000026_eventos_midia_premis` adiciona campos PREMIS, data do evento e vínculo entre eventos de mídia. A migration `20260615_000027_evento_reativacao_midia` adiciona o evento `REATIVACAO_MIDIA`. A migration `20260615_000028_migracao_midias` adiciona status de ciclo de vida em mídias, campos de origem/desativação e a tabela `migracoes_midias`.
 
 Migrations do módulo de admissão:
 

@@ -59,9 +59,9 @@ export function MidiasTable({ data }: { data: MidiaArmazenamento[] }) {
         cell: ({ row }) => formatDate(row.original.proxima_checagem_integridade),
       },
       {
-        accessorKey: "ativo",
+        accessorKey: "status",
         header: "Status",
-        cell: ({ row }) => <StatusBadge value={row.original.ativo ? "ATIVA" : "INATIVA"} />,
+        cell: ({ row }) => <StatusBadge value={row.original.status ?? (row.original.ativo ? "ATIVA" : "DESATIVADA")} />,
       },
       {
         accessorKey: "descricao",

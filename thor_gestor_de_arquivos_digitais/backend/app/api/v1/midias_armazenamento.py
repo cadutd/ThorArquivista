@@ -13,6 +13,7 @@ from app.schemas.midia_armazenamento import (
     MidiaArmazenamentoPage,
     MidiaArmazenamentoUpdate,
 )
+from app.schemas.migracao_midia import MigracaoMidiaIniciar, MigracaoMidiaOut
 from app.schemas.evento_midia_armazenamento import (
     EventoMidiaArmazenamentoCreate,
     EventoMidiaArmazenamentoOut,
@@ -23,6 +24,7 @@ from app.services.evento_midia_armazenamento_service import (
 from app.services.midia_armazenamento_service import (
     MidiaArmazenamentoService,
 )
+from app.services.migracao_midia_service import MigracaoMidiaService
 
 router = APIRouter()
 
@@ -113,6 +115,11 @@ def atualizar_midia_armazenamento(
 
 
 @router.post(
+    "/{midia_id}/eventos",
+    response_model=EventoMidiaArmazenamentoOut,
+    status_code=status.HTTP_201_CREATED,
+)
+@router.post(
     "/{midia_id}/eventos-preservacao",
     response_model=EventoMidiaArmazenamentoOut,
     status_code=status.HTTP_201_CREATED,
@@ -138,6 +145,37 @@ def registrar_evento_preservacao_midia(
         )
 
 
+@router.post(
+    "/{midia_id}/migrar",
+    response_model=MigracaoMidiaOut,
+    status_code=status.HTTP_201_CREATED,
+)
+def iniciar_migracao_midia(
+    midia_id: int,
+    dados: MigracaoMidiaIniciar,
+    db: Session = Depends(db_dep),
+    claims: dict = Depends(get_current_user_claims),
+):
+    try:
+        return MigracaoMidiaService.iniciar_migracao(
+            db,
+            midia_id,
+            dados,
+            usuario_id=_nome_usuario_claims(claims),
+        )
+    except LookupError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+
+
+@router.get("/{midia_id}/eventos", response_model=list[EventoMidiaArmazenamentoOut])
 @router.get("/{midia_id}/eventos-preservacao", response_model=list[EventoMidiaArmazenamentoOut])
 def listar_eventos_preservacao_midia(
     midia_id: int,
@@ -159,6 +197,10 @@ def listar_eventos_preservacao_midia(
         )
 
 
+@router.get(
+    "/{midia_id}/eventos/{evento_id}",
+    response_model=EventoMidiaArmazenamentoOut,
+)
 @router.get(
     "/{midia_id}/eventos-preservacao/{evento_id}",
     response_model=EventoMidiaArmazenamentoOut,

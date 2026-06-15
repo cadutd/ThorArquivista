@@ -8,8 +8,11 @@ import type {
   InstrumentoPesquisa,
   InstrumentoRegistro,
   InstrumentoRegistroPage,
+  MigracaoMidia,
   StatusInstrumentoRegistro,
   MidiaArmazenamento,
+  StatusMigracaoMidia,
+  StatusMidiaArmazenamento,
   StatusInstrumentoPesquisa,
   TipoCampoInstrumento,
   TipoInstrumentoPesquisa,
@@ -64,6 +67,7 @@ export type MidiaPayload = {
   tipo_midia_id: string;
   descricao?: string | null;
   ativo?: boolean;
+  status?: StatusMidiaArmazenamento;
   data_aquisicao?: string | null;
   data_inicio_uso?: string | null;
   data_validade?: string | null;
@@ -72,6 +76,9 @@ export type MidiaPayload = {
   capacidade_total_bytes?: number | null;
   capacidade_utilizada_bytes?: number | null;
   identificador_fisico?: string | null;
+  midia_origem_id?: number | null;
+  data_desativacao?: string | null;
+  motivo_desativacao?: string | null;
 };
 
 export type MidiaFilters = Partial<{
@@ -158,6 +165,53 @@ export type MidiaPage = {
   total: number;
   limit: number;
   offset: number;
+};
+
+export type MigracaoMidiaPage = {
+  items: MigracaoMidia[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export type MigracaoMidiaIniciarPayload = {
+  nova_midia: MidiaPayload;
+  motivo_migracao: string;
+  procedimento_utilizado: string;
+  software_utilizado?: string | null;
+  versao_software?: string | null;
+  observacoes?: string | null;
+};
+
+export type MigracaoMidiaEtapaPayload = {
+  descricao: string;
+  resultado?: string | null;
+  data?: string | null;
+  evidencias?: Record<string, unknown> | null;
+};
+
+export type MigracaoMidiaRelatorioPayload = {
+  tipo: string;
+  referencia: string;
+  descricao?: string | null;
+};
+
+export type MigracaoMidiaConclusaoPayload = {
+  resultado: StatusMigracaoMidia;
+  observacoes?: string | null;
+  relatorio_integridade_origem?: string | null;
+  relatorio_integridade_destino?: string | null;
+};
+
+export type MigracaoMidiaUpdatePayload = {
+  status?: StatusMigracaoMidia | null;
+  motivo_migracao?: string | null;
+  procedimento_utilizado?: string | null;
+  software_utilizado?: string | null;
+  versao_software?: string | null;
+  observacoes?: string | null;
+  relatorio_integridade_origem?: string | null;
+  relatorio_integridade_destino?: string | null;
 };
 
 export type TipoMidiaPage = {
@@ -500,8 +554,57 @@ export function updateMidia(id: number, payload: Partial<MidiaPayload>) {
 
 export function listEventosMidia(id: number) {
   return apiRequest<EventoMidiaArmazenamento[]>(
-    `/midias-armazenamento/${id}/eventos-preservacao`,
+    `/midias-armazenamento/${id}/eventos`,
   );
+}
+
+export function iniciarMigracaoMidia(id: number, payload: MigracaoMidiaIniciarPayload) {
+  return apiRequest<MigracaoMidia>(`/midias-armazenamento/${id}/migrar`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function listMigracoesMidias({
+  limit = 50,
+  offset = 0,
+}: {
+  limit?: number;
+  offset?: number;
+} = {}) {
+  return apiRequest<MigracaoMidiaPage>(`/migracoes-midias${queryString({ limit, offset })}`);
+}
+
+export function getMigracaoMidia(id: string) {
+  return apiRequest<MigracaoMidia>(`/migracoes-midias/${id}`);
+}
+
+export function updateMigracaoMidia(id: string, payload: MigracaoMidiaUpdatePayload) {
+  return apiRequest<MigracaoMidia>(`/migracoes-midias/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function registrarEtapaMigracaoMidia(id: string, payload: MigracaoMidiaEtapaPayload) {
+  return apiRequest<MigracaoMidia>(`/migracoes-midias/${id}/etapas`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function anexarRelatorioMigracaoMidia(id: string, payload: MigracaoMidiaRelatorioPayload) {
+  return apiRequest<MigracaoMidia>(`/migracoes-midias/${id}/relatorios`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function concluirMigracaoMidia(id: string, payload: MigracaoMidiaConclusaoPayload) {
+  return apiRequest<MigracaoMidia>(`/migracoes-midias/${id}/concluir`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function listTiposMidiaPage({

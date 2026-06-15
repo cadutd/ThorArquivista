@@ -146,6 +146,7 @@ PostgreSQL é o banco transacional do sistema. Ele armazena entidades que depend
 - unidades digitais;
 - mídias de armazenamento;
 - tipos de mídia de armazenamento e ciclo de vida das mídias;
+- migrações de mídias de armazenamento;
 - cópias digitais;
 - eventos de preservação;
 - eventos próprios de mídias de armazenamento;
@@ -764,6 +765,8 @@ Rotas principais sob `/api/v1`:
 | `/midias-armazenamento` | Cadastro, filtros e paginação de mídias |
 | `/tipos-midia-armazenamento` | CRUD de tipos de mídia e parâmetros de ciclo de vida |
 | `/midias-armazenamento/{id}/eventos-preservacao` | Eventos PREMIS registrados diretamente sobre uma mídia |
+| `/midias-armazenamento/{id}/migrar` | Inicia migração da mídia para uma nova mídia destino |
+| `/migracoes-midias` | Consulta, atualização, etapas, relatórios e conclusão de migrações |
 | `/unidades-acondicionamento/{id}/copias` | Cópias digitais de uma unidade |
 | `/unidades-acondicionamento/{id}/eventos-preservacao` | Eventos de preservação de uma unidade |
 | `/locais-guarda` | CRUD de locais de guarda |
@@ -838,6 +841,7 @@ Telas principais:
 | Unidades | `/unidades` |
 | Mídias | `/midias` |
 | Tipos de mídia | `/admin/tipos-midia` |
+| Migração de mídia | `/midias/{id}/migrar` |
 | Endereçamento | `/enderecamento` |
 | Eventos | `/eventos` |
 | Administração | `/admin` |
@@ -857,6 +861,8 @@ Registros por página: BB
 ```
 
 Na listagem de mídias, cada registro possui ações de visualizar, editar e ativar/desativar. A visualização da mídia mostra os metadados de ciclo de vida, capacidade, localização e uma tabela secundária de eventos PREMIS registrados diretamente sobre aquela mídia. Esses eventos são armazenados em `eventos_midia_armazenamento`; eventos de unidades continuam em `eventos_preservacao`.
+
+A visualização da mídia também oferece a ação `Migrar midia`, que abre `/midias/{id}/migrar`. Esse fluxo cria uma mídia destino, vincula a mídia de origem por `midia_origem_id`, registra a migração em `migracoes_midias`, permite informar motivo, procedimento, software, etapa, relatório e validação de integridade, e pode concluir a migração marcando a origem como `MIGRADA` e ativando o destino.
 
 Em instrumentos de pesquisa, os campos dinâmicos podem ser configurados com tipos como texto, número, data, listas, URL, arquivo, imagem, unidade de acondicionamento e mídia de armazenamento. No cadastro e edição de registros, campos de unidade e mídia usam botão de lupa para pesquisar e selecionar o registro relacionado. Nas listagens dinâmica e de busca avançada, esses campos aparecem como links de visualização para a unidade ou mídia selecionada.
 
@@ -1049,6 +1055,9 @@ As migrations mais recentes adicionam o módulo de admissão:
 - `20260518_000018_remove_ata_documento_reunioes`: remove o campo legado `ata_documento` de reuniões.
 - `20260614_000024_tipos_midia_lifecycle`: cria tipos de mídia cadastráveis, migra valores legados do enum para `tipo_midia_id` e adiciona campos de validade, checagem, capacidade e identificador físico em mídias.
 - `20260615_000025_eventos_midia_armazenamento`: cria a tabela secundária `eventos_midia_armazenamento`, vinculada diretamente a `midias_armazenamento`, para registrar eventos PREMIS próprios da mídia.
+- `20260615_000026_eventos_midia_premis`: evolui eventos de mídia com campos PREMIS, data do evento e relacionamento entre eventos.
+- `20260615_000027_evento_reativacao_midia`: adiciona o tipo de evento `REATIVACAO_MIDIA`.
+- `20260615_000028_migracao_midias`: adiciona status de ciclo de vida em mídias, campos de origem/desativação e a tabela `migracoes_midias` para controlar início, etapas, relatórios e conclusão de migrações.
 
 ## Observações de Desenvolvimento
 
@@ -1060,6 +1069,7 @@ As migrations mais recentes adicionam o módulo de admissão:
 - O seed de endereçamento também usa SQL explícito para respeitar os enums PostgreSQL e é seguro para execução repetida.
 - O cadastro de mídias usa tipos cadastráveis em `tipos_midia_armazenamento`; o enum PostgreSQL legado fica apenas como origem de migração de dados antigos.
 - Eventos automáticos de criação e atualização de mídia gravam o agente com o nome do usuário autenticado, usando os claims Keycloak `name`, `preferred_username`, `email` ou `sub` como fallback.
+- Migrações de mídia são transacionais no serviço de domínio: a origem entra em `EM_MIGRACAO`, a mídia destino é criada como destino do processo e a conclusão marca a origem como `MIGRADA`/inativa e o destino como `ATIVA`.
 - O worker de indexação é iniciado pelo Compose como `index_worker` e consome a fila Celery `indexacao` no Redis.
 - A API não espera o Meilisearch ao cadastrar registros dinâmicos; ela salva no MongoDB e publica um evento para processamento em segundo plano.
 

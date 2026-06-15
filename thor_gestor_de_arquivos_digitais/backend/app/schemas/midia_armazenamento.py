@@ -5,6 +5,8 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, Field
 
+from app.models.enums import StatusMidiaArmazenamento
+
 
 class TipoMidiaArmazenamentoBase(BaseModel):
     nome: str = Field(..., max_length=255)
@@ -46,6 +48,7 @@ class MidiaArmazenamentoBase(BaseModel):
     tipo_midia_id: uuid.UUID
     descricao: str | None = Field(default=None, max_length=2000)
     ativo: bool = True
+    status: StatusMidiaArmazenamento = StatusMidiaArmazenamento.ATIVA
     data_aquisicao: date | None = None
     data_inicio_uso: date | None = None
     data_validade: date | None = None
@@ -54,6 +57,9 @@ class MidiaArmazenamentoBase(BaseModel):
     capacidade_total_bytes: int | None = Field(default=None, ge=0)
     capacidade_utilizada_bytes: int | None = Field(default=None, ge=0)
     identificador_fisico: str | None = Field(default=None, max_length=255)
+    midia_origem_id: int | None = None
+    data_desativacao: datetime | None = None
+    motivo_desativacao: str | None = None
 
 
 class MidiaArmazenamentoCreate(MidiaArmazenamentoBase):
@@ -65,6 +71,7 @@ class MidiaArmazenamentoUpdate(BaseModel):
     tipo_midia_id: uuid.UUID | None = None
     descricao: str | None = Field(default=None, max_length=2000)
     ativo: bool | None = None
+    status: StatusMidiaArmazenamento | None = None
     data_aquisicao: date | None = None
     data_inicio_uso: date | None = None
     data_validade: date | None = None
@@ -73,6 +80,9 @@ class MidiaArmazenamentoUpdate(BaseModel):
     capacidade_total_bytes: int | None = Field(default=None, ge=0)
     capacidade_utilizada_bytes: int | None = Field(default=None, ge=0)
     identificador_fisico: str | None = Field(default=None, max_length=255)
+    midia_origem_id: int | None = None
+    data_desativacao: datetime | None = None
+    motivo_desativacao: str | None = None
 
 
 class MidiaArmazenamentoOut(MidiaArmazenamentoBase):
