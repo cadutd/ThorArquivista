@@ -9,6 +9,7 @@ export type TipoEventoMidiaArmazenamento = "CRIACAO_MIDIA" | "ATUALIZACAO_MIDIA"
 export type ResultadoEventoPreservacao = "SUCESSO" | "FALHA" | "ALERTA" | "INDETERMINADO";
 export type StatusMidiaArmazenamento = "ATIVA" | "EM_VERIFICACAO" | "COM_ALERTA" | "FALHA_INTEGRIDADE" | "EXPIRADA" | "EM_MIGRACAO" | "MIGRADA" | "DESATIVADA" | "PERDIDA";
 export type StatusMigracaoMidia = "PLANEJADA" | "EM_EXECUCAO" | "AGUARDANDO_VALIDACAO" | "CONCLUIDA" | "CANCELADA";
+export type ResultadoVerificacaoIntegridade = "SUCESSO" | "FALHA" | "ALERTA" | "INCONCLUSIVO";
 export type TipoInstrumentoPesquisa = "GUIA" | "INVENTARIO" | "CATALOGO" | "INDICE" | "BASE_TEMATICA" | "EXPOSICAO" | "OUTRO";
 export type StatusInstrumentoPesquisa = "RASCUNHO" | "PUBLICADO" | "ARQUIVADO";
 export type VisibilidadeInstrumentoPesquisa = "INTERNO" | "PUBLICO" | "RESTRITO";
@@ -106,6 +107,40 @@ export type MigracaoMidia = {
   midia_origem?: MidiaArmazenamento | null;
   midia_destino?: MidiaArmazenamento | null;
 };
+
+export type VerificacaoIntegridadeMidia = {
+  id: string;
+  midia_id: number;
+  data_inicio: string;
+  data_fim?: string | null;
+  usuario_id?: string | null;
+  resultado: ResultadoVerificacaoIntegridade;
+  software_utilizado?: string | null;
+  versao_software?: string | null;
+  arquivo_relatorio_id?: string | null;
+  total_aips_verificados: number;
+  total_sucesso: number;
+  total_falha: number;
+  total_alerta: number;
+  relatorio_json: Record<string, unknown>;
+  observacoes?: string | null;
+  evento_id?: number | null;
+  criado_em?: string | null;
+  eventos_unidades?: EventoPreservacao[];
+};
+
+export type IntegridadePainel = {
+  validade_vencida: MidiaArmazenamento[];
+  checagem_vencida: MidiaArmazenamento[];
+  proximas_vencimento: MidiaArmazenamento[];
+  falha_ultima_checagem: MidiaArmazenamento[];
+  sem_checagem: MidiaArmazenamento[];
+  com_alerta: MidiaArmazenamento[];
+};
+
+export type CategoriaIntegridadeMidia = keyof IntegridadePainel;
+
+export type IntegridadeResumo = Record<CategoriaIntegridadeMidia, number>;
 
 export type CopiaDigital = {
   id: number;

@@ -74,7 +74,10 @@ const navigation: NavigationItem[] = [
     key: "preservacao-digital",
     label: "Preservação Digital",
     icon: HardDrive,
-    items: [{ href: "/midias", label: "Gestão de Mídias", icon: HardDrive }],
+    items: [
+      { href: "/midias", label: "Gestão de Mídias", icon: HardDrive },
+      { href: "/preservacao-digital/integridade", label: "Painel de Integridade", icon: ShieldCheck },
+    ],
   },
   {
     key: "administracao",

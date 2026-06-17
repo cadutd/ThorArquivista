@@ -1058,6 +1058,9 @@ As migrations mais recentes adicionam o módulo de admissão:
 - `20260615_000026_eventos_midia_premis`: evolui eventos de mídia com campos PREMIS, data do evento e relacionamento entre eventos.
 - `20260615_000027_evento_reativacao_midia`: adiciona o tipo de evento `REATIVACAO_MIDIA`.
 - `20260615_000028_migracao_midias`: adiciona status de ciclo de vida em mídias, campos de origem/desativação e a tabela `migracoes_midias` para controlar início, etapas, relatórios e conclusão de migrações.
+- `20260616_000029_verificacoes_integridade_midias`: adiciona verificações de integridade de mídias, importação de relatório, vínculo com eventos PREMIS e resumo de AIPs verificados.
+- `20260616_000030_indice_ultima_checagem_midias`: adiciona índice para otimizar consultas por última checagem de integridade.
+- `20260616_000031_permissoes_gestao_midias`: cria e normaliza permissões de mídias, tipos de mídia, migrações, painel de integridade e eventos próprios de mídia, vinculando-as aos perfis padrão.
 
 ## Observações de Desenvolvimento
 
@@ -1070,6 +1073,9 @@ As migrations mais recentes adicionam o módulo de admissão:
 - O cadastro de mídias usa tipos cadastráveis em `tipos_midia_armazenamento`; o enum PostgreSQL legado fica apenas como origem de migração de dados antigos.
 - Eventos automáticos de criação e atualização de mídia gravam o agente com o nome do usuário autenticado, usando os claims Keycloak `name`, `preferred_username`, `email` ou `sub` como fallback.
 - Migrações de mídia são transacionais no serviço de domínio: a origem entra em `EM_MIGRACAO`, a mídia destino é criada como destino do processo e a conclusão marca a origem como `MIGRADA`/inativa e o destino como `ATIVA`.
+- Verificações de integridade de mídia podem ser registradas manualmente ou importadas por relatório JSON. Cada verificação atualiza última/próxima checagem, status da mídia, eventos PREMIS da mídia e eventos de fixidez das unidades relacionadas quando o relatório identifica AIPs.
+- O painel de integridade fica em `Preservação Digital > Painel de Integridade` e usa endpoints leves: primeiro carrega contagens por categoria, depois busca apenas a página atual da categoria selecionada.
+- As permissões padrão de gestão de mídias estão separadas por função: `midias`, `tipos-midia`, `migracoes-midias`, `integridade-midias` e `eventos-midia`. `ADMIN` e `GESTOR_ARMAZENAMENTO` têm acesso total; `ARQUIVISTA` consulta; `ADMISSAO` consulta mídias e tipos; `CONSULTA` consulta mídias, migrações, integridade e eventos.
 - O worker de indexação é iniciado pelo Compose como `index_worker` e consome a fila Celery `indexacao` no Redis.
 - A API não espera o Meilisearch ao cadastrar registros dinâmicos; ela salva no MongoDB e publica um evento para processamento em segundo plano.
 

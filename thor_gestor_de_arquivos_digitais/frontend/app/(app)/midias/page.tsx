@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import type { ReactNode } from "react";
-import { Filter, Plus, Search } from "lucide-react";
+import { Filter, Plus, Search, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -62,6 +63,12 @@ export default function MidiasPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline">
+            <Link href="/preservacao-digital/integridade">
+              <ShieldCheck className="h-4 w-4" />
+              Integridade
+            </Link>
+          </Button>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button>

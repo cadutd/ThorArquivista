@@ -73,6 +73,9 @@ Todas as rotas abaixo ficam sob `/api/v1`.
 | Eventos de mídia | `/midias-armazenamento/{id}/eventos-preservacao` | Eventos PREMIS vinculados diretamente à mídia |
 | Início de migração | `/midias-armazenamento/{id}/migrar` | Cria mídia destino e registra processo de migração |
 | Migrações de mídia | `/migracoes-midias` | Consulta, atualização, etapas, relatórios e conclusão |
+| Painel de integridade | `/midias-armazenamento/integridade/resumo` | Contagens por categoria para carregamento rápido do painel |
+| Itens de integridade | `/midias-armazenamento/integridade/itens` | Listagem paginada por categoria de integridade |
+| Verificações de integridade | `/midias-armazenamento/{id}/verificacoes-integridade` | Histórico, detalhe, registro manual e importação de relatórios |
 | Cópias digitais | `/unidades-acondicionamento/{id}/copias` | Cópias por unidade |
 | Eventos | `/unidades-acondicionamento/{id}/eventos-preservacao` | Eventos por unidade |
 | Locais de guarda | `/locais-guarda` | CRUD lógico com exclusão por inativação |
@@ -92,6 +95,10 @@ O cadastro de mídias usa `tipo_midia_id` para vincular cada mídia a um tipo ca
 Eventos de mídia são armazenados em tabela secundária própria (`eventos_midia_armazenamento`), separada dos eventos de unidade (`eventos_preservacao`). Criação, atualização, ativação/desativação, reativação e migração de mídia registram eventos automaticamente e preenchem `agente` com o usuário autenticado a partir dos claims Keycloak `name`, `preferred_username`, `email` ou `sub`, nessa ordem. Também é possível registrar eventos manualmente via `POST /midias-armazenamento/{id}/eventos-preservacao`.
 
 O ciclo de migração usa a tabela `migracoes_midias`. `POST /midias-armazenamento/{id}/migrar` cria a mídia destino, vincula `midia_origem_id`, coloca origem e destino em `EM_MIGRACAO` e registra evento PREMIS `MIGRACAO_MIDIA`. As rotas de `/migracoes-midias/{id}/etapas`, `/relatorios` e `/concluir` permitem registrar execução, evidências, relatórios e conclusão. Ao concluir com sucesso, a origem fica `MIGRADA` e inativa, com `data_desativacao` e `motivo_desativacao`, e o destino passa para `ATIVA`.
+
+As verificações de integridade são registradas em `verificacoes_integridade_midias`. O endpoint `/midias-armazenamento/integridade/resumo` retorna apenas contagens para o painel; `/midias-armazenamento/integridade/itens` lista a página atual da categoria selecionada. Registros manuais e relatórios importados atualizam a mídia, geram evento PREMIS `CHECAGEM_MIDIA` e podem criar eventos de fixidez para unidades/AIPs identificados no relatório.
+
+As permissões do módulo de mídias são normalizadas por `20260616_000031_permissoes_gestao_midias`. As funções cadastradas são `midias`, `tipos-midia`, `migracoes-midias`, `integridade-midias` e `eventos-midia`. Os perfis padrão ficam com a seguinte matriz: `ADMIN` e `GESTOR_ARMAZENAMENTO` com acesso total; `ARQUIVISTA` com consulta; `ADMISSAO` com consulta a mídias e tipos; `CONSULTA` com consulta a mídias, migrações, integridade e eventos.
 
 Rotas principais de instrumentos de pesquisa:
 
@@ -311,6 +318,8 @@ A migration `20260614_000024_tipos_midia_lifecycle` cria `tipos_midia_armazename
 A migration `20260615_000025_eventos_midia_armazenamento` cria `eventos_midia_armazenamento`, uma tabela secundária para eventos PREMIS ligados diretamente a `midias_armazenamento`.
 
 A migration `20260615_000026_eventos_midia_premis` adiciona campos PREMIS, data do evento e vínculo entre eventos de mídia. A migration `20260615_000027_evento_reativacao_midia` adiciona o evento `REATIVACAO_MIDIA`. A migration `20260615_000028_migracao_midias` adiciona status de ciclo de vida em mídias, campos de origem/desativação e a tabela `migracoes_midias`.
+
+A migration `20260616_000029_verificacoes_integridade_midias` adiciona verificações de integridade de mídias, contadores de AIPs, relatório JSON e vínculo com evento PREMIS. A migration `20260616_000030_indice_ultima_checagem_midias` adiciona índice para consultas por última checagem. A migration `20260616_000031_permissoes_gestao_midias` atualiza permissões e vínculos dos perfis padrão para mídias, tipos, migrações, painel de integridade e eventos próprios.
 
 Migrations do módulo de admissão:
 

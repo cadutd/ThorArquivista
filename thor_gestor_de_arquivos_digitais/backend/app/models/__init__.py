@@ -13,6 +13,7 @@ from app.models.copia_unidade_acondicionamento_digital import (  # noqa: F401
 from app.models.evento_preservacao import EventoPreservacao  # noqa: F401
 from app.models.evento_midia_armazenamento import EventoMidiaArmazenamento  # noqa: F401
 from app.models.migracao_midia import MigracaoMidia  # noqa: F401
+from app.models.verificacao_integridade_midia import VerificacaoIntegridadeMidia  # noqa: F401
 from app.models.armazenamento import (  # noqa: F401
     CompartimentoArmazenamento,
     EstruturaArmazenamento,

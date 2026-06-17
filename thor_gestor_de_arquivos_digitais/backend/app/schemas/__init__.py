@@ -41,3 +41,13 @@ from app.schemas.migracao_midia import (  # noqa: F401
     MigracaoMidiaRelatorioCreate,
     MigracaoMidiaUpdate,
 )
+
+from app.schemas.verificacao_integridade_midia import (  # noqa: F401
+    IntegridadePainelOut,
+    IntegridadeResumoOut,
+    VerificacaoIntegridadeDetalheOut,
+    VerificacaoIntegridadeImportarRelatorio,
+    VerificacaoIntegridadeManualCreate,
+    VerificacaoIntegridadeOut,
+    VerificacaoIntegridadePage,
+)

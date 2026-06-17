@@ -38,6 +38,10 @@ FUNCOES = [
     FuncaoSeed("pesquisa", "pesquisa-descricao-arquivistica", "Pesquisa de descrição arquivística"),
     FuncaoSeed("pesquisa", "pesquisa-instrumentos-pesquisa", "Pesquisa de instrumentos de pesquisa"),
     FuncaoSeed("preservacao-digital", "midias", "Mídias de armazenamento"),
+    FuncaoSeed("administracao", "tipos-midia", "Tipos de mídia"),
+    FuncaoSeed("preservacao-digital", "migracoes-midias", "Migrações de mídias"),
+    FuncaoSeed("preservacao-digital", "integridade-midias", "Painel de integridade de mídias"),
+    FuncaoSeed("preservacao-digital", "eventos-midia", "Eventos de mídias de armazenamento"),
     FuncaoSeed("preservacao-digital", "eventos-preservacao", "Eventos de preservação"),
     FuncaoSeed("administracao", "admin", "Administração geral"),
     FuncaoSeed("administracao", "instituicao-arquivo", "Instituição de arquivo"),
@@ -136,10 +140,16 @@ def allowed_actions(profile_code: str, funcao: str) -> set[str]:
         "pesquisa-descricao-arquivistica",
         "pesquisa-instrumentos-pesquisa",
         "dashboard",
+        "midias",
+        "tipos-midia",
     }
     storage_functions = {
         "enderecamento",
         "midias",
+        "tipos-midia",
+        "migracoes-midias",
+        "integridade-midias",
+        "eventos-midia",
         "eventos-preservacao",
         "unidades",
         "dashboard",
@@ -147,6 +157,8 @@ def allowed_actions(profile_code: str, funcao: str) -> set[str]:
     if profile_code == "ADMIN":
         return set(ACTIONS)
     if profile_code == "CONSULTA":
+        if funcao == "tipos-midia":
+            return set()
         return {"CONSULTAR"}
     if profile_code == "ARQUIVISTA":
         if funcao in admin_functions:
@@ -161,7 +173,15 @@ def allowed_actions(profile_code: str, funcao: str) -> set[str]:
             return {"CONSULTAR"}
         return set()
     if profile_code == "GESTOR_ARMAZENAMENTO":
-        if funcao in {"enderecamento", "midias", "eventos-preservacao"}:
+        if funcao in {
+            "enderecamento",
+            "midias",
+            "tipos-midia",
+            "migracoes-midias",
+            "integridade-midias",
+            "eventos-midia",
+            "eventos-preservacao",
+        }:
             return set(ACTIONS)
         if funcao in storage_functions:
             return {"CONSULTAR"}

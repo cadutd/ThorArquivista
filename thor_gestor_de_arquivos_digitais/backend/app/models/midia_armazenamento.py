@@ -54,7 +54,7 @@ class MidiaArmazenamento(Base):
     data_aquisicao: Mapped[Date | None] = mapped_column(Date)
     data_inicio_uso: Mapped[Date | None] = mapped_column(Date)
     data_validade: Mapped[Date | None] = mapped_column(Date, index=True)
-    ultima_checagem_integridade: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True))
+    ultima_checagem_integridade: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), index=True)
     proxima_checagem_integridade: Mapped[DateTime | None] = mapped_column(
         DateTime(timezone=True),
         index=True,
@@ -96,6 +96,11 @@ class MidiaArmazenamento(Base):
 
     eventos = relationship(
         "EventoMidiaArmazenamento",
+    )
+
+    verificacoes_integridade = relationship(
+        "VerificacaoIntegridadeMidia",
+        back_populates="midia",
     )
 
     posicao_armazenamento = relationship(

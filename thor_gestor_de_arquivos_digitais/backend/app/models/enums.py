@@ -95,6 +95,13 @@ class StatusMigracaoMidia(str, Enum):
     CANCELADA = "CANCELADA"
 
 
+class ResultadoVerificacaoIntegridade(str, Enum):
+    SUCESSO = "SUCESSO"
+    FALHA = "FALHA"
+    ALERTA = "ALERTA"
+    INCONCLUSIVO = "INCONCLUSIVO"
+
+
 class ResultadoEventoPreservacao(str, Enum):
     SUCESSO = "SUCESSO"
     FALHA = "FALHA"

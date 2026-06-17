@@ -12,6 +12,7 @@ from app.models import midia_armazenamento, copia_unidade_acondicionamento_digit
 from app.models import evento_preservacao  # noqa: F401
 from app.models import evento_midia_armazenamento  # noqa: F401
 from app.models import migracao_midia  # noqa: F401
+from app.models import verificacao_integridade_midia  # noqa: F401
 from app.models import armazenamento  # noqa: F401
 from app.models import descricao_arquivistica  # noqa: F401
 from app.models import instrumento_pesquisa  # noqa: F401

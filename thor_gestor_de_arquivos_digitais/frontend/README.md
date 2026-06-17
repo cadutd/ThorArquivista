@@ -97,6 +97,7 @@ O Compose expõe o frontend em `http://localhost:3000`, integrado ao backend em 
 - `/midias/[id]`: visualização da mídia, metadados de ciclo de vida e eventos PREMIS registrados diretamente sobre a mídia.
 - `/midias/[id]/editar`: edição da mídia.
 - `/midias/[id]/migrar`: fluxo de migração para criar mídia destino, registrar etapa, relatório e validação de integridade.
+- `/preservacao-digital/integridade`: painel de integridade de mídias, acessado pelo menu `Preservação Digital > Painel de Integridade`.
 - `/admin/tipos-midia`: cadastro administrativo de tipos de mídia.
 - `/enderecamento`: módulo de endereçamento de armazenamento.
 - `/instrumentos-pesquisa`: gestão de instrumentos, campos e registros dinâmicos.
@@ -158,6 +159,12 @@ A tela `/midias` usa paginação de backend, busca simples e busca por metadado.
 O formulário de mídia usa select dinâmico com tipos ativos cadastrados em `/admin/tipos-midia`. A visualização em `/midias/[id]` mostra dados de ciclo de vida, capacidade, localização e uma tabela de eventos PREMIS próprios da mídia, consumidos de `/midias-armazenamento/{id}/eventos`.
 
 A visualização da mídia exibe o botão `Migrar midia`. A rota `/midias/[id]/migrar` cria a mídia destino, envia o motivo da migração, procedimento, software/versão, observações, etapa executada, relatório e, opcionalmente, conclui a migração com validação de integridade da origem e do destino. Após iniciar ou concluir, o usuário é redirecionado para a mídia destino criada.
+
+A visualização da mídia também exibe a aba de verificações de integridade. Nela é possível registrar uma checagem manual, importar relatório JSON e consultar detalhes da verificação, incluindo resumo de AIPs, falhas, alertas e eventos de unidade gerados.
+
+O Painel de Integridade em `/preservacao-digital/integridade` carrega primeiro apenas o resumo por categoria e depois busca de forma paginada somente os registros da categoria selecionada. A listagem segue o padrão CRUD do sistema, com paginação acima e abaixo da tabela, seletor de tamanho de página e ação de visualização da mídia.
+
+As permissões de mídia usadas pelos perfis padrão são separadas nas funções `midias`, `tipos-midia`, `migracoes-midias`, `integridade-midias` e `eventos-midia`. `ADMIN` e `GESTOR_ARMAZENAMENTO` operam o módulo completo; `ARQUIVISTA` consulta; `ADMISSAO` consulta mídias e tipos; `CONSULTA` consulta mídias, migrações, integridade e eventos.
 
 ## Admissão
 

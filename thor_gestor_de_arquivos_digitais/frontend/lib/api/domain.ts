@@ -1,6 +1,7 @@
 import { apiRequest } from "@/lib/api/client";
 import type {
   CopiaDigital,
+  CategoriaIntegridadeMidia,
   EventoMidiaArmazenamento,
   EventoPreservacao,
   InstrumentoCampo,
@@ -8,7 +9,10 @@ import type {
   InstrumentoPesquisa,
   InstrumentoRegistro,
   InstrumentoRegistroPage,
+  IntegridadePainel,
+  IntegridadeResumo,
   MigracaoMidia,
+  ResultadoVerificacaoIntegridade,
   StatusInstrumentoRegistro,
   MidiaArmazenamento,
   StatusMigracaoMidia,
@@ -18,6 +22,7 @@ import type {
   TipoInstrumentoPesquisa,
   TipoMidiaArmazenamento,
   UnidadeAcondicionamento,
+  VerificacaoIntegridadeMidia,
   VisibilidadeInstrumentoPesquisa,
 } from "@/types/domain";
 
@@ -212,6 +217,36 @@ export type MigracaoMidiaUpdatePayload = {
   observacoes?: string | null;
   relatorio_integridade_origem?: string | null;
   relatorio_integridade_destino?: string | null;
+};
+
+export type VerificacaoIntegridadePage = {
+  items: VerificacaoIntegridadeMidia[];
+  total: number;
+  limit: number;
+  offset: number;
+};
+
+export type VerificacaoIntegridadeManualPayload = {
+  data_inicio?: string | null;
+  data_fim?: string | null;
+  resultado: ResultadoVerificacaoIntegridade;
+  software_utilizado?: string | null;
+  versao_software?: string | null;
+  arquivo_relatorio_id?: string | null;
+  total_aips_verificados?: number;
+  total_sucesso?: number;
+  total_falha?: number;
+  total_alerta?: number;
+  relatorio_json?: Record<string, unknown>;
+  observacoes?: string | null;
+};
+
+export type VerificacaoIntegridadeImportPayload = {
+  ferramenta?: string | null;
+  versao?: string | null;
+  arquivo_relatorio_id?: string | null;
+  relatorio_json: Record<string, unknown>;
+  observacoes?: string | null;
 };
 
 export type TipoMidiaPage = {
@@ -556,6 +591,66 @@ export function listEventosMidia(id: number) {
   return apiRequest<EventoMidiaArmazenamento[]>(
     `/midias-armazenamento/${id}/eventos`,
   );
+}
+
+export function getPainelIntegridadeMidias() {
+  return apiRequest<IntegridadePainel>("/midias-armazenamento/integridade/painel");
+}
+
+export function getResumoIntegridadeMidias() {
+  return apiRequest<IntegridadeResumo>("/midias-armazenamento/integridade/resumo");
+}
+
+export function listItensIntegridadeMidias({
+  categoria,
+  limit = 20,
+  offset = 0,
+}: {
+  categoria: CategoriaIntegridadeMidia;
+  limit?: number;
+  offset?: number;
+}) {
+  return apiRequest<MidiaPage>(
+    `/midias-armazenamento/integridade/itens${queryString({ categoria, limit, offset })}`,
+  );
+}
+
+export function listMidiasChecagemVencida(limit = 100) {
+  return apiRequest<MidiaArmazenamento[]>(
+    `/midias-armazenamento/integridade/pendentes${queryString({ limit })}`,
+  );
+}
+
+export function listMidiasValidadeVencida(limit = 100) {
+  return apiRequest<MidiaArmazenamento[]>(
+    `/midias-armazenamento/integridade/vencidas${queryString({ limit })}`,
+  );
+}
+
+export function listVerificacoesIntegridadeMidia(id: number, { limit = 50, offset = 0 } = {}) {
+  return apiRequest<VerificacaoIntegridadePage>(
+    `/midias-armazenamento/${id}/verificacoes-integridade${queryString({ limit, offset })}`,
+  );
+}
+
+export function getVerificacaoIntegridadeMidia(id: number, verificacaoId: string) {
+  return apiRequest<VerificacaoIntegridadeMidia>(
+    `/midias-armazenamento/${id}/verificacoes-integridade/${verificacaoId}`,
+  );
+}
+
+export function registrarVerificacaoIntegridadeManual(id: number, payload: VerificacaoIntegridadeManualPayload) {
+  return apiRequest<VerificacaoIntegridadeMidia>(`/midias-armazenamento/${id}/verificacoes-integridade/manual`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function importarRelatorioVerificacaoIntegridade(id: number, payload: VerificacaoIntegridadeImportPayload) {
+  return apiRequest<VerificacaoIntegridadeMidia>(`/midias-armazenamento/${id}/verificacoes-integridade/importar-relatorio`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function iniciarMigracaoMidia(id: number, payload: MigracaoMidiaIniciarPayload) {
