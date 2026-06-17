@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 from app.models.enums import TipoEventoPreservacao, ResultadoEventoPreservacao
@@ -20,6 +22,6 @@ class EventoPreservacaoCreate(EventoPreservacaoBase):
 class EventoPreservacaoOut(EventoPreservacaoBase):
     id: int
     id_unidade_acondicionamento: int
-    criado_em: str | None = None
+    criado_em: datetime | None = None
 
     model_config = {"from_attributes": True}

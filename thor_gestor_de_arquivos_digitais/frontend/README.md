@@ -271,3 +271,5 @@ Testes funcionais e E2E disponíveis:
 npm run test:functional
 npm run test:e2e:keycloak
 ```
+
+Os fluxos backend de integridade e migração de mídias possuem testes dedicados em `backend/app/tests/functional/test_midias_integridade_migracao.py` e `backend/app/tests/integration/test_midias_integridade_migracao_integrado.py`, executados via `docker exec thor-backend pytest ...`.

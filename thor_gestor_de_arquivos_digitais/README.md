@@ -631,6 +631,15 @@ Executar apenas testes de integração backend:
 docker exec thor-backend pytest /app/app/tests/integration
 ```
 
+Executar os testes focados do ciclo de vida de mídias:
+
+```bash
+docker exec thor-backend pytest /app/app/tests/functional/test_midias_integridade_migracao.py
+docker exec thor-backend pytest /app/app/tests/integration/test_midias_integridade_migracao_integrado.py
+```
+
+Esses testes cobrem resultados de verificação de integridade, categorias do Painel de Integridade, importação de relatório, eventos PREMIS da mídia, eventos de fixidez de unidades/AIPs, estados permitidos/bloqueados para migração e conclusão/cancelamento/validação da máquina de estados de migração.
+
 Executar um fluxo específico de admissão:
 
 ```bash

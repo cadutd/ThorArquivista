@@ -407,4 +407,13 @@ docker exec thor-backend pytest /app/app/tests
 docker exec thor-backend pytest /app/app/tests/functional/test_crud_admissao.py /app/app/tests/integration/test_admissao_integrado.py
 ```
 
+Testes focados em mídias de armazenamento:
+
+```bash
+docker exec thor-backend pytest /app/app/tests/functional/test_midias_integridade_migracao.py
+docker exec thor-backend pytest /app/app/tests/integration/test_midias_integridade_migracao_integrado.py
+```
+
+O arquivo funcional cobre todos os resultados de verificação (`SUCESSO`, `FALHA`, `ALERTA`, `INCONCLUSIVO`), categorias do Painel de Integridade, importação de relatório, eventos gerados e estados de mídia permitidos/bloqueados para migração. O arquivo de integração exercita o fluxo completo com unidade/AIP, cópia digital, eventos de fixidez, painel, endereçamento, etapa, relatório e conclusão de migração.
+
 Se `pytest` não estiver instalado no ambiente local, instale as dependências do projeto antes de executar os testes.
