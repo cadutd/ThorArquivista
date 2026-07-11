@@ -211,6 +211,48 @@ def _args_premis_converter(p: Dict[str, Any], cfg: AppConfig) -> list[str]:
 
     return args
 
+def _args_backup_plan(p: Dict[str, Any], cfg: AppConfig) -> list[str]:
+    config = p.get("config") or p.get("plano")
+    if not config:
+        raise ValueError("BACKUP_PLAN: campo obrigatório 'config' ausente.")
+    args = [
+        "--config", str(config),
+        "--premis-log", str(p.get("premis_log") or cfg.premis_log),
+        "--agent", str(p.get("agent") or cfg.premis_agent or "Thor Arquivista"),
+    ]
+    if p.get("resume"):
+        args.append("--resume")
+    if p.get("progress", True):
+        args.append("--progress")
+    return args
+
+
+def _args_backup_verify(p: Dict[str, Any], cfg: AppConfig) -> list[str]:
+    destino = p.get("destino") or p.get("destination")
+    if not destino:
+        raise ValueError("BACKUP_VERIFY: campo obrigatório 'destino' ausente.")
+    args = [
+        "--destino", str(destino),
+        "--algo", str(p.get("algo", "sha256")),
+        "--premis-log", str(p.get("premis_log") or cfg.premis_log),
+        "--agent", str(p.get("agent") or cfg.premis_agent or "Thor Arquivista"),
+    ]
+    if p.get("progress", True):
+        args.append("--progress")
+    return args
+
+
+def _args_backup_report(p: Dict[str, Any], cfg: AppConfig) -> list[str]:
+    destino = p.get("destino") or p.get("destination")
+    if not destino:
+        raise ValueError("BACKUP_REPORT: campo obrigatório 'destino' ausente.")
+    args = ["--destino", str(destino)]
+    if p.get("backup"):
+        args += ["--backup", str(p["backup"])]
+    if p.get("saida"):
+        args += ["--saida", str(p["saida"])]
+    return args
+
 def get_scripts_map() -> ScriptsMap:
     """
     Retorna o mapeamento de jobs para scripts e seus builders de argumentos.
@@ -287,5 +329,17 @@ def get_scripts_map() -> ScriptsMap:
         "PREMIS_CONVERTER": (
             "premis_converter.py",
             _args_premis_converter,
-        ),        
+        ),
+        "BACKUP_PLAN": (
+            "backup_plan.py",
+            _args_backup_plan,
+        ),
+        "BACKUP_VERIFY": (
+            "backup_verify.py",
+            _args_backup_verify,
+        ),
+        "BACKUP_REPORT": (
+            "backup_report.py",
+            _args_backup_report,
+        ),
     }

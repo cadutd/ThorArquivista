@@ -1,6 +1,6 @@
 # Thor Arquivista - Caixa de Ferramentas de Preservação Digital
 
-Aplicativo desktop em Python para executar tarefas comuns de preservação digital: manifestos BagIt, verificação de fixidez, geração de pacote BagIt, cópia validada, análise/tratamento de duplicatas, exclusão de duplicatas por manifesto e conversão PREMIS.
+Aplicativo desktop em Python para executar tarefas comuns de preservação digital: manifestos BagIt, verificação de fixidez, geração de pacote BagIt, cópia validada, backup preservacional BagIt, análise/tratamento de duplicatas, exclusão de duplicatas por manifesto e conversão PREMIS.
 
 O aplicativo usa Tkinter com `ttkbootstrap`, executa tarefas em fila local e grava o estado em arquivos JSON na própria pasta do projeto.
 
@@ -65,6 +65,7 @@ ui/
   main_window.py               # janela principal e menus
   panels/                      # painéis da interface gráfica
 scripts/                       # scripts usados pela interface e pela CLI
+tests/                         # testes automatizados e relatório HTML
 ```
 
 ---
@@ -174,6 +175,84 @@ Exemplo por linha de comando:
 
 ```bash
 python scripts/replicate_storage.py --fonte "D:/acervo" --destino "E:/backup_1" --destino "F:/backup_2"
+```
+
+### Tarefas > Backup Preservacional
+
+Script usado: `scripts/backup_plan.py`
+
+Executa um backup preservacional incremental em um destino tratado como repositório BagIt. A fonte de verdade do backup é o manifesto BagIt do destino; não há uso de banco SQL.
+
+Campos e ações principais:
+
+- **Plano JSON**: arquivo que define nome, destino, opções e origens.
+- **Destino BagIt**: pasta do repositório de backup.
+- **Backup**: nome lógico usado em checkpoints e histórico.
+- **Validar plano**: confere estrutura mínima e existência das origens.
+- **Executar**: enfileira o job `BACKUP_PLAN`.
+- **Retomar**: retoma pelo checkpoint e remove `STOP` quando necessário.
+- **Pausar com STOP**: cria `thor-backup/checkpoints/STOP` para parada segura.
+- **Verificar integridade**: enfileira `BACKUP_VERIFY`.
+- **Histórico**: lista checkpoints, relatórios e manifestos históricos.
+
+Exemplo por linha de comando:
+
+```bash
+python scripts/backup_plan.py --config "D:/planos/backup.json" --progress
+python scripts/backup_plan.py --resume --config "D:/planos/backup.json"
+python scripts/backup_verify.py --destino "E:/Backup" --progress
+```
+
+Estrutura criada no destino:
+
+```text
+Backup/
+  data/
+  manifest-sha256.txt
+  tagmanifest-sha256.txt
+  bag-info.txt
+  bagit.txt
+  thor-backup/
+    configs/
+    manifests/origem/
+    manifests/destino/
+    manifests/historico/
+    checkpoints/
+    relatorios/
+    logs/
+    versoes/
+```
+
+### Tarefas > Editar Plano de Backup
+
+Tela separada para criar e editar o arquivo JSON usado pelo backup preservacional.
+
+Funcionalidades:
+
+- criar plano novo;
+- abrir plano existente;
+- editar nome do backup, destino BagIt, algoritmo e opções;
+- adicionar, editar e remover origens;
+- pré-visualizar JSON;
+- validar campos obrigatórios;
+- salvar ou salvar como `.json`.
+
+Exemplo de plano:
+
+```json
+{
+  "name": "acervo_institucional",
+  "destination": "E:/Backup",
+  "sources": [
+    {"name": "documentos", "path": "D:/Acervo/Documentos"},
+    {"name": "imagens", "path": "D:/Acervo/Imagens"}
+  ],
+  "options": {
+    "algo": "sha256",
+    "ignore_hidden": true,
+    "follow_symlinks": false
+  }
+}
 ```
 
 ### Tarefas > Duplicatas > Análise de Duplicatas
@@ -322,12 +401,45 @@ A interface gráfica usa estes scripts:
 | Verificar Fixidez | `scripts/verify_fixity.py` |
 | Gerar Pacote BagIt | `scripts/build_bag.py` |
 | Copiar | `scripts/replicate_storage.py` |
+| Backup Preservacional | `scripts/backup_plan.py` |
+| Backup Preservacional > Verificar integridade | `scripts/backup_verify.py` |
+| Editar Plano de Backup | nenhum script direto; cria/edita JSON |
 | Análise de Duplicatas | `scripts/duplicate_finder.py` |
 | Tratamento de Duplicatas | `scripts/duplicate_finder.py` |
 | Excluir Duplicatas por Manifesto | `scripts/delete_duplicates_by_manifest.py` |
 | Conversor Premis | `scripts/premis_converter.py` |
 
 Outros scripts ou módulos podem existir no repositório como suporte interno, legado ou desenvolvimento, mas este README documenta apenas o que aparece na interface gráfica atual.
+
+---
+
+## Testes
+
+A suíte de testes cobre:
+
+- criação e edição do plano JSON de backup;
+- montagem das telas de Backup Preservacional e Editar Plano de Backup com widgets simulados;
+- geração de manifestos;
+- comparação `new`, `changed`, `same` e `removed`;
+- execução inicial e incremental do backup;
+- versionamento;
+- preservação de removidos;
+- parada segura por `STOP` e retomada;
+- verificação de fixidez e evento PREMIS `FIXITY_CHECK`.
+
+Execute a suíte e gere o relatório HTML:
+
+```powershell
+py tests\run_backup_tests_html.py
+```
+
+Saída principal:
+
+```text
+tests/reports/backup_tests_report.html
+```
+
+O relatório lista cada teste executado com finalidade, pré-condições, pós-condições, status, duração e detalhes.
 
 ---
 

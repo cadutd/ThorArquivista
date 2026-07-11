@@ -128,6 +128,9 @@ _JOBTYPE_TO_EVENTTYPE = {
     "FORMAT_IDENTIFY": "format identification",
     "REPLICATE": "replication",
     "DELETE_DUPLICATES": "deletion",
+    "BACKUP_PLAN": "preservation backup",
+    "BACKUP_VERIFY": "fixity check",
+    "BACKUP_REPORT": "report generation",
 }
 
 def event_type_for_job(job_type: str) -> str:
@@ -146,6 +149,10 @@ def guess_object_id(job_type: str, params: dict) -> str:
         return params.get("fonte", "")
     if job_type == "DELETE_DUPLICATES":
         return params.get("duplicatas", "")
+    if job_type == "BACKUP_PLAN":
+        return params.get("config", "") or params.get("plano", "")
+    if job_type in ("BACKUP_VERIFY", "BACKUP_REPORT"):
+        return params.get("destino", "") or params.get("destination", "")
     if job_type == "PREMIS_EVENT":
         return params.get("obj_id", "")
     return ""

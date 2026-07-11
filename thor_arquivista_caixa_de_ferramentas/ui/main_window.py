@@ -59,6 +59,8 @@ from ui.panels.duplicate_analysis import create_panel as panel_duplicate_analysi
 from ui.panels.duplicate_treatment import create_panel as panel_duplicate_treatment
 from ui.panels.delete_duplicates import create_panel as panel_delete_duplicates
 from ui.panels.premis_converter import create_panel as panel_premis_converter
+from ui.panels.preservation_backup import create_panel as panel_preservation_backup
+from ui.panels.backup_plan_editor import create_panel as panel_backup_plan_editor
 
 class MainApp(tb.Window):
     """Janela principal do Thor Arquivista – Caixa de Ferramentas de Preservação Digital."""
@@ -186,6 +188,8 @@ class MainApp(tb.Window):
         menu_tarefas.add_command(label="Gerar Pacote BagIt", command=lambda: _open("Gerar Pacote BagIt", panel_bag))
 
         menu_tarefas.add_command(label="Copiar", command=lambda: _open("Copiar", panel_rep))
+        menu_tarefas.add_command(label="Backup Preservacional", command=lambda: _open("Backup Preservacional", panel_preservation_backup))
+        menu_tarefas.add_command(label="Editar Plano de Backup", command=lambda: _open("Editar Plano de Backup", panel_backup_plan_editor))
 
         submenu_duplicatas.add_command(label="Análise de Duplicatas", command=lambda: _open("Análise de Duplicatas", panel_duplicate_analysis))
         submenu_duplicatas.add_command(label="Tratamento de Duplicatas", command=lambda: _open("Tratamento de Duplicatas", panel_duplicate_treatment))

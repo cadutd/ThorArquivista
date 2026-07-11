@@ -20,6 +20,7 @@ No Windows, use aspas em caminhos com espaços. Os manifestos BagIt gravam camin
 - [`build_sip.py`](#build_sippy)
 - [`format_identify.py`](#format_identifypy)
 - [`replicate_storage.py`](#replicate_storagepy)
+- [`backup_plan.py`](#backup_planpy)
 - [`duplicate_finder.py`](#duplicate_finderpy)
 - [`delete_duplicates_by_manifest.py`](#delete_duplicates_by_manifestpy)
 - [`premis_converter.py`](#premis_converterpy)
@@ -326,6 +327,112 @@ Proteção:
 
 - O destino não pode estar dentro da origem.
 - Se a verificação falhar, o script encerra com erro.
+
+---
+
+## `backup_plan.py`
+
+Executa backup preservacional incremental baseado em BagIt. O plano JSON define destino, opções e origens; o destino é mantido como repositório BagIt, com `data/`, `manifest-sha256.txt`, `tagmanifest-sha256.txt`, `bag-info.txt`, `bagit.txt` e histórico em `thor-backup/`.
+
+Uso básico:
+
+```bash
+python scripts/backup_plan.py --config "D:/planos/backup.json"
+```
+
+Retomar por checkpoint:
+
+```bash
+python scripts/backup_plan.py --resume --config "D:/planos/backup.json"
+```
+
+Exemplo de plano:
+
+```json
+{
+  "name": "acervo_institucional",
+  "destination": "E:/Backup",
+  "sources": [
+    {"name": "documentos", "path": "D:/Acervo/Documentos"},
+    {"name": "imagens", "path": "D:/Acervo/Imagens"}
+  ],
+  "options": {
+    "algo": "sha256",
+    "ignore_hidden": true
+  }
+}
+```
+
+Scripts relacionados:
+
+```bash
+python scripts/backup_manifest_build.py --raiz "D:/Acervo" --prefix "data/acervo" --saida "D:/manifest.txt"
+python scripts/backup_manifest_diff.py --origem "D:/manifest_origem.txt" --destino "E:/Backup/manifest-sha256.txt"
+python scripts/backup_verify.py --destino "E:/Backup" --progress
+python scripts/backup_report.py --destino "E:/Backup" --backup "acervo_institucional"
+```
+
+Responsabilidades dos scripts relacionados:
+
+| Script | Responsabilidade |
+|---|---|
+| `backup_manifest_build.py` | Gera manifesto da origem com prefixo BagIt, algoritmo configurável, opção de ignorar ocultos e suporte a symlinks. |
+| `backup_manifest_diff.py` | Compara manifesto de origem com manifesto do destino e classifica `new`, `changed`, `same` e `removed`. |
+| `backup_verify.py` | Valida fixidez do repositório BagIt de backup e pode registrar evento PREMIS `FIXITY_CHECK`. |
+| `backup_report.py` | Lista checkpoints, relatórios e manifestos históricos de um destino de backup. |
+
+Saídas principais:
+
+```text
+Backup/
+  data/
+  manifest-sha256.txt
+  tagmanifest-sha256.txt
+  bag-info.txt
+  bagit.txt
+  thor-backup/
+    configs/
+    manifests/origem/
+    manifests/destino/
+    manifests/historico/
+    checkpoints/
+    relatorios/
+    logs/
+    versoes/
+```
+
+Parada segura:
+
+- Crie `thor-backup/checkpoints/STOP` dentro do destino.
+- O script termina o arquivo atual, atualiza manifesto/checkpoint, registra PREMIS e encerra como `PAUSED`.
+- Remova o arquivo `STOP` antes de executar com `--resume`.
+
+Eventos PREMIS registrados pelo script:
+
+```text
+BACKUP_STARTED
+BACKUP_INCREMENTAL
+BACKUP_PAUSED
+BACKUP_RESUMED
+BACKUP_COMPLETED
+BACKUP_FAILED
+FIXITY_CHECK
+```
+
+Observações:
+
+- Arquivos alterados têm a versão anterior movida para `thor-backup/versoes/`.
+- Arquivos removidos da origem são preservados no destino e mantidos no manifesto do backup.
+- O checkpoint fica em `thor-backup/checkpoints/<backup>.state.json`.
+- O manifesto BagIt do destino continua sendo a fonte de verdade; nenhum banco SQL é usado.
+
+Testes do backup preservacional:
+
+```powershell
+py tests\run_backup_tests_html.py
+```
+
+O comando executa testes de scripts e interface gráfica com widgets simulados e grava o relatório em `tests/reports/backup_tests_report.html`.
 
 ---
 
