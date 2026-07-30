@@ -36,7 +36,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 import json
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 import ttkbootstrap as tb
 from ttkbootstrap.constants import *
 from tkinter import BOTH, X, YES
@@ -75,6 +75,7 @@ class MainApp(tb.Window):
 
         self.title("Thor Arquivista - Caixa de Ferramentas de Preservação Digital")
         self.geometry("1200x800")
+        self.protocol("WM_DELETE_WINDOW", self._request_close)
 
         # Worker e jobstore
         self.jobstore = JobStore(path=getattr(cfg, "jobstore_path", "./jobs_db.json"))
@@ -212,6 +213,25 @@ class MainApp(tb.Window):
     # =====================
     # Encerramento e Enfileiramento
     # =====================
+    def _request_close(self):
+        running_jobs = self.jobstore.list_jobs(status="running")
+        if running_jobs:
+            jobs_text = "\n".join(self._format_running_job(job) for job in running_jobs[:5])
+            if len(running_jobs) > 5:
+                jobs_text += f"\n... e mais {len(running_jobs) - 5} job(s) em execução"
+
+            confirm = messagebox.askyesno(
+                "Confirmar encerramento",
+                "Há job em processamento.\n\n"
+                f"{jobs_text}\n\n"
+                "Deseja encerrar o sistema mesmo assim?",
+                parent=self,
+            )
+            if not confirm:
+                return
+
+        self.destroy()
+
     def destroy(self):
         try:
             if self.worker and self.worker.is_alive():
@@ -219,6 +239,16 @@ class MainApp(tb.Window):
                 self.worker.join(timeout=2.0)
         finally:
             super().destroy()
+
+    @staticmethod
+    def _format_running_job(job: Dict[str, Any]) -> str:
+        job_id = str(job.get("_id", "sem id"))
+        job_type = str(job.get("job_type", "tipo desconhecido"))
+        created_at = str(job.get("created_at", "")).strip()
+        label = f"- {job_type} (id {job_id})"
+        if created_at:
+            label += f" iniciado/enfileirado em {created_at}"
+        return label
 
     def _center_on_screen(self, width: int, height: int) -> None:
         self.update_idletasks()

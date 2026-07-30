@@ -39,7 +39,7 @@ def create_panel(app, enqueue_cb):
     saida = StringVar(value="")
     algo = StringVar(value="sha256")
     show_progress = IntVar(value=1)
-    ignore_hidden = IntVar(value=1)
+    ignore_hidden = IntVar(value=0)
 
     # Pasta raiz
     r1 = ttk.Frame(page); r1.pack(fill=X, pady=5)

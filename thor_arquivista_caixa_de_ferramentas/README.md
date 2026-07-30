@@ -108,7 +108,7 @@ Campos principais:
 - **Pasta raiz**: pasta que será varrida.
 - **Arquivo de saída**: caminho do manifesto, por exemplo `manifest-sha256.txt`.
 - **Algoritmo**: normalmente `sha256`.
-- **Ignorar ocultos**: ignora arquivos e pastas iniciados por ponto.
+- **Ignorar ocultos**: ignora arquivos e pastas iniciados por ponto. A opção abre desmarcada por padrão.
 - **Mostrar progresso**: registra andamento no log do job em marcos de 5%, com quantidade processada e restante.
 
 Exemplo por linha de comando:
@@ -415,6 +415,8 @@ Uso:
 - exportar o conteúdo atual da janela de logs para um arquivo `.txt`.
 
 A janela de logs faz auto-refresh incremental e usa intervalo mínimo de 5 segundos para reduzir leitura de disco e evitar travamentos em execuções longas.
+
+Ao tentar fechar o sistema, se houver job em execução, a janela principal mostra uma confirmação de encerramento com o tipo e o id do job em processamento.
 
 ---
 

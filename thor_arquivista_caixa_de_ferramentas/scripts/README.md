@@ -75,7 +75,7 @@ Parâmetros:
 | `--modified-after` | Inclui arquivos modificados após `YYYY-MM-DD`. |
 | `--modified-before` | Inclui arquivos modificados antes de `YYYY-MM-DD`. |
 | `--pattern` | Glob relativo. Ex.: `**/*.pdf`. |
-| `--ignore-hidden` | Ignora itens ocultos iniciados por ponto. |
+| `--ignore-hidden` | Ignora itens ocultos iniciados por ponto. Desativado por padrão; na interface gráfica, a opção correspondente abre desmarcada. |
 | `--follow-symlinks` | Segue links simbólicos. |
 | `--workers` | Número de threads. |
 | `--progress` | Mostra progresso no `stderr` em marcos de 5%, com quantidade restante e resumo final. |
