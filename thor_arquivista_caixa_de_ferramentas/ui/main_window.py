@@ -50,6 +50,7 @@ from ui.panels.premis_view import create_panel as panel_premis_view
 from ui.panels.hash_manifest import create_panel as panel_hash
 from ui.panels.verify_fixity import create_panel as panel_fixity
 from ui.panels.build_bag import create_panel as panel_bag
+from ui.panels.validate_bag import create_panel as panel_validate_bag
 from ui.panels.build_sip import create_panel as panel_sip
 from ui.panels.format_identify import create_panel as panel_fmt
 from ui.panels.replicate import create_panel as panel_rep
@@ -187,6 +188,7 @@ class MainApp(tb.Window):
         menu_tarefas.add_command(label="Gerar Manifesto (Hash)", command=lambda: _open("Gerar Manifesto", panel_hash))
         menu_tarefas.add_command(label="Verificar Fixidez", command=lambda: _open("Verificar Fixidez", panel_fixity))
         menu_tarefas.add_command(label="Gerar Pacote BagIt", command=lambda: _open("Gerar Pacote BagIt", panel_bag))
+        menu_tarefas.add_command(label="Validar Pacote BagIt", command=lambda: _open("Validar Pacote BagIt", panel_validate_bag))
 
         menu_tarefas.add_command(label="Copiar", command=lambda: _open("Copiar", panel_rep))
         menu_tarefas.add_command(label="Backup Preservacional", command=lambda: _open("Backup Preservacional", panel_preservation_backup))

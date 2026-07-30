@@ -232,6 +232,42 @@ Observações:
 
 ---
 
+## `validate_bag.py`
+
+Valida um pacote BagIt gerado pelo Thor Arquivista.
+
+Uso básico:
+
+```bash
+python scripts/validate_bag.py "D:/bags/bag_001"
+```
+
+Uso com progresso e algoritmo específico:
+
+```bash
+python scripts/validate_bag.py "D:/bags/bag_001" --algo sha256 --progress
+```
+
+Parâmetros:
+
+| Parâmetro | Descrição |
+|---|---|
+| `bag` | Pasta raiz do pacote BagIt. Obrigatório. |
+| `--algo` | Valida apenas manifestos do algoritmo informado. Se omitido, valida todos os `manifest-*.txt` e `tagmanifest-*.txt`. |
+| `--progress` | Mostra progresso no `stderr` em marcos de 5%, com quantidade restante e resumo final. |
+
+Validações executadas:
+
+- presença de `bagit.txt`, `bag-info.txt` e `data/`;
+- conteúdo mínimo de `bagit.txt` para BagIt 0.97 e UTF-8;
+- hash dos arquivos listados em `manifest-*.txt`;
+- arquivos de payload ausentes, corrompidos ou extras em `data/`;
+- hash dos arquivos listados em `tagmanifest-*.txt`, quando existirem.
+
+O script retorna `0` quando o pacote é válido e `2` quando encontra inconsistências.
+
+---
+
 ## `build_sip.py`
 
 Cria um SIP simples com objetos, metadados e manifesto SHA-256.

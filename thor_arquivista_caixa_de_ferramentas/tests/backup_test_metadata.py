@@ -87,6 +87,16 @@ TEST_METADATA = {
         "preconditions": "Um backup válido já foi executado e existe manifesto BagIt no destino.",
         "postconditions": "backup_verify retorna sucesso e grava evento FIXITY_CHECK com outcome success.",
     },
+    "test_preservation_backup_scripts.PreservationBackupScriptTests.test_validate_bag_accepts_package_created_by_build_bag": {
+        "purpose": "Validar que o novo script de validação aceita um pacote BagIt criado pela funcionalidade Gerar Pacote BagIt.",
+        "preconditions": "Uma pasta temporária é empacotada com build_bag usando manifest e tagmanifest SHA-256.",
+        "postconditions": "validate_bag retorna sucesso e o relatório indica payload e tags íntegros, sem extras.",
+    },
+    "test_preservation_backup_scripts.PreservationBackupScriptTests.test_validate_bag_reports_corrupt_and_extra_payload_files": {
+        "purpose": "Validar que o novo script de validação detecta payload corrompido e arquivo extra em data/.",
+        "preconditions": "Um BagIt válido é gerado, depois um arquivo de payload é alterado e outro é adicionado fora do manifesto.",
+        "postconditions": "validate_bag retorna falha controlada e lista o arquivo com hash divergente e o arquivo extra.",
+    },
     "test_preservation_backup_scripts.PreservationBackupScriptTests.test_verify_fixity_report_lists_integrity_missing_and_extra_counts": {
         "purpose": "Validar que o relatório final de verificação de fixidez lista contagens e detalhes de íntegros, corrompidos, faltantes e extras.",
         "preconditions": "Uma pasta temporária contém um arquivo íntegro, um corrompido, um extra e um manifesto com um item faltante.",

@@ -211,6 +211,18 @@ def _args_premis_converter(p: Dict[str, Any], cfg: AppConfig) -> list[str]:
 
     return args
 
+
+def _args_validate_bag(p: Dict[str, Any], cfg: AppConfig) -> list[str]:
+    bag = p.get("bag") or p.get("bagit") or p.get("raiz")
+    if not bag:
+        raise ValueError("VALIDATE_BAG: campo obrigatório 'bag' ausente.")
+    args = [str(bag)]
+    if p.get("algo"):
+        args += ["--algo", str(p["algo"])]
+    if p.get("progress", True):
+        args.append("--progress")
+    return args
+
 def _args_backup_plan(p: Dict[str, Any], cfg: AppConfig) -> list[str]:
     config = p.get("config") or p.get("plano")
     if not config:
@@ -281,6 +293,10 @@ def get_scripts_map() -> ScriptsMap:
         "BUILD_BAG": (
             "build_bag.py",
             _args_build_bag,
+        ),
+        "VALIDATE_BAG": (
+            "validate_bag.py",
+            _args_validate_bag,
         ),
         "BUILD_SIP": (
             "build_sip.py",

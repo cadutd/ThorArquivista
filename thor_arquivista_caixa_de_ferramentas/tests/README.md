@@ -35,6 +35,8 @@ Os testes cobrem:
 - retomada por checkpoint;
 - falha por origem inválida;
 - verificação de fixidez e evento PREMIS `FIXITY_CHECK`.
+- validação de pacote BagIt gerado pelo `build_bag.py`;
+- detecção de payload corrompido e arquivo extra em `data/`.
 
 ## Relatório HTML
 

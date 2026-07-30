@@ -173,6 +173,28 @@ python scripts/build_bag.py "D:/acervo/fonte" "D:/bags/bag_001" --algo sha256 --
 
 Durante a transferência e a geração do manifesto do payload, o progresso é registrado em marcos de 5%, com resumo de tempo total e média por arquivo ao final de cada fase.
 
+### Tarefas > Validar Pacote BagIt
+
+Script usado: `scripts/validate_bag.py`
+
+![Painel Validar Pacote BagIt](docs/images/panel-validate-bag.png)
+
+Valida pacotes BagIt criados pela funcionalidade **Gerar Pacote BagIt**. A rotina confere a estrutura básica, os manifestos do payload, os arquivos em `data/` e os `tagmanifest-*` quando existirem.
+
+Campos principais:
+
+- **Pasta do BagIt**: pasta raiz do pacote, contendo `bagit.txt`, `bag-info.txt` e `data/`.
+- **Algoritmo**: permite validar todos os manifestos encontrados ou restringir a um algoritmo específico.
+- **Mostrar progresso**: registra andamento no log do job em marcos de 5%, com quantidade verificada e restante.
+
+Exemplo por linha de comando:
+
+```bash
+python scripts/validate_bag.py "D:/bags/bag_001" --progress
+```
+
+O relatório final informa se o pacote é **VÁLIDO** ou **INVÁLIDO**, quantos arquivos de payload e de tag foram verificados, além das listas de ausentes, corrompidos e extras em `data/`.
+
 ### Tarefas > Copiar
 
 Script usado: `scripts/replicate_storage.py`
@@ -429,6 +451,7 @@ A interface gráfica usa estes scripts:
 | Gerar Manifesto (Hash) | `scripts/hash_files.py` |
 | Verificar Fixidez | `scripts/verify_fixity.py` |
 | Gerar Pacote BagIt | `scripts/build_bag.py` |
+| Validar Pacote BagIt | `scripts/validate_bag.py` |
 | Copiar | `scripts/replicate_storage.py` |
 | Backup Preservacional | `scripts/backup_plan.py` |
 | Backup Preservacional > Verificar integridade | `scripts/backup_verify.py` |

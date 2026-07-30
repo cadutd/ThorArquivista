@@ -20,6 +20,8 @@ from scripts.backup_manifest_build import build_manifest
 from scripts.backup_manifest_diff import diff_manifests
 from scripts.backup_plan import BackupRunner
 from scripts.backup_verify import main as verify_main
+from scripts.build_bag import build_bag
+from scripts.validate_bag import main as validate_bag_main
 from scripts.verify_fixity import main as verify_fixity_main
 
 
@@ -202,6 +204,66 @@ class PreservationBackupScriptTests(unittest.TestCase):
             event = json.loads(premis.read_text(encoding="utf-8").splitlines()[-1])
             self.assertEqual(event["eventType"], "FIXITY_CHECK")
             self.assertEqual(event["eventOutcome"], "success")
+
+    def test_validate_bag_accepts_package_created_by_build_bag(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "source"
+            source.mkdir()
+            (source / "a.txt").write_text("alpha", encoding="utf-8")
+            (source / "sub").mkdir()
+            (source / "sub" / "b.txt").write_text("beta", encoding="utf-8")
+            bag = root / "bag"
+
+            with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+                build_bag(source, bag, algo="sha256", tagmanifest=True)
+
+            old_argv = sys.argv
+            out = StringIO()
+            try:
+                sys.argv = ["validate_bag.py", str(bag)]
+                with redirect_stdout(out), redirect_stderr(StringIO()):
+                    rc = validate_bag_main()
+            finally:
+                sys.argv = old_argv
+
+            text = out.getvalue()
+            self.assertEqual(rc, 0)
+            self.assertIn("Resultado: VÁLIDO", text)
+            self.assertIn("Arquivos de payload verificados íntegros: 2", text)
+            self.assertIn("Arquivos extras em data/ ausentes nos manifestos: 0", text)
+            self.assertIn("Arquivos de tag verificados íntegros: 3", text)
+
+    def test_validate_bag_reports_corrupt_and_extra_payload_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "source"
+            source.mkdir()
+            (source / "a.txt").write_text("alpha", encoding="utf-8")
+            bag = root / "bag"
+
+            with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+                build_bag(source, bag, algo="sha256")
+
+            (bag / "data" / "a.txt").write_text("changed", encoding="utf-8")
+            (bag / "data" / "extra.txt").write_text("extra", encoding="utf-8")
+
+            old_argv = sys.argv
+            out = StringIO()
+            try:
+                sys.argv = ["validate_bag.py", str(bag)]
+                with redirect_stdout(out), redirect_stderr(StringIO()):
+                    rc = validate_bag_main()
+            finally:
+                sys.argv = old_argv
+
+            text = out.getvalue()
+            self.assertEqual(rc, 2)
+            self.assertIn("Resultado: INVÁLIDO", text)
+            self.assertIn("Arquivos de payload verificados corrompidos: 1", text)
+            self.assertIn("Arquivos extras em data/ ausentes nos manifestos: 1", text)
+            self.assertIn("data/a.txt :: MISMATCH", text)
+            self.assertIn("data/extra.txt", text)
 
     def test_verify_fixity_report_lists_integrity_missing_and_extra_counts(self):
         with tempfile.TemporaryDirectory() as tmp:
