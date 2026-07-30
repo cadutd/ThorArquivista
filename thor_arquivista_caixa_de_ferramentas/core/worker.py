@@ -21,9 +21,11 @@ import sys
 import subprocess
 import threading
 import traceback
+import time
+from collections import deque
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, Any, Tuple, List, Optional
+from typing import Dict, Any, Tuple, List, Optional, Deque
 
 from core.config import AppConfig
 from core.jobstore import JobStore
@@ -148,17 +150,18 @@ class Worker:
                 # _execute agora recebe o ID do job para poder logar em tempo real
                 rc, out, err = self._execute(jid, jtype, params)
 
-                # logs resumidos finais (últimas linhas)
-                if out:
-                    self.jobstore.add_log(
-                        jid,
-                        f"[stdout] (últimas linhas)\n{out[:2000]}",
-                    )
+                # logs resumidos finais (últimas linhas). Registra stderr antes de
+                # stdout para o relatório final do script ficar mais visível no tail.
                 if err:
                     self.jobstore.add_log(
                         jid,
-                        f"[stderr] (últimas linhas)\n{err[:2000]}",
+                        f"[stderr] (últimas linhas)\n{err[-4000:]}",
                         level="ERROR" if rc else "INFO",
+                    )
+                if out:
+                    self.jobstore.add_log(
+                        jid,
+                        f"[stdout] (relatório final)\n{out[-4000:]}",
                     )
 
                 if jtype != "PREMIS_EVENT":
@@ -209,9 +212,30 @@ class Worker:
         # registra o comando completo no log
         self.jobstore.add_log(job_id, f"Comando: {' '.join(cmd)}")
 
-        # buffers para manter uma cópia resumida
-        full_out: List[str] = []
-        full_err: List[str] = []
+        # buffers para manter uma cópia resumida sem crescer com jobs grandes
+        full_out: Deque[str] = deque(maxlen=1000)
+        full_err: Deque[str] = deque(maxlen=1000)
+        pending_logs: List[tuple[str, str]] = []
+        pending_lock = threading.Lock()
+        last_flush = time.monotonic()
+
+        def _flush_logs(*, force: bool = False) -> None:
+            nonlocal last_flush
+            with pending_lock:
+                if not pending_logs:
+                    return
+                now = time.monotonic()
+                if not force and len(pending_logs) < 100 and (now - last_flush) < 1.0:
+                    return
+                batch = list(pending_logs)
+                pending_logs.clear()
+                last_flush = now
+            self.jobstore.add_logs(job_id, batch)
+
+        def _queue_log(msg: str, level: str = "INFO") -> None:
+            with pending_lock:
+                pending_logs.append((msg, level))
+            _flush_logs()
 
         try:
             proc = subprocess.Popen(  # noqa: S603
@@ -239,10 +263,10 @@ class Worker:
                     continue
                 if is_err:
                     full_err.append(line + "\n")
-                    self.jobstore.add_log(job_id, line, level="ERROR")
+                    _queue_log(line, level="ERROR")
                 else:
                     full_out.append(line + "\n")
-                    self.jobstore.add_log(job_id, line)
+                    _queue_log(line)
 
         # threads para ler stdout e stderr em paralelo
         t_out = threading.Thread(target=_reader, args=(proc.stdout, False), daemon=True)
@@ -254,6 +278,7 @@ class Worker:
         proc.wait()
         t_out.join()
         t_err.join()
+        _flush_logs(force=True)
 
         rc = proc.returncode
 

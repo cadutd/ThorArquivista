@@ -19,12 +19,14 @@ from __future__ import annotations
 import json
 import uuid
 import threading
+import time
 from pathlib import Path
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 
 ISO = "%Y-%m-%dT%H:%M:%S.%fZ"
+DEFAULT_MAX_LOGS_PER_JOB = 2000
 
 
 def _now_iso() -> str:
@@ -49,9 +51,10 @@ class JobStore:
       - canceled  : cancelado pelo usuário (apenas se estava pending)
     """
 
-    def __init__(self, path: str | Path = "./jobs_db.json"):
+    def __init__(self, path: str | Path = "./jobs_db.json", *, max_logs_per_job: int = DEFAULT_MAX_LOGS_PER_JOB):
         self.path = str(path)
-        self._lock = threading.Lock()
+        self.max_logs_per_job = max(100, int(max_logs_per_job))
+        self._lock = self._get_path_lock(path)
         self._ensure_file()
 
     # ------------- API pública -------------
@@ -73,16 +76,38 @@ class JobStore:
             return jid
 
     def add_log(self, job_id: str, msg: str, level: str = "INFO") -> None:
-        level = level.upper()
-        if level not in ("INFO", "ERROR", "WARN", "WARNING", "DEBUG"):
-            level = "INFO"
+        self.add_logs(job_id, [(msg, level)])
+
+    def add_logs(self, job_id: str, entries: List[tuple[str, str]]) -> None:
+        if not entries:
+            return
+        now = _now_iso()
+        normalized = []
+        for msg, level in entries:
+            level = level.upper()
+            if level not in ("INFO", "ERROR", "WARN", "WARNING", "DEBUG"):
+                level = "INFO"
+            normalized.append({"ts": now, "level": level, "msg": str(msg)})
         with self._locked_rw(self) as db:
             logs = db["logs"].setdefault(job_id, [])
-            logs.append({"ts": _now_iso(), "level": level, "msg": str(msg)})
+            logs.extend(normalized)
+            self._trim_logs(db)
 
     def get_logs(self, job_id: str) -> List[Dict[str, str]]:
         with self._locked_ro(self) as db:
             return list(db["logs"].get(job_id, []))
+
+    def get_job_status(self, job_id: str) -> Optional[str]:
+        with self._locked_ro(self) as db:
+            job = self._find_job(db, job_id)
+            return str(job.get("status")) if job else None
+
+    def get_job_status_and_logs(self, job_id: str) -> tuple[Optional[str], List[Dict[str, str]]]:
+        with self._locked_ro(self) as db:
+            job = self._find_job(db, job_id)
+            status = str(job.get("status")) if job else None
+            logs = list(db["logs"].get(job_id, []))
+            return status, logs
 
     def set_status(self, job_id: str, status: str, *, error_msg: Optional[str] = None) -> bool:
         if status not in ("pending", "running", "done", "error", "canceled"):
@@ -177,26 +202,63 @@ class JobStore:
             return True
 
     # ------------- Internos -------------
+    _locks_guard = threading.Lock()
+    _locks_by_path: Dict[str, threading.RLock] = {}
+
+    @classmethod
+    def _get_path_lock(cls, path: str | Path) -> threading.RLock:
+        key = str(Path(path).resolve())
+        with cls._locks_guard:
+            lock = cls._locks_by_path.get(key)
+            if lock is None:
+                lock = threading.RLock()
+                cls._locks_by_path[key] = lock
+            return lock
+
+    @staticmethod
+    def _atomic_write_json(path: Path, data: Dict[str, Any]) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = path.with_name(f"{path.name}.{uuid.uuid4().hex}.tmp")
+        tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        try:
+            for attempt in range(8):
+                try:
+                    tmp.replace(path)
+                    return
+                except PermissionError:
+                    if attempt == 7:
+                        raise
+                    time.sleep(0.05 * (attempt + 1))
+        finally:
+            if tmp.exists():
+                try:
+                    tmp.unlink()
+                except PermissionError:
+                    pass
+
+    def _trim_logs(self, db: Dict[str, Any]) -> None:
+        logs_by_job = db.get("logs")
+        if not isinstance(logs_by_job, dict):
+            db["logs"] = {}
+            return
+        for logs in logs_by_job.values():
+            if isinstance(logs, list) and len(logs) > self.max_logs_per_job:
+                del logs[: len(logs) - self.max_logs_per_job]
+
     def _ensure_file(self) -> None:
         p = Path(self.path)
-        if not p.exists():
-            p.parent.mkdir(parents=True, exist_ok=True)
-            data = {"jobs": [], "logs": {}}
-            tmp = p.with_suffix(p.suffix + ".tmp")
-            tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-            tmp.replace(p)
+        with self._lock:
+            if not p.exists():
+                self._atomic_write_json(p, {"jobs": [], "logs": {}})
 
-        # valida estrutura básica
-        try:
-            with p.open("r", encoding="utf-8") as f:
-                data = json.load(f)
-            if "jobs" not in data or "logs" not in data:
-                raise ValueError("arquivo inválido")
-        except Exception:
-            data = {"jobs": [], "logs": {}}
-            tmp = p.with_suffix(p.suffix + ".tmp")
-            tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-            tmp.replace(p)
+            # valida estrutura básica
+            try:
+                with p.open("r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if "jobs" not in data or "logs" not in data:
+                    raise ValueError("arquivo inválido")
+            except Exception:
+                self._atomic_write_json(p, {"jobs": [], "logs": {}})
 
     class _locked_ro:
         def __init__(self, outer: "JobStore"):
@@ -232,10 +294,9 @@ class JobStore:
         def __exit__(self, exc_type, exc, tb):
             # gravação atômica
             p = Path(self.outer.path)
-            tmp = p.with_suffix(p.suffix + ".tmp")
             try:
-                tmp.write_text(json.dumps(self._data, ensure_ascii=False, indent=2), encoding="utf-8")
-                tmp.replace(p)
+                self.outer._trim_logs(self._data)
+                self.outer._atomic_write_json(p, self._data)
             finally:
                 self.outer._lock.release()
 

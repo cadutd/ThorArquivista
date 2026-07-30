@@ -21,7 +21,7 @@ from pathlib import Path
 import json
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import *
-from tkinter import BOTH, X, YES, StringVar, IntVar, END, Toplevel, Text
+from tkinter import BOTH, X, YES, StringVar, IntVar, END, Toplevel, Text, filedialog, messagebox
 
 REFRESH_MS_DEFAULT = 1000  # valor padrão (1 segundo)
 ROW_HEIGHT = 12
@@ -126,7 +126,7 @@ def create_panel(app, enqueue_cb):
     actions = ttk.Frame(page)
     actions.pack(fill=X, pady=(10, 6))
     ttk.Label(actions, text="Filtrar:").pack(side=LEFT, padx=(2, 6))
-    filt = StringVar(value="pending")
+    filt = StringVar(value="todos")
     ttk.Combobox(
         actions,
         textvariable=filt,
@@ -418,25 +418,28 @@ def _show_logs_modal(app, tree, refresh_var: IntVar):
     top = ttk.Frame(win, padding=6)
     top.pack(fill=X)
     ttk.Label(top, text=f"Job: {jid}", bootstyle=PRIMARY).pack(side=LEFT)
+    rendered_count = {"value": 0}
     ttk.Button(top, text="Atualizar", bootstyle=SECONDARY,
-               command=lambda: _populate_logs_text(txt, app, jid)).pack(side=RIGHT, padx=4)
+               command=lambda: _populate_logs_text(txt, app, jid, rendered_count=rendered_count)).pack(side=RIGHT, padx=4)
     ttk.Button(top, text="Copiar", bootstyle=INFO,
                command=lambda: _copy_logs_to_clipboard(app, txt)).pack(side=RIGHT, padx=4)
+    ttk.Button(top, text="Exportar TXT", bootstyle=SUCCESS,
+               command=lambda: _export_logs_to_txt(app, txt, jid, win)).pack(side=RIGHT, padx=4)
     ttk.Button(top, text="Fechar", bootstyle=DANGER,
                command=win.destroy).pack(side=RIGHT, padx=4)
 
     txt = Text(win, wrap="word")
     txt.pack(fill=BOTH, expand=YES, padx=6, pady=6)
 
-    _populate_logs_text(txt, app, jid)
+    _populate_logs_text(txt, app, jid, rendered_count=rendered_count)
 
     def _get_interval_ms_logs() -> int:
         try:
             val = int(refresh_var.get())
         except Exception:
             val = REFRESH_MS_DEFAULT
-        if val < 200:
-            val = 200
+        if val < 5000:
+            val = 5000
         if val > 60000:
             val = 60000
         return val
@@ -446,15 +449,8 @@ def _show_logs_modal(app, tree, refresh_var: IntVar):
         if not win.winfo_exists():
             return
 
-        # verifica status atual do job
-        jobs = app.worker.jobstore.list_jobs()  # todos
-        status = None
-        for j in jobs:
-            if j.get("_id") == jid:
-                status = j.get("status")
-                break
-
-        _populate_logs_text(txt, app, jid)
+        status, logs = app.worker.jobstore.get_job_status_and_logs(jid)
+        _append_new_logs_text(txt, logs, rendered_count)
 
         # se ainda estiver running, agenda outro refresh
         if status == "running":
@@ -464,7 +460,11 @@ def _show_logs_modal(app, tree, refresh_var: IntVar):
     win.after(_get_interval_ms_logs(), _auto_refresh)
 
 
-def _populate_logs_text(txt: Text, app, job_id: str):
+def _format_log_entry(entry: dict) -> str:
+    return f"[{entry.get('ts','')}] {entry.get('level','INFO')}: {entry.get('msg','')}\n"
+
+
+def _populate_logs_text(txt: Text, app, job_id: str, rendered_count: dict | None = None):
     txt.configure(state="normal")
     txt.delete("1.0", END)
     logs = app.worker.jobstore.get_logs(job_id)
@@ -472,10 +472,37 @@ def _populate_logs_text(txt: Text, app, job_id: str):
     def _ts(l): return l.get("ts", "")
     logs = sorted(logs, key=_ts)
     for entry in logs:
-        line = f"[{entry.get('ts','')}] {entry.get('level','INFO')}: {entry.get('msg','')}\n"
-        txt.insert(END, line)
+        txt.insert(END, _format_log_entry(entry))
     if not logs:
         txt.insert(END, "Sem logs para este job.")
+    if rendered_count is not None:
+        rendered_count["value"] = len(logs)
+    txt.see(END)
+    txt.configure(state="disabled")
+
+
+def _append_new_logs_text(txt: Text, logs: list[dict], rendered_count: dict):
+    def _ts(l): return l.get("ts", "")
+    logs = sorted(logs, key=_ts)
+    already_rendered = int(rendered_count.get("value", 0))
+    if already_rendered > len(logs):
+        txt.configure(state="normal")
+        txt.delete("1.0", END)
+        for entry in logs:
+            txt.insert(END, _format_log_entry(entry))
+        rendered_count["value"] = len(logs)
+        txt.see(END)
+        txt.configure(state="disabled")
+        return
+    new_logs = logs[already_rendered:]
+    if not new_logs:
+        return
+    txt.configure(state="normal")
+    if already_rendered == 0:
+        txt.delete("1.0", END)
+    for entry in new_logs:
+        txt.insert(END, _format_log_entry(entry))
+    rendered_count["value"] = len(logs)
     txt.see(END)
     txt.configure(state="disabled")
 
@@ -485,6 +512,27 @@ def _copy_logs_to_clipboard(app, txt: Text):
     app.clipboard_clear()
     app.clipboard_append(content.strip())
     app._status.configure(text="Logs copiados para a área de transferência.")
+
+
+def _export_logs_to_txt(app, txt: Text, job_id: str, parent):
+    default_name = f"logs_job_{job_id}.txt"
+    path = filedialog.asksaveasfilename(
+        parent=parent,
+        title="Exportar logs como TXT",
+        defaultextension=".txt",
+        initialfile=default_name,
+        filetypes=[("Arquivo de texto", "*.txt"), ("Todos os arquivos", "*.*")],
+    )
+    if not path:
+        return
+    try:
+        content = txt.get("1.0", END).rstrip() + "\n"
+        Path(path).write_text(content, encoding="utf-8")
+        app._status.configure(text=f"Logs exportados para: {path}")
+        messagebox.showinfo("Exportação concluída", f"Logs exportados para:\n{path}", parent=parent)
+    except Exception as e:
+        app._status.configure(text=f"Falha ao exportar logs: {e}")
+        messagebox.showerror("Falha ao exportar", str(e), parent=parent)
 
 
 def _close_tab(app, page):

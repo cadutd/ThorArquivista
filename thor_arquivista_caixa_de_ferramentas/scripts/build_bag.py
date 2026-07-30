@@ -43,11 +43,28 @@ import json
 import os
 import shutil
 import sys
+import time
 from datetime import date
 from pathlib import Path
 from typing import Iterable, Tuple, List, Dict, Optional
 
 CHUNK = 1024 * 1024
+
+
+def progress_marks(total: int) -> list[tuple[int, int]]:
+    marks_by_count = {}
+    for percent in range(5, 101, 5):
+        mark = max(1, (total * percent + 99) // 100)
+        marks_by_count[mark] = percent
+    return sorted(marks_by_count.items())
+
+
+def emit_progress(done: int, total: int, marks: list[tuple[int, int]], next_mark: int, label: str) -> int:
+    while next_mark < len(marks) and done >= marks[next_mark][0]:
+        percent = marks[next_mark][1]
+        print(f"[INFO] {label} {percent}%: processados {done}/{total}; faltam {total - done}", file=sys.stderr)
+        next_mark += 1
+    return next_mark
 
 
 # ==========================
@@ -233,8 +250,11 @@ def build_bag(
         raise RuntimeError("Nenhum arquivo elegível encontrado na pasta fonte.")
 
     # 2) Transfere para data/ conforme modo
-    print(f"[1/6] Transferindo {len(files_src)} arquivo(s) (mode={mode})…")
+    print(f"[1/6] Transferindo {len(files_src)} arquivo(s) (mode={mode})...")
     transferred: List[Path] = []
+    transfer_marks = progress_marks(len(files_src))
+    transfer_next_mark = 0
+    transfer_start = time.perf_counter()
     for i, p in enumerate(files_src, 1):
         rel = relposix(src, p)
         dst_file = data_dir / rel
@@ -252,30 +272,43 @@ def build_bag(
         else:
             raise ValueError("mode deve ser 'copy', 'move' ou 'link'.")
 
-        if i % 50 == 0 or i == len(files_src):
-            print(f"  - {i}/{len(files_src)}")
+        transfer_next_mark = emit_progress(i, len(files_src), transfer_marks, transfer_next_mark, "Transferência")
         transferred.append(dst_file)
+    transfer_elapsed = time.perf_counter() - transfer_start
+    print(
+        f"[INFO] Transferência finalizada: {len(files_src)} arquivo(s) em "
+        f"{transfer_elapsed:.2f}s; média {transfer_elapsed / len(files_src):.4f}s/arquivo",
+        file=sys.stderr,
+    )
 
     # 3) Calcula manifest do payload
-    print("[2/6] Gerando manifest do payload…")
+    print("[2/6] Gerando manifest do payload...")
     manifest_path = dst / f"manifest-{algo.lower()}.txt"
     transferred_sorted = sorted(transferred, key=lambda x: relposix(data_dir, x))
+    manifest_marks = progress_marks(len(transferred_sorted))
+    manifest_next_mark = 0
+    manifest_start = time.perf_counter()
     with manifest_path.open("w", encoding="utf-8", newline="\n") as mf:
         for i, f in enumerate(transferred_sorted, 1):
             dig = digest_file(f, algo=algo)
             # caminho relativo ao ROOT do bag, ex.: "data/dir/arquivo.ext"
             path_in_bag = relposix(dst, f)
             mf.write(f"{dig}  {path_in_bag}\n")
-            if i % 200 == 0 or i == len(transferred_sorted):
-                print(f"  - {i}/{len(transferred_sorted)}")
+            manifest_next_mark = emit_progress(i, len(transferred_sorted), manifest_marks, manifest_next_mark, "Manifest")
+    manifest_elapsed = time.perf_counter() - manifest_start
+    print(
+        f"[INFO] Manifest finalizado: {len(transferred_sorted)} arquivo(s) em "
+        f"{manifest_elapsed:.2f}s; média {manifest_elapsed / len(transferred_sorted):.4f}s/arquivo",
+        file=sys.stderr,
+    )
 
     # 4) bagit.txt
-    print("[3/6] Escrevendo bagit.txt…")
+    print("[3/6] Escrevendo bagit.txt...")
     bagit_txt = "BagIt-Version: 0.97\nTag-File-Character-Encoding: UTF-8\n"
     write_text(dst / "bagit.txt", bagit_txt)
 
     # 5) bag-info.txt via profile
-    print("[4/6] Escrevendo bag-info.txt…")
+    print("[4/6] Escrevendo bag-info.txt...")
     total_bytes, count = payload_oxum(transferred)
 
     # contexto para templates
@@ -345,7 +378,7 @@ def build_bag(
 
     # 6) tagmanifest (opcional)
     if tagmanifest:
-        print("[5/6] Gerando tagmanifest…")
+        print("[5/6] Gerando tagmanifest...")
         tag_paths = [
             dst / "bagit.txt",
             dst / "bag-info.txt",

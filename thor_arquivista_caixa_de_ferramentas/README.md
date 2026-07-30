@@ -2,7 +2,7 @@
 
 Aplicativo desktop em Python para executar tarefas comuns de preservação digital: manifestos BagIt, verificação de fixidez, geração de pacote BagIt, cópia validada, backup preservacional BagIt, análise/tratamento de duplicatas, exclusão de duplicatas por manifesto e conversão PREMIS.
 
-O aplicativo usa Tkinter com `ttkbootstrap`, executa tarefas em fila local e grava o estado em arquivos JSON na própria pasta do projeto.
+O aplicativo usa Tkinter com `ttkbootstrap`, executa tarefas em fila local e grava o estado em arquivos JSON na própria pasta do projeto. A janela principal abre centralizada no monitor ativo.
 
 ![Tela inicial do Thor Arquivista](docs/images/app-home.png)
 
@@ -81,7 +81,9 @@ Estados usados:
 pending | running | done | error | canceled
 ```
 
-Use o painel **Visualização > Controle do Worker** para acompanhar, pausar, retomar, reenfileirar ou limpar jobs.
+Use o painel **Visualização > Controle do Worker** para acompanhar, pausar, retomar, reenfileirar ou limpar jobs. A lista abre com o filtro **todos** por padrão.
+
+Para reduzir travamentos em execuções longas, o Worker agrupa linhas de log antes de gravar em `jobs_db.json`, usa escrita atômica com arquivos temporários únicos e limita o histórico mantido por job. A janela de logs atualiza incrementalmente, em vez de reconstruir todo o conteúdo a cada atualização.
 
 ---
 
@@ -107,7 +109,7 @@ Campos principais:
 - **Arquivo de saída**: caminho do manifesto, por exemplo `manifest-sha256.txt`.
 - **Algoritmo**: normalmente `sha256`.
 - **Ignorar ocultos**: ignora arquivos e pastas iniciados por ponto.
-- **Mostrar progresso**: registra andamento no log do job.
+- **Mostrar progresso**: registra andamento no log do job em marcos de 5%, com quantidade processada e restante.
 
 Exemplo por linha de comando:
 
@@ -127,8 +129,19 @@ Campos principais:
 
 - **Pasta raiz**: pasta onde estão os arquivos a verificar.
 - **Manifesto**: arquivo `manifest-<algo>.txt`.
-- **Reportar extras**: lista arquivos que existem na pasta, mas não aparecem no manifesto.
-- **Mostrar progresso**: registra andamento no log.
+- **Reportar extras**: mantido por compatibilidade; o relatório final sempre lista arquivos que existem na pasta, mas não aparecem no manifesto.
+- **Mostrar progresso**: registra andamento no log em marcos de 5%, com quantidade verificada e restante.
+
+Relatório final:
+
+- total de entradas no manifesto;
+- quantidade de arquivos verificados íntegros;
+- quantidade de arquivos verificados corrompidos ou com erro;
+- quantidade e lista de arquivos presentes no manifesto e ausentes na pasta analisada;
+- quantidade e lista de arquivos presentes na pasta analisada e ausentes no manifesto;
+- tempo total de verificação e média por arquivo.
+
+As contagens e seções são exibidas mesmo quando o valor é `0`; listas vazias aparecem como `Nenhum`.
 
 Exemplo por linha de comando:
 
@@ -158,6 +171,8 @@ Exemplo por linha de comando:
 python scripts/build_bag.py "D:/acervo/fonte" "D:/bags/bag_001" --algo sha256 --mode copy --tagmanifest
 ```
 
+Durante a transferência e a geração do manifesto do payload, o progresso é registrado em marcos de 5%, com resumo de tempo total e média por arquivo ao final de cada fase.
+
 ### Tarefas > Copiar
 
 Script usado: `scripts/replicate_storage.py`
@@ -177,6 +192,8 @@ Exemplo por linha de comando:
 python scripts/replicate_storage.py --fonte "D:/acervo" --destino "E:/backup_1" --destino "F:/backup_2"
 ```
 
+O progresso da cópia, da geração do manifesto e da verificação de fixidez é registrado em marcos de 5%, sem atualização contínua no terminal.
+
 ### Tarefas > Backup Preservacional
 
 Script usado: `scripts/backup_plan.py`
@@ -194,6 +211,8 @@ Campos e ações principais:
 - **Pausar com STOP**: cria `thor-backup/checkpoints/STOP` para parada segura.
 - **Verificar integridade**: enfileira `BACKUP_VERIFY`.
 - **Histórico**: lista checkpoints, relatórios e manifestos históricos.
+
+As etapas de geração de manifesto de origem e aplicação incremental do backup registram progresso em marcos de 5%, com quantidade restante e resumo de duração.
 
 Exemplo por linha de comando:
 
@@ -275,6 +294,8 @@ python scripts/duplicate_finder.py --inventario "D:/relatorios/inventario.csv" -
 python scripts/duplicate_finder.py --from-duplicatas "D:/relatorios/duplicatas.csv" --decisoes "D:/relatorios/decisoes.csv"
 ```
 
+Quando **Mostrar progresso** está habilitado, o inventário registra total inicial, marcos de 5%, quantidade restante e resumo de duração.
+
 ### Tarefas > Duplicatas > Tratamento de Duplicatas
 
 Script usado: `scripts/duplicate_finder.py`
@@ -309,6 +330,8 @@ Fluxo:
 2. Percorre a pasta com possíveis duplicatas.
 3. Apaga arquivos cujo hash aparece no manifesto da origem.
 4. Gera relatório CSV com arquivos apagados e espaço recuperado.
+
+Com progresso habilitado, a geração do manifesto e a verificação/exclusão também usam marcos de 5% e resumo de duração.
 
 Campos principais:
 
@@ -383,11 +406,15 @@ Uso:
 
 - iniciar, parar, pausar, retomar e reiniciar o worker;
 - ver contadores por status;
-- listar jobs por status;
+- listar jobs por status; o filtro inicial é **todos**;
 - cancelar jobs pendentes;
 - reenfileirar jobs com erro, concluídos ou cancelados;
 - limpar jobs pendentes, concluídos ou com erro;
-- abrir logs detalhados de cada job.
+- abrir logs detalhados de cada job;
+- copiar logs para a área de transferência;
+- exportar o conteúdo atual da janela de logs para um arquivo `.txt`.
+
+A janela de logs faz auto-refresh incremental e usa intervalo mínimo de 5 segundos para reduzir leitura de disco e evitar travamentos em execuções longas.
 
 ---
 
@@ -425,7 +452,8 @@ A suíte de testes cobre:
 - versionamento;
 - preservação de removidos;
 - parada segura por `STOP` e retomada;
-- verificação de fixidez e evento PREMIS `FIXITY_CHECK`.
+- verificação de fixidez, relatório final de íntegros/corrompidos/faltantes/extras e evento PREMIS `FIXITY_CHECK`;
+- concorrência e contenção de logs do `JobStore`.
 
 Execute a suíte e gere o relatório HTML:
 
@@ -500,6 +528,14 @@ Abra **Visualização > Controle do Worker** e use **Iniciar** ou **Reiniciar**.
 **Um job ficou com erro**
 
 Abra os logs no painel **Controle do Worker**. O erro do script geralmente aparece em `stderr` dentro dos logs do job.
+
+**Preciso guardar os logs de um job**
+
+Abra **Visualização > Controle do Worker**, selecione o job, clique em **Ver logs** e use **Exportar TXT**.
+
+**A tela abre fora do centro**
+
+A janela é centralizada depois da montagem inicial, usando a área útil do monitor ativo no Windows. Se usar múltiplos monitores, deixe o cursor no monitor desejado ao abrir o aplicativo.
 
 **Erro de permissão**
 

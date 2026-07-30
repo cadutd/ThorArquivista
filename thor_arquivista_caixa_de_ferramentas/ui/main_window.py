@@ -206,6 +206,8 @@ class MainApp(tb.Window):
         # =====================
         self._status = ttk.Label(self, text="Pronto.", anchor="w")
         self._status.pack(fill=X, padx=10, pady=(0, 10))
+        self.after_idle(lambda: self._center_on_screen(1200, 800))
+        self.after(250, lambda: self._center_on_screen(1200, 800))
 
     # =====================
     # Encerramento e Enfileiramento
@@ -217,6 +219,52 @@ class MainApp(tb.Window):
                 self.worker.join(timeout=2.0)
         finally:
             super().destroy()
+
+    def _center_on_screen(self, width: int, height: int) -> None:
+        self.update_idletasks()
+        left, top, right, bottom = self._get_target_work_area()
+        x = left + max(0, (right - left - width) // 2)
+        y = top + max(0, (bottom - top - height) // 2)
+        self.geometry(f"{width}x{height}+{x}+{y}")
+
+    def _get_target_work_area(self) -> tuple[int, int, int, int]:
+        try:
+            import ctypes
+            from ctypes import wintypes
+
+            class RECT(ctypes.Structure):
+                _fields_ = [
+                    ("left", wintypes.LONG),
+                    ("top", wintypes.LONG),
+                    ("right", wintypes.LONG),
+                    ("bottom", wintypes.LONG),
+                ]
+
+            class MONITORINFO(ctypes.Structure):
+                _fields_ = [
+                    ("cbSize", wintypes.DWORD),
+                    ("rcMonitor", RECT),
+                    ("rcWork", RECT),
+                    ("dwFlags", wintypes.DWORD),
+                ]
+
+            user32 = ctypes.windll.user32
+            px, py = self.winfo_pointerxy()
+            monitor = user32.MonitorFromPoint(wintypes.POINT(px, py), 2)
+            info = MONITORINFO()
+            info.cbSize = ctypes.sizeof(MONITORINFO)
+            if monitor and user32.GetMonitorInfoW(monitor, ctypes.byref(info)):
+                work = info.rcWork
+                return work.left, work.top, work.right, work.bottom
+        except Exception:
+            pass
+
+        return (
+            self.winfo_vrootx(),
+            self.winfo_vrooty(),
+            self.winfo_vrootx() + self.winfo_screenwidth(),
+            self.winfo_vrooty() + self.winfo_screenheight(),
+        )
 
     def _enqueue(self, job_type: str, params: Dict[str, Any]):
         try:

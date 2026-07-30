@@ -21,6 +21,7 @@ import argparse
 import hashlib
 import os
 import sys
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from fnmatch import fnmatch
@@ -28,6 +29,22 @@ from pathlib import Path
 from typing import Optional
 
 CHUNK = 1024 * 1024  # 1 MiB
+
+
+def progress_marks(total: int) -> list[tuple[int, int]]:
+    marks_by_count = {}
+    for percent in range(5, 101, 5):
+        mark = max(1, (total * percent + 99) // 100)
+        marks_by_count[mark] = percent
+    return sorted(marks_by_count.items())
+
+
+def emit_progress(done: int, total: int, marks: list[tuple[int, int]], next_mark: int) -> int:
+    while next_mark < len(marks) and done >= marks[next_mark][0]:
+        percent = marks[next_mark][1]
+        print(f"[INFO] Progresso {percent}%: processados {done}/{total}; faltam {total - done}", file=sys.stderr)
+        next_mark += 1
+    return next_mark
 
 
 def parse_args() -> argparse.Namespace:
@@ -156,10 +173,14 @@ def main() -> int:
             candidates.append(p)
 
     total = len(candidates)
+    marks = progress_marks(total) if total else []
+    next_mark = 0
     if args.progress:
         print(f"[INFO] Arquivos a processar: {total}", file=sys.stderr)
+        print("[INFO] Iniciando geração de manifesto...", file=sys.stderr)
 
     results: list[tuple[Path, str | None, str | None]] = []
+    started_at = time.perf_counter()
     with ThreadPoolExecutor(max_workers=max(1, int(args.workers))) as ex:
         futs = {ex.submit(hash_file, p, args.algo): p for p in candidates}
         done = 0
@@ -171,8 +192,9 @@ def main() -> int:
             except Exception as e:
                 results.append((p, None, str(e)))
             done += 1
-            if args.progress and (done % 50 == 0 or done == total):
-                print(f"[INFO] Progresso: {done}/{total}", file=sys.stderr)
+            if args.progress:
+                next_mark = emit_progress(done, total, marks, next_mark)
+    elapsed = time.perf_counter() - started_at
 
     saida.parent.mkdir(parents=True, exist_ok=True)
     with saida.open("w", encoding="utf-8", newline="\n") as out:
@@ -185,6 +207,12 @@ def main() -> int:
             out.write(f"{digest}  {rel}\n")
 
     if args.progress:
+        avg = elapsed / total if total else 0.0
+        print(
+            f"[INFO] Manifesto finalizado: {total} arquivo(s) processado(s) em "
+            f"{elapsed:.2f}s; média {avg:.4f}s/arquivo",
+            file=sys.stderr,
+        )
         print(f"[INFO] Manifesto gerado em: {saida}", file=sys.stderr)
     return 0
 

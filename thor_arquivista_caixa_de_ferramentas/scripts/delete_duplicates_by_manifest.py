@@ -27,6 +27,7 @@ import csv
 import re
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -40,6 +41,22 @@ DEFAULT_REPORT_NAME = "relatorio_exclusao_duplicatas.csv"
 DEFAULT_MANIFEST_DIR_NAME = "manifesto_origem"
 DEFAULT_REPORT_DIR_NAME = "relatorio_exclusao"
 LINE_RE = re.compile(r"^([A-Fa-f0-9]+)\s+(.*?)\s*$")
+
+
+def progress_marks(total: int) -> list[tuple[int, int]]:
+    marks_by_count = {}
+    for percent in range(5, 101, 5):
+        mark = max(1, (total * percent + 99) // 100)
+        marks_by_count[mark] = percent
+    return sorted(marks_by_count.items())
+
+
+def emit_progress(done: int, total: int, marks: list[tuple[int, int]], next_mark: int, label: str) -> int:
+    while next_mark < len(marks) and done >= marks[next_mark][0]:
+        percent = marks[next_mark][1]
+        print(f"[INFO] {label} {percent}%: processados {done}/{total}; faltam {total - done}", file=sys.stderr)
+        next_mark += 1
+    return next_mark
 
 
 def parse_args() -> argparse.Namespace:
@@ -168,10 +185,14 @@ def main() -> int:
         and not any(path_overlaps(p.resolve(), protected_dir) for protected_dir in protected_dirs)
     ]
     total = len(candidates)
+    marks = progress_marks(total) if total else []
+    next_mark = 0
+    started_at = time.perf_counter()
+    if args.progress:
+        print(f"[INFO] Arquivos a verificar em possíveis duplicatas: {total}", file=sys.stderr)
+        print("[INFO] Iniciando exclusão por manifesto...", file=sys.stderr)
 
     for idx, path in enumerate(candidates, 1):
-        if args.progress and (idx == 1 or idx % 50 == 0 or idx == total):
-            print(f"[INFO] Verificando {idx}/{total}: {path}", file=sys.stderr)
         try:
             digest = hash_file(path, ALGO).lower()
             if digest not in ref_hashes:
@@ -193,8 +214,19 @@ def main() -> int:
             )
         except Exception as e:  # noqa: BLE001
             print(f"[ERRO] Falha ao processar {path}: {e}", file=sys.stderr)
+        finally:
+            if args.progress:
+                next_mark = emit_progress(idx, total, marks, next_mark, "Exclusão por manifesto")
 
     write_report(report, deleted_rows, recovered_bytes)
+    elapsed = time.perf_counter() - started_at
+    if args.progress:
+        avg = elapsed / total if total else 0.0
+        print(
+            f"[INFO] Exclusão por manifesto finalizada: {total} arquivo(s) avaliados em "
+            f"{elapsed:.2f}s; média {avg:.4f}s/arquivo",
+            file=sys.stderr,
+        )
 
     print("=== Exclusão de duplicatas ===")
     print(f"Manifesto origem : {manifest}")

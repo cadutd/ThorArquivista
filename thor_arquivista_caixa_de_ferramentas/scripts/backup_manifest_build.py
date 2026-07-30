@@ -4,9 +4,26 @@ from __future__ import annotations
 import argparse
 import hashlib
 import sys
+import time
 from pathlib import Path
 
 from backup_common import digest_file, iter_files, relposix, write_manifest
+
+
+def progress_marks(total: int) -> list[tuple[int, int]]:
+    marks_by_count = {}
+    for percent in range(5, 101, 5):
+        mark = max(1, (total * percent + 99) // 100)
+        marks_by_count[mark] = percent
+    return sorted(marks_by_count.items())
+
+
+def emit_progress(done: int, total: int, marks: list[tuple[int, int]], next_mark: int, label: str) -> int:
+    while next_mark < len(marks) and done >= marks[next_mark][0]:
+        percent = marks[next_mark][1]
+        print(f"[INFO] {label} {percent}%: processados {done}/{total}; faltam {total - done}", file=sys.stderr)
+        next_mark += 1
+    return next_mark
 
 
 def parse_args() -> argparse.Namespace:
@@ -40,12 +57,25 @@ def build_manifest(
     files = sorted(iter_files(raiz, ignore_hidden=ignore_hidden, follow_symlinks=follow_symlinks), key=lambda p: relposix(raiz, p))
     entries: dict[str, str] = {}
     total = len(files)
+    marks = progress_marks(total) if total else []
+    next_mark = 0
+    started_at = time.perf_counter()
+    if progress:
+        print(f"[INFO] Arquivos a processar no manifesto de origem: {total}", file=sys.stderr)
     for idx, src in enumerate(files, 1):
         rel = relposix(raiz, src)
         key = f"{prefix}/{rel}" if prefix else rel
         entries[key] = digest_file(src, algo)
-        if progress and (idx % 50 == 0 or idx == total):
-            print(f"[INFO] Manifesto origem: {idx}/{total}", file=sys.stderr)
+        if progress:
+            next_mark = emit_progress(idx, total, marks, next_mark, "Manifesto origem")
+    if progress:
+        elapsed = time.perf_counter() - started_at
+        avg = elapsed / total if total else 0.0
+        print(
+            f"[INFO] Manifesto origem finalizado: {total} arquivo(s) processado(s) em "
+            f"{elapsed:.2f}s; média {avg:.4f}s/arquivo",
+            file=sys.stderr,
+        )
     return entries
 
 

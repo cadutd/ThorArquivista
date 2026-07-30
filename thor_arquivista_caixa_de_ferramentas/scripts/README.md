@@ -10,6 +10,8 @@ python scripts/<script>.py --help
 
 No Windows, use aspas em caminhos com espaços. Os manifestos BagIt gravam caminhos relativos com `/`, mesmo quando o comando recebe caminhos com `\`.
 
+Quando uma opção de progresso está disponível, os scripts usam logs econômicos: total inicial, atualização em marcos de 5%, quantidade restante e resumo final de duração/média. Esse formato evita excesso de saída em lotes grandes e reduz escrita em disco quando os scripts são executados pela interface gráfica.
+
 ---
 
 ## Sumário
@@ -76,7 +78,7 @@ Parâmetros:
 | `--ignore-hidden` | Ignora itens ocultos iniciados por ponto. |
 | `--follow-symlinks` | Segue links simbólicos. |
 | `--workers` | Número de threads. |
-| `--progress` | Mostra progresso no `stderr`. |
+| `--progress` | Mostra progresso no `stderr` em marcos de 5%, com quantidade restante e resumo final. |
 
 Saída esperada:
 
@@ -115,9 +117,9 @@ Parâmetros:
 | `--manifesto` | Manifesto BagIt a validar. Obrigatório. |
 | `--algo` | Força o algoritmo. Se omitido, tenta inferir de `manifest-<algo>.txt`. |
 | `--workers` | Número de threads de verificação. |
-| `--progress` | Mostra progresso. |
+| `--progress` | Mostra progresso em marcos de 5%, com quantidade restante e resumo de tempo/média. |
 | `--strict-missing` | Deixa explícito que faltantes geram erro. |
-| `--report-extras` | Reporta arquivos existentes que não estão no manifesto. |
+| `--report-extras` | Compatibilidade. O relatório final sempre lista arquivos extras. |
 
 Códigos de saída:
 
@@ -127,18 +129,40 @@ Códigos de saída:
 | `1` | Há faltantes, divergências ou erro em arquivo. |
 | `2` | Parâmetros inválidos, manifesto inválido ou algoritmo não suportado. |
 
-Saída resumida:
+Relatório final:
 
 ```text
 === Verificação de fixidez ===
 Manifesto : D:\acervo\manifest-sha256.txt
 Raiz      : D:\acervo
 Algoritmo : sha256
-Total     : 100
-OK        : 100
-Faltando  : 0
+Total no manifesto: 100
+Arquivos verificados íntegros: 100
+Arquivos verificados corrompidos: 0
+Arquivos no manifesto ausentes na pasta analisada: 0
 Divergências: 0
+Arquivos na pasta analisada ausentes no manifesto: 0
+
+-- Arquivos no manifesto ausentes na pasta analisada --
+Nenhum
+
+-- Arquivos verificados corrompidos ou com erro --
+Nenhum
+
+-- Arquivos na pasta analisada ausentes no manifesto --
+Nenhum
+
+=== Resumo final da verificação ===
+Total no manifesto: 100
+Arquivos verificados íntegros: 100
+Arquivos verificados corrompidos: 0
+Arquivos no manifesto ausentes na pasta analisada: 0
+Arquivos na pasta analisada ausentes no manifesto: 0
+Tempo de verificação: 12.34s
+Média por arquivo verificado: 0.1234s/arquivo
 ```
+
+As contagens e seções de listas aparecem mesmo quando o valor é `0`; listas vazias usam `Nenhum`. Quando o manifesto está dentro da pasta analisada, o próprio arquivo de manifesto não é contado como extra.
 
 ---
 
@@ -204,6 +228,7 @@ Observações:
 - O destino deve não existir ou estar vazio.
 - Em `--mode link`, se hardlink não for suportado, o script faz fallback para cópia.
 - Profiles podem preencher campos obrigatórios de `bag-info.txt`.
+- Transferência e geração do manifesto do payload registram progresso em marcos de 5% e resumo de tempo/média.
 
 ---
 
@@ -296,6 +321,8 @@ Fluxo:
 1. Gera `manifest-sha256.txt` da pasta fonte dentro de cada destino.
 2. Copia os arquivos.
 3. Valida cada destino com `verify_fixity.py`.
+
+As etapas de manifesto, cópia e verificação usam progresso em marcos de 5% quando o script não está em `--quiet`.
 
 Uso com um destino:
 
@@ -425,6 +452,7 @@ Observações:
 - Arquivos removidos da origem são preservados no destino e mantidos no manifesto do backup.
 - O checkpoint fica em `thor-backup/checkpoints/<backup>.state.json`.
 - O manifesto BagIt do destino continua sendo a fonte de verdade; nenhum banco SQL é usado.
+- Geração de manifesto de origem e aplicação incremental registram progresso em marcos de 5% quando `--progress` está ativo.
 
 Testes do backup preservacional:
 
@@ -541,7 +569,7 @@ Parâmetros principais:
 | `--acao` | `quarentena` ou `remover`. |
 | `--prefixo-quarentena` | Prefixo da pasta de quarentena. |
 | `--script-log-nome` | Nome do log gerado pelo script de tratamento. |
-| `--mostrar-progresso` | Mostra progresso no inventário. |
+| `--mostrar-progresso` | Mostra progresso no inventário em marcos de 5%, com quantidade restante e resumo final. |
 | `--dashboard-duplicatas-csv` | CSV de dashboard de duplicatas. |
 | `--dashboard-duplicatas-xlsx` | XLSX de dashboard de duplicatas. |
 | `--dashboard-decisoes-csv` | CSV de dashboard de decisões. |
@@ -599,7 +627,7 @@ Parâmetros:
 | `--duplicatas` | Pasta a percorrer e limpar. Obrigatório. |
 | `--manifesto` | Pasta onde será gravado `manifest-sha256.txt`. |
 | `--relatorio` | Pasta onde será gravado `relatorio_exclusao_duplicatas.csv`. |
-| `--progress` | Mostra progresso. |
+| `--progress` | Mostra progresso em marcos de 5%, com quantidade restante e resumo final. |
 
 Proteções:
 
@@ -733,7 +761,7 @@ Não execute este arquivo como uma tarefa de preservação.
 - Sempre coloque caminhos com espaços entre aspas.
 - Faça testes em cópias antes de executar comandos que movem ou apagam arquivos.
 - Guarde manifestos e relatórios junto com a documentação da operação.
-- Para lotes grandes, use `--progress`.
+- Para lotes grandes, use `--progress` ou `--mostrar-progresso`; a saída é limitada a marcos de 5%.
 - Em Windows, se um comando exibir caracteres incorretos, tente `chcp 65001`.
 
 ---

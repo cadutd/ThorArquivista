@@ -87,4 +87,24 @@ TEST_METADATA = {
         "preconditions": "Um backup válido já foi executado e existe manifesto BagIt no destino.",
         "postconditions": "backup_verify retorna sucesso e grava evento FIXITY_CHECK com outcome success.",
     },
+    "test_preservation_backup_scripts.PreservationBackupScriptTests.test_verify_fixity_report_lists_integrity_missing_and_extra_counts": {
+        "purpose": "Validar que o relatório final de verificação de fixidez lista contagens e detalhes de íntegros, corrompidos, faltantes e extras.",
+        "preconditions": "Uma pasta temporária contém um arquivo íntegro, um corrompido, um extra e um manifesto com um item faltante.",
+        "postconditions": "verify_fixity retorna falha controlada e o relatório final contém as contagens e listas esperadas.",
+    },
+    "test_preservation_backup_scripts.PreservationBackupScriptTests.test_verify_fixity_report_shows_zero_sections": {
+        "purpose": "Garantir que o relatório final de verificação de fixidez mostra contagens zero e seções vazias.",
+        "preconditions": "Uma pasta temporária contém apenas um arquivo íntegro e um manifesto correspondente.",
+        "postconditions": "verify_fixity retorna sucesso e imprime todas as seções com contagens zero e marcador Nenhum.",
+    },
+    "test_jobstore.JobStoreTests.test_multiple_instances_can_append_logs_to_same_file_concurrently": {
+        "purpose": "Validar que o JobStore suporta gravações concorrentes no mesmo arquivo JSON sem conflito no arquivo temporário.",
+        "preconditions": "Várias instâncias de JobStore apontam para o mesmo arquivo temporário e registram logs em threads paralelas.",
+        "postconditions": "Todos os logs esperados são gravados e o arquivo JSON permanece legível.",
+    },
+    "test_jobstore.JobStoreTests.test_bulk_logs_are_limited_per_job": {
+        "purpose": "Validar gravação de logs em lote e contenção do tamanho do histórico por job.",
+        "preconditions": "Um JobStore temporário recebe mais registros do que o limite configurado.",
+        "postconditions": "Apenas os registros mais recentes até o limite configurado permanecem no JSON.",
+    },
 }

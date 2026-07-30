@@ -5,6 +5,7 @@ import os
 import sys
 import tempfile
 import unittest
+import hashlib
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
@@ -19,6 +20,7 @@ from scripts.backup_manifest_build import build_manifest
 from scripts.backup_manifest_diff import diff_manifests
 from scripts.backup_plan import BackupRunner
 from scripts.backup_verify import main as verify_main
+from scripts.verify_fixity import main as verify_fixity_main
 
 
 class PreservationBackupScriptTests(unittest.TestCase):
@@ -200,6 +202,83 @@ class PreservationBackupScriptTests(unittest.TestCase):
             event = json.loads(premis.read_text(encoding="utf-8").splitlines()[-1])
             self.assertEqual(event["eventType"], "FIXITY_CHECK")
             self.assertEqual(event["eventOutcome"], "success")
+
+    def test_verify_fixity_report_lists_integrity_missing_and_extra_counts(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ok = root / "ok.txt"
+            bad = root / "bad.txt"
+            extra = root / "extra.txt"
+            manifest = root / "manifest-sha256.txt"
+            ok.write_text("ok", encoding="utf-8")
+            bad.write_text("original", encoding="utf-8")
+            extra.write_text("extra", encoding="utf-8")
+
+            ok_hash = hashlib.sha256(ok.read_bytes()).hexdigest()
+            bad_hash = hashlib.sha256(bad.read_bytes()).hexdigest()
+            manifest.write_text(
+                f"{ok_hash}  ok.txt\n"
+                f"{bad_hash}  bad.txt\n"
+                f"{ok_hash}  missing.txt\n",
+                encoding="utf-8",
+            )
+            bad.write_text("changed", encoding="utf-8")
+
+            old_argv = sys.argv
+            out = StringIO()
+            try:
+                sys.argv = [
+                    "verify_fixity.py",
+                    "--raiz",
+                    str(root),
+                    "--manifesto",
+                    str(manifest),
+                    "--report-extras",
+                ]
+                with redirect_stdout(out), redirect_stderr(StringIO()):
+                    rc = verify_fixity_main()
+            finally:
+                sys.argv = old_argv
+
+            text = out.getvalue()
+            self.assertEqual(rc, 1)
+            self.assertIn("Arquivos verificados íntegros: 1", text)
+            self.assertIn("Arquivos verificados corrompidos: 1", text)
+            self.assertIn("Arquivos no manifesto ausentes na pasta analisada: 1", text)
+            self.assertIn("Arquivos na pasta analisada ausentes no manifesto: 1", text)
+            self.assertIn("Arquivos na pasta analisada ausentes no manifesto:", text)
+            self.assertIn("missing.txt", text)
+            self.assertIn("bad.txt :: MISMATCH", text)
+            self.assertIn("extra.txt", text)
+            self.assertNotIn("\nmanifest-sha256.txt\n", text)
+
+    def test_verify_fixity_report_shows_zero_sections(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ok = root / "ok.txt"
+            manifest = root / "manifest-sha256.txt"
+            ok.write_text("ok", encoding="utf-8")
+            ok_hash = hashlib.sha256(ok.read_bytes()).hexdigest()
+            manifest.write_text(f"{ok_hash}  ok.txt\n", encoding="utf-8")
+
+            old_argv = sys.argv
+            out = StringIO()
+            try:
+                sys.argv = ["verify_fixity.py", "--raiz", str(root), "--manifesto", str(manifest)]
+                with redirect_stdout(out), redirect_stderr(StringIO()):
+                    rc = verify_fixity_main()
+            finally:
+                sys.argv = old_argv
+
+            text = out.getvalue()
+            self.assertEqual(rc, 0)
+            self.assertIn("Arquivos verificados íntegros: 1", text)
+            self.assertIn("Arquivos verificados corrompidos: 0", text)
+            self.assertIn("Arquivos no manifesto ausentes na pasta analisada: 0", text)
+            self.assertIn("Arquivos na pasta analisada ausentes no manifesto: 0", text)
+            self.assertIn("-- Arquivos no manifesto ausentes na pasta analisada --\nNenhum", text)
+            self.assertIn("-- Arquivos verificados corrompidos ou com erro --\nNenhum", text)
+            self.assertIn("-- Arquivos na pasta analisada ausentes no manifesto --\nNenhum", text)
 
     def tearDown(self):
         # Defensive cleanup for Windows handles in case a test leaves a temp dir behind.

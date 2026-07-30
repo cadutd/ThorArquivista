@@ -5,6 +5,7 @@ import argparse
 import json
 import shutil
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +30,22 @@ from backup_common import (
 )
 from backup_manifest_build import build_manifest
 from backup_manifest_diff import diff_manifests
+
+
+def progress_marks(total: int) -> list[tuple[int, int]]:
+    marks_by_count = {}
+    for percent in range(5, 101, 5):
+        mark = max(1, (total * percent + 99) // 100)
+        marks_by_count[mark] = percent
+    return sorted(marks_by_count.items())
+
+
+def emit_progress(done: int, total: int, marks: list[tuple[int, int]], next_mark: int, label: str) -> int:
+    while next_mark < len(marks) and done >= marks[next_mark][0]:
+        percent = marks[next_mark][1]
+        print(f"[INFO] {label} {percent}%: processados {done}/{total}; faltam {total - done}")
+        next_mark += 1
+    return next_mark
 
 
 def parse_args() -> argparse.Namespace:
@@ -142,10 +159,17 @@ class BackupRunner:
         updated = dict(dest_entries)
         work = [("same", p) for p in diff["same"]] + [("new", p) for p in diff["new"]] + [("changed", p) for p in diff["changed"]]
         total = len(work)
+        marks = progress_marks(total) if total else []
+        next_mark = 0
+        started_at = time.perf_counter()
+        if self.progress:
+            print(f"[INFO] Itens a processar no backup: {total}")
 
         for idx, (status, payload_path) in enumerate(work, 1):
             if payload_path in self.completed:
                 updated[payload_path] = source_entries[payload_path]
+                if self.progress:
+                    next_mark = emit_progress(idx, total, marks, next_mark, "Backup")
                 continue
 
             self.state["pasta_em_processamento"] = payload_path.split("/", 2)[1] if payload_path.startswith("data/") else ""
@@ -156,6 +180,8 @@ class BackupRunner:
                 if status == "same":
                     self.report_rows.append({"path": payload_path, "status": "same", "digest_after": source_entries[payload_path]})
                     self.completed.add(payload_path)
+                    if self.progress:
+                        next_mark = emit_progress(idx, total, marks, next_mark, "Backup")
                     continue
 
                 src = self.source_for_payload_path(payload_path, sources)
@@ -183,8 +209,8 @@ class BackupRunner:
                 )
                 self.completed.add(payload_path)
                 self.state["ultimo_arquivo_concluido"] = payload_path
-                if self.progress and (idx % 25 == 0 or idx == total):
-                    print(f"[INFO] Backup: {idx}/{total} item(ns) processado(s)")
+                if self.progress:
+                    next_mark = emit_progress(idx, total, marks, next_mark, "Backup")
             except Exception as e:
                 self.report_rows.append({"path": payload_path, "status": "failed", "detail": str(e)})
                 self.save_state("FAILED", {"ultimo_erro": str(e)})
@@ -212,6 +238,13 @@ class BackupRunner:
                 }
             )
             updated[payload_path] = dest_entries[payload_path]
+        if self.progress:
+            elapsed = time.perf_counter() - started_at
+            avg = elapsed / total if total else 0.0
+            print(
+                f"[INFO] Backup finalizado: {total} item(ns) processado(s) em "
+                f"{elapsed:.2f}s; média {avg:.4f}s/item"
+            )
         return updated
 
     def run(self) -> int:

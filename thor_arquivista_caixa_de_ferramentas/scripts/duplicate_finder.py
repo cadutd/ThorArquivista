@@ -35,6 +35,7 @@ import csv
 import hashlib
 import os
 import sys
+import time
 from datetime import datetime
 from typing import Dict, Iterator, List, Optional, Tuple
 
@@ -47,6 +48,20 @@ except Exception:
 # ------------------------- Utilitários -------------------------
 
 CHUNK_SIZE = 1024 * 1024  # 1 MiB
+
+def progress_marks(total: int) -> List[Tuple[int, int]]:
+    marks_by_count: Dict[int, int] = {}
+    for percent in range(5, 101, 5):
+        mark = max(1, (total * percent + 99) // 100)
+        marks_by_count[mark] = percent
+    return sorted(marks_by_count.items())
+
+def emit_progress(done: int, total: int, marks: List[Tuple[int, int]], next_mark: int, label: str) -> int:
+    while next_mark < len(marks) and done >= marks[next_mark][0]:
+        percent = marks[next_mark][1]
+        _log_info(f"{label} {percent}%: processados {done}/{total}; faltam {total - done}")
+        next_mark += 1
+    return next_mark
 
 def _log_info(msg: str) -> None:
     print(f"[INFO] {msg}", file=sys.stderr)
@@ -124,6 +139,14 @@ def inventariar(raiz: str, inventario_csv: str, show_progress: bool = True) -> i
 
     total = 0
     ignored_total = 0
+    candidates = list(iter_files(raiz))
+    candidates_total = len(candidates)
+    marks = progress_marks(candidates_total) if candidates_total else []
+    next_mark = 0
+    started_at = time.perf_counter()
+    if show_progress:
+        _log_info(f"Arquivos a inventariar: {candidates_total}")
+        _log_info("Iniciando inventário de duplicatas...")
 
     ignored_stats = {
         "lixo_sistema": 0,
@@ -136,7 +159,7 @@ def inventariar(raiz: str, inventario_csv: str, show_progress: bool = True) -> i
         w = csv.writer(out)
         w.writerow(['sha256','tamanho','caminho_relativo','ctime','mtime'])
 
-        for path in iter_files(raiz):
+        for idx, path in enumerate(candidates, 1):
             name = os.path.basename(path)
 
             # 1) lixo conhecido de sistema
@@ -144,6 +167,8 @@ def inventariar(raiz: str, inventario_csv: str, show_progress: bool = True) -> i
                 ignored_total += 1
                 ignored_stats["lixo_sistema"] += 1
                 _log_warn(f"Ignorado (lixo de sistema): {path}")
+                if show_progress:
+                    next_mark = emit_progress(idx, candidates_total, marks, next_mark, "Inventário")
                 continue
 
             try:
@@ -156,8 +181,6 @@ def inventariar(raiz: str, inventario_csv: str, show_progress: bool = True) -> i
                 w.writerow([digest, size, rpath, ctime, mtime])
 
                 total += 1
-                if show_progress and total % 200 == 0:
-                    _log_info(f"Processados {total} arquivos...")
 
             except PermissionError as e:
                 ignored_total += 1
@@ -178,8 +201,18 @@ def inventariar(raiz: str, inventario_csv: str, show_progress: bool = True) -> i
                 else:
                     ignored_stats["outros_erros"] += 1
                     _log_warn(f"Ignorado (erro de sistema): {path} -> {e}")
+            finally:
+                if show_progress:
+                    next_mark = emit_progress(idx, candidates_total, marks, next_mark, "Inventário")
 
     _log_ok(f"Inventário gerado: {inventario_csv} (arquivos: {total})")
+    if show_progress:
+        elapsed = time.perf_counter() - started_at
+        avg = elapsed / candidates_total if candidates_total else 0.0
+        _log_info(
+            f"Inventário finalizado: {candidates_total} arquivo(s) avaliados em "
+            f"{elapsed:.2f}s; média {avg:.4f}s/arquivo"
+        )
 
     if ignored_total:
         _log_info(f"Arquivos ignorados: {ignored_total}")
