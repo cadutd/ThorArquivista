@@ -408,8 +408,8 @@ Uso:
 - ver contadores por status;
 - listar jobs por status; o filtro inicial é **todos**;
 - cancelar jobs pendentes;
-- reenfileirar jobs com erro, concluídos ou cancelados;
-- limpar jobs pendentes, concluídos ou com erro;
+- executar ações em lote por seletor, como reenfileirar jobs com erro, reenfileirar todos e limpar jobs por status;
+- limpar jobs pendentes, em execução, concluídos, com erro ou cancelados;
 - abrir logs detalhados de cada job;
 - copiar logs para a área de transferência;
 - exportar o conteúdo atual da janela de logs para um arquivo `.txt`.

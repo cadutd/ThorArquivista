@@ -43,6 +43,7 @@ class Worker:
     Agora com APIs de gestão de fila:
       - pause()/resume()/is_paused()
       - clear_pending()
+      - clear_running()
       - requeue_errors()
       - requeue_all()
       - cancel_job(job_id)
@@ -105,6 +106,10 @@ class Worker:
         """Remove todos os jobs 'pending'. Retorna quantos removeu."""
         return self.jobstore.clear_by_status('pending')
 
+    def clear_running(self) -> int:
+        """Remove todos os jobs 'running'. Retorna quantos removeu."""
+        return self.jobstore.clear_by_status('running')
+
     def clear_done(self) -> int:
         """Remove todos os jobs 'done'. Retorna quantos removeu."""
         return self.jobstore.clear_by_status('done')
@@ -112,6 +117,10 @@ class Worker:
     def clear_error(self) -> int:
         """Remove todos os jobs 'error'. Retorna quantos removeu."""
         return self.jobstore.clear_by_status('error')
+
+    def clear_canceled(self) -> int:
+        """Remove todos os jobs 'canceled'. Retorna quantos removeu."""
+        return self.jobstore.clear_by_status('canceled')
 
     def requeue_errors(self) -> int:
         """Muda jobs 'error' para 'pending'. Retorna quantos alterou."""

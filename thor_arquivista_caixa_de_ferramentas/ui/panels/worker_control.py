@@ -34,7 +34,7 @@ def create_panel(app, enqueue_cb):
       - Iniciar, Parar, Pausar, Retomar, Reiniciar
       - Contagem por status
       - Lista de jobs (filtro por status)
-      - Ações de fila: Reenfileirar erros, Reenfileirar todos, Limpar pendentes, Cancelar selecionado
+      - Ações de fila: Reenfileirar erros, Reenfileirar todos, Limpar por status, Cancelar selecionado
       - Ver logs do job selecionado (modal), com auto-refresh
       - Configuração do intervalo de refresh pela própria UI
     """
@@ -125,10 +125,15 @@ def create_panel(app, enqueue_cb):
     # Filtro e ações de fila
     actions = ttk.Frame(page)
     actions.pack(fill=X, pady=(10, 6))
-    ttk.Label(actions, text="Filtrar:").pack(side=LEFT, padx=(2, 6))
+    actions_row1 = ttk.Frame(actions)
+    actions_row1.pack(fill=X)
+    actions_row2 = ttk.Frame(actions)
+    actions_row2.pack(fill=X, pady=(6, 0))
+
+    ttk.Label(actions_row1, text="Filtrar:").pack(side=LEFT, padx=(2, 6))
     filt = StringVar(value="todos")
     ttk.Combobox(
-        actions,
+        actions_row1,
         textvariable=filt,
         state="readonly",
         values=["pending", "error", "done", "canceled", "running", "todos"],
@@ -136,53 +141,47 @@ def create_panel(app, enqueue_cb):
     ).pack(side=LEFT)
 
     ttk.Button(
-        actions,
+        actions_row1,
         text="Atualizar",
         bootstyle=SECONDARY,
         command=lambda: _refresh_jobs(app, jobs_tree, filt.get()),
     ).pack(side=LEFT, padx=6)
 
     ttk.Button(
-        actions,
-        text="Reenfileirar erros",
-        bootstyle=WARNING,
-        command=lambda: _do_requeue_errors(app, jobs_tree, filt),
-    ).pack(side=LEFT, padx=6)
-    ttk.Button(
-        actions,
-        text="Reenfileirar todos",
-        bootstyle=WARNING,
-        command=lambda: _do_requeue_all(app, jobs_tree, filt),
-    ).pack(side=LEFT, padx=6)
-    ttk.Button(
-        actions,
-        text="Limpar pendentes",
-        bootstyle=DANGER,
-        command=lambda: _do_clear_pending(app, jobs_tree, filt),
-    ).pack(side=LEFT, padx=6)
-    ttk.Button(
-        actions,
-        text="Limpar executados",
-        bootstyle=DANGER,
-        command=lambda: _do_clear_done(app, jobs_tree, filt),
-    ).pack(side=LEFT, padx=6)
-    ttk.Button(
-        actions,
-        text="Limpar com erro",
-        bootstyle=DANGER,
-        command=lambda: _do_clear_error(app, jobs_tree, filt),
-    ).pack(side=LEFT, padx=6)
-    ttk.Button(
-        actions,
+        actions_row1,
         text="Cancelar selecionado",
         bootstyle=DANGER,
         command=lambda: _do_cancel_selected(app, jobs_tree, filt),
     ).pack(side=LEFT, padx=6)
     ttk.Button(
-        actions,
+        actions_row1,
         text="Ver logs",
         bootstyle=INFO,
         command=lambda: _show_logs_modal(app, jobs_tree, refresh_var),
+    ).pack(side=LEFT, padx=6)
+
+    ttk.Label(actions_row2, text="Ação em lote:").pack(side=LEFT, padx=(2, 6))
+    batch_action = StringVar(value="Limpar pendentes")
+    ttk.Combobox(
+        actions_row2,
+        textvariable=batch_action,
+        state="readonly",
+        values=[
+            "Limpar pendentes",
+            "Limpar em execução",
+            "Limpar executados",
+            "Limpar com erro",
+            "Limpar cancelados",
+            "Reenfileirar erros",
+            "Reenfileirar todos",
+        ],
+        width=24,
+    ).pack(side=LEFT)
+    ttk.Button(
+        actions_row2,
+        text="Executar",
+        bootstyle=WARNING,
+        command=lambda: _do_batch_action(app, jobs_tree, filt, batch_action.get()),
     ).pack(side=LEFT, padx=6)
 
     # Tabela de jobs
@@ -367,27 +366,96 @@ def _do_requeue_errors(app, tree, filt_var):
 
 
 def _do_requeue_all(app, tree, filt_var):
+    confirm = messagebox.askyesno(
+        "Reenfileirar jobs",
+        "Jobs concluídos, cancelados e com erro voltarão para pending.\n\n"
+        "Deseja reenfileirar todos?",
+        parent=app,
+    )
+    if not confirm:
+        app._status.configure(text="Reenfileiramento cancelado.")
+        return
     n = app.worker.requeue_all()
     app._status.configure(text=f"Reenfileirados {n} job(s).")
     _refresh_jobs(app, tree, filt_var.get())
 
 
 def _do_clear_pending(app, tree, filt_var):
+    if not _confirm_clear_status(app, "pending", "pendentes"):
+        return
     n = app.worker.clear_pending()
     app._status.configure(text=f"Removidos {n} job(s) pendentes.")
     _refresh_jobs(app, tree, filt_var.get())
 
 
+def _do_clear_running(app, tree, filt_var):
+    confirm = messagebox.askyesno(
+        "Limpar jobs em execução",
+        "Remover jobs com status running apenas limpa os registros da fila; "
+        "isso não interrompe processos que já tenham sido iniciados.\n\n"
+        "Deseja limpar os jobs em execução?",
+        parent=app,
+    )
+    if not confirm:
+        app._status.configure(text="Limpeza de jobs em execução cancelada.")
+        return
+    n = app.worker.clear_running()
+    app._status.configure(text=f"Removidos {n} job(s) em execução.")
+    _refresh_jobs(app, tree, filt_var.get())
+
+
 def _do_clear_done(app, tree, filt_var):
+    if not _confirm_clear_status(app, "done", "executados"):
+        return
     n = app.worker.clear_done()
     app._status.configure(text=f"Removidos {n} job(s) executados.")
     _refresh_jobs(app, tree, filt_var.get())
 
 
 def _do_clear_error(app, tree, filt_var):
+    if not _confirm_clear_status(app, "error", "com erro"):
+        return
     n = app.worker.clear_error()
     app._status.configure(text=f"Removidos {n} job(s) com erro.")
     _refresh_jobs(app, tree, filt_var.get())
+
+
+def _do_clear_canceled(app, tree, filt_var):
+    if not _confirm_clear_status(app, "canceled", "cancelados"):
+        return
+    n = app.worker.clear_canceled()
+    app._status.configure(text=f"Removidos {n} job(s) cancelados.")
+    _refresh_jobs(app, tree, filt_var.get())
+
+
+def _do_batch_action(app, tree, filt_var, action: str):
+    actions = {
+        "Limpar pendentes": _do_clear_pending,
+        "Limpar em execução": _do_clear_running,
+        "Limpar executados": _do_clear_done,
+        "Limpar com erro": _do_clear_error,
+        "Limpar cancelados": _do_clear_canceled,
+        "Reenfileirar erros": _do_requeue_errors,
+        "Reenfileirar todos": _do_requeue_all,
+    }
+    handler = actions.get(action)
+    if not handler:
+        app._status.configure(text="Selecione uma ação em lote válida.")
+        return
+    handler(app, tree, filt_var)
+
+
+def _confirm_clear_status(app, status: str, label: str) -> bool:
+    counts = app.worker.counts_by_status()
+    total = counts.get(status, 0)
+    if total == 0:
+        return True
+    return messagebox.askyesno(
+        "Limpar jobs",
+        f"Esta ação removerá {total} job(s) {label} e seus logs.\n\n"
+        "Deseja continuar?",
+        parent=app,
+    )
 
 
 def _do_cancel_selected(app, tree, filt_var):
