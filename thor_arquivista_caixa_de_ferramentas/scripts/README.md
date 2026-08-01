@@ -106,6 +106,8 @@ python scripts/verify_fixity.py \
   --raiz "D:/acervo" \
   --manifesto "D:/acervo/manifest-sha256.txt" \
   --report-extras \
+  --max-list-items 200 \
+  --report-file "D:/acervo/relatorios/fixity_2026-08-01.txt" \
   --progress
 ```
 
@@ -120,6 +122,8 @@ Parâmetros:
 | `--progress` | Mostra progresso em marcos de 5%, com quantidade restante e resumo de tempo/média. |
 | `--strict-missing` | Deixa explícito que faltantes geram erro. |
 | `--report-extras` | Compatibilidade. O relatório final sempre lista arquivos extras. |
+| `--max-list-items` | Máximo de itens por lista no stdout/log. Padrão: `200`; use `0` para listar tudo. |
+| `--report-file` | Caminho para gravar o relatório TXT completo e estruturado. Se omitido, o script gera automaticamente ao lado do manifesto. |
 
 Códigos de saída:
 
@@ -162,7 +166,44 @@ Tempo de verificação: 12.34s
 Média por arquivo verificado: 0.1234s/arquivo
 ```
 
-As contagens e seções de listas aparecem mesmo quando o valor é `0`; listas vazias usam `Nenhum`. Quando o manifesto está dentro da pasta analisada, o próprio arquivo de manifesto não é contado como extra.
+Exemplo de stdout/log quando há lista grande compactada:
+
+```text
+[INFO] Verificação finalizada: 30860 arquivo(s) verificado(s) em 2364.43s; média 0.0766s/arquivo
+[INFO] Procurando arquivos extras em disco...
+=== Verificação de fixidez ===
+Total no manifesto: 30860
+Arquivos verificados íntegros: 28363
+Arquivos verificados corrompidos: 0
+Arquivos no manifesto ausentes na pasta analisada: 2497
+Arquivos na pasta analisada ausentes no manifesto: 0
+
+-- Arquivos no manifesto ausentes na pasta analisada --
+data/foto_0001.jpg
+data/foto_0002.jpg
+... 2297 item(s) omitidos nesta visualização.
+
+Relatório completo: D:\acervo\relatorios\fixity_2026-08-01.txt
+
+=== Resumo final da verificação ===
+Total no manifesto: 30860
+Arquivos verificados íntegros: 28363
+Arquivos verificados corrompidos: 0
+Arquivos no manifesto ausentes na pasta analisada: 2497
+Arquivos na pasta analisada ausentes no manifesto: 0
+```
+
+As contagens e seções de listas aparecem mesmo quando o valor é `0`; listas vazias usam `Nenhum`. Quando o manifesto está dentro da pasta analisada, o próprio arquivo de manifesto não é contado como extra. Para listas grandes, o stdout/log mostra apenas os primeiros itens de cada seção e informa o caminho do relatório TXT completo.
+
+O relatório TXT é sempre emitido. Além da visualização humana, ele contém a seção `Dados estruturados para backup incremental` em TSV:
+
+```text
+status	path	expected_hash	actual_hash	detail
+OK	data/a.txt	<hash>	<hash>
+MISSING	data/b.txt	<hash>		Arquivo listado no manifesto ausente na pasta analisada
+CORRUPT	data/c.txt	<hash>	<hash_atual>	Hash gerado diferente do hash no manifesto
+EXTRA	data/d.txt			Arquivo presente na pasta analisada e ausente no manifesto
+```
 
 ---
 

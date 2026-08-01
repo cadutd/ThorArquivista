@@ -132,6 +132,14 @@ class JobRunner:
             return self._proc(cmd, job=job)
         if t == "VERIFY_FIXITY":
             cmd = f"python {sdir}/verify_fixity.py --raiz {shlex.quote(p['raiz'])} --manifesto {shlex.quote(p['manifesto'])}"
+            if p.get("progress"):
+                cmd += " --progress"
+            if p.get("report_extras"):
+                cmd += " --report-extras"
+            if p.get("max_list_items") is not None:
+                cmd += f" --max-list-items {shlex.quote(str(p['max_list_items']))}"
+            if p.get("report_file"):
+                cmd += f" --report-file {shlex.quote(str(p['report_file']))}"
             return self._proc(cmd, job=job)
         if t == "BUILD_BAG":
             org = shlex.quote(p.get('org','APESP'))

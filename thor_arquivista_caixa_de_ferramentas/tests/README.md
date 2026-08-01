@@ -37,6 +37,7 @@ Os testes cobrem:
 - verificação de fixidez e evento PREMIS `FIXITY_CHECK`.
 - validação de pacote BagIt gerado pelo `build_bag.py`;
 - detecção de payload corrompido e arquivo extra em `data/`.
+- emissão de relatório TXT estruturado da verificação de fixidez para uso futuro em backup incremental.
 
 ## Relatório HTML
 

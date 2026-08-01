@@ -319,6 +319,7 @@ class PreservationBackupScriptTests(unittest.TestCase):
             root = Path(tmp)
             ok = root / "ok.txt"
             manifest = root / "manifest-sha256.txt"
+            report = root / "fixity_ok_report.txt"
             ok.write_text("ok", encoding="utf-8")
             ok_hash = hashlib.sha256(ok.read_bytes()).hexdigest()
             manifest.write_text(f"{ok_hash}  ok.txt\n", encoding="utf-8")
@@ -326,13 +327,22 @@ class PreservationBackupScriptTests(unittest.TestCase):
             old_argv = sys.argv
             out = StringIO()
             try:
-                sys.argv = ["verify_fixity.py", "--raiz", str(root), "--manifesto", str(manifest)]
+                sys.argv = [
+                    "verify_fixity.py",
+                    "--raiz",
+                    str(root),
+                    "--manifesto",
+                    str(manifest),
+                    "--report-file",
+                    str(report),
+                ]
                 with redirect_stdout(out), redirect_stderr(StringIO()):
                     rc = verify_fixity_main()
             finally:
                 sys.argv = old_argv
 
             text = out.getvalue()
+            report_text = report.read_text(encoding="utf-8")
             self.assertEqual(rc, 0)
             self.assertIn("Arquivos verificados íntegros: 1", text)
             self.assertIn("Arquivos verificados corrompidos: 0", text)
@@ -341,6 +351,51 @@ class PreservationBackupScriptTests(unittest.TestCase):
             self.assertIn("-- Arquivos no manifesto ausentes na pasta analisada --\nNenhum", text)
             self.assertIn("-- Arquivos verificados corrompidos ou com erro --\nNenhum", text)
             self.assertIn("-- Arquivos na pasta analisada ausentes no manifesto --\nNenhum", text)
+            self.assertIn("Relatório completo:", text)
+            self.assertIn("=== Dados estruturados para backup incremental ===", report_text)
+            self.assertIn("status\tpath\texpected_hash\tactual_hash\tdetail", report_text)
+            self.assertIn(f"OK\tok.txt\t{ok_hash}\t{ok_hash}\t", report_text)
+
+    def test_verify_fixity_large_lists_are_capped_in_stdout_and_written_to_file(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest = root / "manifest-sha256.txt"
+            report = root / "fixity_report.txt"
+            fake_hash = "0" * 64
+            manifest.write_text(
+                "".join(f"{fake_hash}  missing_{i}.txt\n" for i in range(5)),
+                encoding="utf-8",
+            )
+
+            old_argv = sys.argv
+            out = StringIO()
+            try:
+                sys.argv = [
+                    "verify_fixity.py",
+                    "--raiz",
+                    str(root),
+                    "--manifesto",
+                    str(manifest),
+                    "--max-list-items",
+                    "2",
+                    "--report-file",
+                    str(report),
+                ]
+                with redirect_stdout(out), redirect_stderr(StringIO()):
+                    rc = verify_fixity_main()
+            finally:
+                sys.argv = old_argv
+
+            text = out.getvalue()
+            full = report.read_text(encoding="utf-8")
+            self.assertEqual(rc, 1)
+            self.assertIn("missing_0.txt", text)
+            self.assertIn("missing_1.txt", text)
+            self.assertIn("3 item(s) omitidos", text)
+            self.assertIn(f"Relatório completo: {report}", text)
+            self.assertNotIn("missing_4.txt", text)
+            self.assertIn("missing_4.txt", full)
+            self.assertIn("MISSING\tmissing_4.txt", full)
 
     def tearDown(self):
         # Defensive cleanup for Windows handles in case a test leaves a temp dir behind.

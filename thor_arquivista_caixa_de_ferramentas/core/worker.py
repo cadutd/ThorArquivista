@@ -158,6 +158,7 @@ class Worker:
             try:
                 # _execute agora recebe o ID do job para poder logar em tempo real
                 rc, out, err = self._execute(jid, jtype, params)
+                controlled_divergence = jtype == "VERIFY_FIXITY" and rc == 1
 
                 # logs resumidos finais (últimas linhas). Registra stderr antes de
                 # stdout para o relatório final do script ficar mais visível no tail.
@@ -165,7 +166,7 @@ class Worker:
                     self.jobstore.add_log(
                         jid,
                         f"[stderr] (últimas linhas)\n{err[-4000:]}",
-                        level="ERROR" if rc else "INFO",
+                        level="WARN" if controlled_divergence else ("ERROR" if rc else "INFO"),
                     )
                 if out:
                     self.jobstore.add_log(
@@ -189,6 +190,9 @@ class Worker:
 
                 if rc == 0:
                     self.jobstore.add_log(jid, "Concluído com sucesso")
+                    self.jobstore.set_status(jid, "done")
+                elif controlled_divergence:
+                    self.jobstore.add_log(jid, "Concluído com divergências de fixidez", level="WARN")
                     self.jobstore.set_status(jid, "done")
                 else:
                     self.jobstore.add_log(jid, f"Erro (rc={rc})", level="ERROR")

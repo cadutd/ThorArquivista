@@ -223,6 +223,22 @@ def _args_validate_bag(p: Dict[str, Any], cfg: AppConfig) -> list[str]:
         args.append("--progress")
     return args
 
+
+def _args_verify_fixity(p: Dict[str, Any], cfg: AppConfig) -> list[str]:
+    args = [
+        "--raiz", p["raiz"],
+        "--manifesto", p["manifesto"],
+    ]
+    if p.get("report_extras"):
+        args.append("--report-extras")
+    if p.get("progress"):
+        args.append("--progress")
+    if p.get("max_list_items") is not None:
+        args += ["--max-list-items", str(p["max_list_items"])]
+    if p.get("report_file"):
+        args += ["--report-file", str(p["report_file"])]
+    return args
+
 def _args_backup_plan(p: Dict[str, Any], cfg: AppConfig) -> list[str]:
     config = p.get("config") or p.get("plano")
     if not config:
@@ -283,12 +299,7 @@ def get_scripts_map() -> ScriptsMap:
         ),
         "VERIFY_FIXITY": (
             "verify_fixity.py",
-            lambda p, cfg: [
-                "--raiz", p["raiz"],
-                "--manifesto", p["manifesto"],
-                *(["--report-extras"] if p.get("report_extras") else []),
-                *(["--progress"] if p.get("progress") else []),
-            ]
+            _args_verify_fixity,
         ),                
         "BUILD_BAG": (
             "build_bag.py",

@@ -25,6 +25,7 @@ import re
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional, List, Tuple
 
@@ -58,6 +59,17 @@ def parse_args() -> argparse.Namespace:
         default=False,
         help="Compatibilidade: o relatório final sempre lista arquivos extras.",
     )
+    p.add_argument(
+        "--max-list-items",
+        type=int,
+        default=200,
+        help="Máximo de itens por lista no stdout/log. Use 0 para listar tudo.",
+    )
+    p.add_argument(
+        "--report-file",
+        default=None,
+        help="Arquivo TXT do relatório completo e estruturado. Se omitido, gera automaticamente.",
+    )
     return p.parse_args()
 
 
@@ -80,13 +92,102 @@ def hash_file(p: Path, algo: str) -> str:
     return h.hexdigest()
 
 
-def print_list_section(title: str, items: List[str]) -> None:
-    print(f"\n-- {title} --")
+def list_section_lines(title: str, items: List[str], *, max_items: Optional[int] = None) -> tuple[list[str], bool]:
+    lines = ["", f"-- {title} --"]
     if not items:
-        print("Nenhum")
-        return
-    for item in items:
-        print(item)
+        lines.append("Nenhum")
+        return lines, False
+    limited = max_items is not None and max_items > 0 and len(items) > max_items
+    shown = items[:max_items] if limited else items
+    lines.extend(shown)
+    if limited:
+        lines.append(f"... {len(items) - len(shown)} item(s) omitidos nesta visualização.")
+    return lines, limited
+
+
+def build_report_lines(
+    *,
+    mani: Path,
+    raiz: Path,
+    algo: str,
+    total: int,
+    ok: int,
+    corrupted: List[str],
+    missing: List[str],
+    mismatches: List[str],
+    extras: List[str],
+    verify_elapsed: float,
+    avg_per_file: float,
+    max_list_items: Optional[int] = None,
+    full_report_path: Optional[Path] = None,
+    structured_records: Optional[List[Tuple[str, str, str, str, str]]] = None,
+) -> tuple[list[str], bool]:
+    lines = [
+        "=== Verificação de fixidez ===",
+        f"Manifesto : {mani}",
+        f"Raiz      : {raiz}",
+        f"Algoritmo : {algo}",
+        f"Total no manifesto: {total}",
+        f"Arquivos verificados íntegros: {ok}",
+        f"Arquivos verificados corrompidos: {len(corrupted)}",
+        f"Arquivos no manifesto ausentes na pasta analisada: {len(missing)}",
+        f"Divergências: {len(mismatches)}",
+        f"Arquivos na pasta analisada ausentes no manifesto: {len(extras)}",
+    ]
+    omitted = False
+    for title, items in (
+        ("Arquivos no manifesto ausentes na pasta analisada", missing),
+        ("Arquivos verificados corrompidos ou com erro", mismatches),
+        ("Arquivos na pasta analisada ausentes no manifesto", extras),
+    ):
+        section, section_omitted = list_section_lines(title, items, max_items=max_list_items)
+        lines.extend(section)
+        omitted = omitted or section_omitted
+
+    if full_report_path:
+        lines.extend(["", f"Relatório completo: {full_report_path}"])
+
+    lines.extend(
+        [
+            "",
+            "=== Resumo final da verificação ===",
+            f"Total no manifesto: {total}",
+            f"Arquivos verificados íntegros: {ok}",
+            f"Arquivos verificados corrompidos: {len(corrupted)}",
+            f"Arquivos no manifesto ausentes na pasta analisada: {len(missing)}",
+            f"Arquivos na pasta analisada ausentes no manifesto: {len(extras)}",
+            f"Tempo de verificação: {verify_elapsed:.2f}s",
+            f"Média por arquivo verificado: {avg_per_file:.4f}s/arquivo",
+        ]
+    )
+    if structured_records is not None:
+        lines.extend(
+            [
+                "",
+                "=== Dados estruturados para backup incremental ===",
+                "# Formato: TSV",
+                "# Colunas: status\tpath\texpected_hash\tactual_hash\tdetail",
+                "status\tpath\texpected_hash\tactual_hash\tdetail",
+            ]
+        )
+        for status, path, expected_hash, actual_hash, detail in structured_records:
+            lines.append(
+                "\t".join(
+                    [
+                        status,
+                        path.replace("\t", " "),
+                        expected_hash,
+                        actual_hash,
+                        detail.replace("\t", " "),
+                    ]
+                )
+            )
+    return lines, omitted
+
+
+def default_report_path(manifest: Path) -> Path:
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return manifest.parent / f"verify_fixity_report_{stamp}.txt"
 
 
 def main() -> int:
@@ -148,20 +249,21 @@ def main() -> int:
     mismatches: List[str] = []
     corrupted: List[str] = []
     missing: List[str] = []
+    structured_records: List[Tuple[str, str, str, str, str]] = []
     ok = 0
 
-    def _check_one(item: Tuple[str, str]) -> Tuple[str, Optional[str]]:
+    def _check_one(item: Tuple[str, str]) -> Tuple[str, str, str, str, str]:
         exp_digest, rel = item
         p = raiz / Path(rel)
         if not p.exists() or not p.is_file():
-            return (rel, "MISSING")
+            return (rel, "MISSING", exp_digest, "", "Arquivo listado no manifesto ausente na pasta analisada")
         try:
             d = hash_file(p, algo).lower()
             if d != exp_digest:
-                return (rel, f"MISMATCH expected={exp_digest} got={d}")
-            return (rel, None)
+                return (rel, "CORRUPT", exp_digest, d, "Hash gerado diferente do hash no manifesto")
+            return (rel, "OK", exp_digest, d, "")
         except Exception as e:
-            return (rel, f"ERROR {e}")
+            return (rel, "ERROR", exp_digest, "", str(e))
 
     # verificação em paralelo
     verify_start = time.perf_counter()
@@ -170,22 +272,26 @@ def main() -> int:
         done = 0
         for fut in as_completed(futs):
             try:
-                rel, err = fut.result()
+                rel, status, expected_hash, actual_hash, detail = fut.result()
             except Exception as e:
                 # erro inesperado em uma thread
                 rel = "<desconhecido>"
-                err = f"THREAD_ERROR {e}"
+                status = "ERROR"
+                expected_hash = ""
+                actual_hash = ""
+                detail = f"THREAD_ERROR {e}"
 
-            if err is None:
+            structured_records.append((status, rel, expected_hash, actual_hash, detail))
+            if status == "OK":
                 ok += 1
-            elif err == "MISSING":
+            elif status == "MISSING":
                 missing.append(rel)
-            elif err.startswith("MISMATCH"):
+            elif status == "CORRUPT":
                 corrupted.append(rel)
-                mismatches.append(f"{rel} :: {err}")
+                mismatches.append(f"{rel} :: MISMATCH expected={expected_hash} got={actual_hash}")
             else:
                 corrupted.append(rel)
-                mismatches.append(f"{rel} :: {err}")
+                mismatches.append(f"{rel} :: ERROR {detail}")
             done += 1
 
             if args.progress:
@@ -229,32 +335,54 @@ def main() -> int:
                 continue
             if rel_posix not in in_manifest:
                 extras.append(rel_posix)
+                structured_records.append(("EXTRA", rel_posix, "", "", "Arquivo presente na pasta analisada e ausente no manifesto"))
     extras.sort()
+    missing.sort()
+    corrupted.sort()
+    mismatches.sort()
+    structured_records.sort(key=lambda item: (item[0], item[1]))
 
-    # Resumo
-    print("=== Verificação de fixidez ===")
-    print(f"Manifesto : {mani}")
-    print(f"Raiz      : {raiz}")
-    print(f"Algoritmo : {algo}")
-    print(f"Total no manifesto: {total}")
-    print(f"Arquivos verificados íntegros: {ok}")
-    print(f"Arquivos verificados corrompidos: {len(corrupted)}")
-    print(f"Arquivos no manifesto ausentes na pasta analisada: {len(missing)}")
-    print(f"Divergências: {len(mismatches)}")
-    print(f"Arquivos na pasta analisada ausentes no manifesto: {len(extras)}")
+    max_list_items = max(0, int(args.max_list_items))
+    report_path = Path(args.report_file).resolve() if args.report_file else default_report_path(mani)
+    full_lines, _ = build_report_lines(
+        mani=mani,
+        raiz=raiz,
+        algo=algo,
+        total=total,
+        ok=ok,
+        corrupted=corrupted,
+        missing=missing,
+        mismatches=mismatches,
+        extras=extras,
+        verify_elapsed=verify_elapsed,
+        avg_per_file=avg_per_file,
+        max_list_items=None,
+        structured_records=structured_records,
+    )
+    try:
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text("\n".join(full_lines) + "\n", encoding="utf-8")
+    except OSError:
+        report_path = Path.cwd() / report_path.name
+        report_path.write_text("\n".join(full_lines) + "\n", encoding="utf-8")
 
-    print_list_section("Arquivos no manifesto ausentes na pasta analisada", missing)
-    print_list_section("Arquivos verificados corrompidos ou com erro", mismatches)
-    print_list_section("Arquivos na pasta analisada ausentes no manifesto", extras)
+    compact_lines, omitted = build_report_lines(
+        mani=mani,
+        raiz=raiz,
+        algo=algo,
+        total=total,
+        ok=ok,
+        corrupted=corrupted,
+        missing=missing,
+        mismatches=mismatches,
+        extras=extras,
+        verify_elapsed=verify_elapsed,
+        avg_per_file=avg_per_file,
+        max_list_items=max_list_items or None,
+        full_report_path=report_path,
+    )
 
-    print("\n=== Resumo final da verificação ===")
-    print(f"Total no manifesto: {total}")
-    print(f"Arquivos verificados íntegros: {ok}")
-    print(f"Arquivos verificados corrompidos: {len(corrupted)}")
-    print(f"Arquivos no manifesto ausentes na pasta analisada: {len(missing)}")
-    print(f"Arquivos na pasta analisada ausentes no manifesto: {len(extras)}")
-    print(f"Tempo de verificação: {verify_elapsed:.2f}s")
-    print(f"Média por arquivo verificado: {avg_per_file:.4f}s/arquivo")
+    print("\n".join(compact_lines))
 
     # Exit code: 0 se tudo ok; 1 se houve mismatch/missing
     return 0 if (not mismatches and not missing) else 1

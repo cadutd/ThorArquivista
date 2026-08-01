@@ -103,9 +103,14 @@ TEST_METADATA = {
         "postconditions": "verify_fixity retorna falha controlada e o relatório final contém as contagens e listas esperadas.",
     },
     "test_preservation_backup_scripts.PreservationBackupScriptTests.test_verify_fixity_report_shows_zero_sections": {
-        "purpose": "Garantir que o relatório final de verificação de fixidez mostra contagens zero e seções vazias.",
+        "purpose": "Garantir que o relatório final de verificação de fixidez mostra contagens zero, seções vazias e emite TXT estruturado.",
         "preconditions": "Uma pasta temporária contém apenas um arquivo íntegro e um manifesto correspondente.",
-        "postconditions": "verify_fixity retorna sucesso e imprime todas as seções com contagens zero e marcador Nenhum.",
+        "postconditions": "verify_fixity retorna sucesso, imprime todas as seções com contagens zero e grava seção TSV para uso por backup incremental.",
+    },
+    "test_preservation_backup_scripts.PreservationBackupScriptTests.test_verify_fixity_large_lists_are_capped_in_stdout_and_written_to_file": {
+        "purpose": "Garantir que listas grandes da verificação de fixidez não inundem o log do Worker.",
+        "preconditions": "Um manifesto temporário contém mais itens ausentes do que o limite configurado para stdout.",
+        "postconditions": "O stdout mostra lista truncada com aviso e o relatório TXT completo contém todos os itens na seção humana e na seção TSV.",
     },
     "test_jobstore.JobStoreTests.test_multiple_instances_can_append_logs_to_same_file_concurrently": {
         "purpose": "Validar que o JobStore suporta gravações concorrentes no mesmo arquivo JSON sem conflito no arquivo temporário.",

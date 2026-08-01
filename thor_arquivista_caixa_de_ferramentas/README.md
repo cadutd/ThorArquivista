@@ -131,6 +131,8 @@ Campos principais:
 - **Manifesto**: arquivo `manifest-<algo>.txt`.
 - **Reportar extras**: mantido por compatibilidade; o relatório final sempre lista arquivos que existem na pasta, mas não aparecem no manifesto.
 - **Mostrar progresso**: registra andamento no log em marcos de 5%, com quantidade verificada e restante.
+- **Itens por lista no log**: limita quantos caminhos aparecem em cada lista no log do Worker; use `0` para listar tudo.
+- **Relatório completo**: caminho opcional para gravar o TXT completo. Se ficar vazio, o script cria o arquivo automaticamente ao lado do manifesto.
 
 Relatório final:
 
@@ -143,10 +145,48 @@ Relatório final:
 
 As contagens e seções são exibidas mesmo quando o valor é `0`; listas vazias aparecem como `Nenhum`.
 
+Para evitar travamentos e excesso de escrita em disco, listas grandes são compactadas no log do Worker. A execução sempre grava um relatório TXT completo e informa o caminho no log. Esse TXT inclui uma seção estruturada em TSV, com `status`, `path`, `expected_hash`, `actual_hash` e `detail`, planejada para servir como entrada de rotinas futuras de backup incremental.
+
+Quando a execução encontra divergências de fixidez, o Worker registra **Concluído com divergências de fixidez** em vez de tratar o caso como falha operacional do script.
+
 Exemplo por linha de comando:
 
 ```bash
 python scripts/verify_fixity.py --raiz "D:/acervo" --manifesto "D:/acervo/manifest-sha256.txt" --report-extras --progress
+```
+
+Exemplo de log compacto no Worker:
+
+```text
+[INFO] Arquivos a verificar: 30860 (algo=sha256)
+[INFO] Iniciando verificação de arquivos...
+[INFO] Progresso 5%: verificados 1543/30860; faltam 29317
+[INFO] Progresso 100%: verificados 30860/30860; faltam 0
+[INFO] Verificação finalizada: 30860 arquivo(s) verificado(s) em 2364.43s; média 0.0766s/arquivo
+[INFO] Procurando arquivos extras em disco...
+[stdout] (relatório final)
+=== Verificação de fixidez ===
+Total no manifesto: 30860
+Arquivos verificados íntegros: 28363
+Arquivos verificados corrompidos: 0
+Arquivos no manifesto ausentes na pasta analisada: 2497
+Arquivos na pasta analisada ausentes no manifesto: 0
+...
+Relatório completo: D:\acervo\verify_fixity_report_20260801T221817Z.txt
+[WARN] Concluído com divergências de fixidez
+```
+
+Exemplo da seção estruturada gravada no relatório TXT:
+
+```text
+=== Dados estruturados para backup incremental ===
+# Formato: TSV
+# Colunas: status	path	expected_hash	actual_hash	detail
+status	path	expected_hash	actual_hash	detail
+OK	data/documento.pdf	9f86d081...	9f86d081...
+MISSING	data/foto.jpg	3a6eb079...		Arquivo listado no manifesto ausente na pasta analisada
+CORRUPT	data/video.mp4	2cf24dba...	b94d27b9...	Hash gerado diferente do hash no manifesto
+EXTRA	data/novo.tif			Arquivo presente na pasta analisada e ausente no manifesto
 ```
 
 ### Tarefas > Gerar Pacote BagIt
