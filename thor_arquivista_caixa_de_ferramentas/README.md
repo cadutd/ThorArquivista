@@ -304,6 +304,51 @@ Backup/
     versoes/
 ```
 
+### Tarefas > Backup Incremental por Fixidez
+
+Script usado: `scripts/incremental_backup_from_fixity.py`
+
+![Painel Backup Incremental por Fixidez](docs/images/panel-incremental-backup-fixity.png)
+
+Aplica um backup incremental usando como entrada o relatório TXT estruturado gerado por **Verificar Fixidez**. A rotina copia da origem para o destino apenas os registros com status `MISSING`, `CORRUPT` ou `ERROR`.
+
+Campos principais:
+
+- **Relatório de fixidez**: TXT emitido por `verify_fixity.py`, contendo a seção `Dados estruturados para backup incremental`.
+- **Pasta origem do backup**: pasta com os arquivos íntegros que serão usados para recompor o destino.
+- **Pasta destino**: pasta que será atualizada.
+- **Relatório da aplicação**: TXT opcional com o resultado do incremental.
+- **Simular sem copiar**: executa a análise e gera relatório sem alterar o destino.
+- **Mostrar progresso**: registra andamento em marcos de 5%.
+
+Regras por status:
+
+- `OK`: ignorado.
+- `MISSING`: copia da origem para o destino.
+- `CORRUPT`: substitui no destino pelo arquivo da origem.
+- `ERROR`: tenta copiar novamente da origem.
+- `EXTRA`: reportado, mas não excluído automaticamente.
+
+Exemplo por linha de comando:
+
+```bash
+python scripts/incremental_backup_from_fixity.py --relatorio-fixidez "D:/acervo/verify_fixity_report.txt" --origem "D:/origem" --destino "E:/backup" --progress
+```
+
+Exemplo de saída:
+
+```text
+=== Backup incremental por relatório de fixidez ===
+Registros lidos: 5
+Registros OK ignorados: 1
+Registros EXTRA ignorados: 1
+Arquivos candidatos a copiar: 3
+Arquivos copiados: 3
+Arquivos ausentes na origem: 0
+Caminhos inválidos no relatório: 0
+Falhas de cópia: 0
+```
+
 ### Tarefas > Editar Plano de Backup
 
 Tela separada para criar e editar o arquivo JSON usado pelo backup preservacional.
@@ -494,6 +539,7 @@ A interface gráfica usa estes scripts:
 | Validar Pacote BagIt | `scripts/validate_bag.py` |
 | Copiar | `scripts/replicate_storage.py` |
 | Backup Preservacional | `scripts/backup_plan.py` |
+| Backup Incremental por Fixidez | `scripts/incremental_backup_from_fixity.py` |
 | Backup Preservacional > Verificar integridade | `scripts/backup_verify.py` |
 | Editar Plano de Backup | nenhum script direto; cria/edita JSON |
 | Análise de Duplicatas | `scripts/duplicate_finder.py` |

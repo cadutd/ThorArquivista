@@ -21,6 +21,7 @@ from scripts.backup_manifest_diff import diff_manifests
 from scripts.backup_plan import BackupRunner
 from scripts.backup_verify import main as verify_main
 from scripts.build_bag import build_bag
+from scripts.incremental_backup_from_fixity import main as incremental_backup_fixity_main
 from scripts.validate_bag import main as validate_bag_main
 from scripts.verify_fixity import main as verify_fixity_main
 
@@ -396,6 +397,99 @@ class PreservationBackupScriptTests(unittest.TestCase):
             self.assertNotIn("missing_4.txt", text)
             self.assertIn("missing_4.txt", full)
             self.assertIn("MISSING\tmissing_4.txt", full)
+
+    def test_incremental_backup_from_fixity_copies_missing_and_corrupt_records(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "source"
+            dest = root / "dest"
+            source.mkdir()
+            dest.mkdir()
+            (source / "a.txt").write_text("alpha new", encoding="utf-8")
+            (source / "b.txt").write_text("beta", encoding="utf-8")
+            (source / "c.txt").write_text("gamma", encoding="utf-8")
+            (dest / "a.txt").write_text("alpha old", encoding="utf-8")
+            (dest / "extra.txt").write_text("extra", encoding="utf-8")
+            fixity_report = root / "fixity.txt"
+            apply_report = root / "apply.txt"
+            fixity_report.write_text(
+                "=== Dados estruturados para backup incremental ===\n"
+                "# Formato: TSV\n"
+                "status\tpath\texpected_hash\tactual_hash\tdetail\n"
+                "CORRUPT\ta.txt\texpected\tactual\tHash divergente\n"
+                "MISSING\tb.txt\texpected\t\tAusente\n"
+                "ERROR\tc.txt\texpected\t\tErro de leitura\n"
+                "EXTRA\textra.txt\t\t\tExtra\n"
+                "OK\tok.txt\thash\thash\t\n",
+                encoding="utf-8",
+            )
+
+            old_argv = sys.argv
+            out = StringIO()
+            try:
+                sys.argv = [
+                    "incremental_backup_from_fixity.py",
+                    "--relatorio-fixidez",
+                    str(fixity_report),
+                    "--origem",
+                    str(source),
+                    "--destino",
+                    str(dest),
+                    "--saida-relatorio",
+                    str(apply_report),
+                ]
+                with redirect_stdout(out), redirect_stderr(StringIO()):
+                    rc = incremental_backup_fixity_main()
+            finally:
+                sys.argv = old_argv
+
+            self.assertEqual(rc, 0)
+            self.assertEqual((dest / "a.txt").read_text(encoding="utf-8"), "alpha new")
+            self.assertEqual((dest / "b.txt").read_text(encoding="utf-8"), "beta")
+            self.assertEqual((dest / "c.txt").read_text(encoding="utf-8"), "gamma")
+            self.assertTrue((dest / "extra.txt").exists())
+            report_text = apply_report.read_text(encoding="utf-8")
+            self.assertIn("Arquivos copiados: 3", report_text)
+            self.assertIn("Registros EXTRA ignorados: 1", report_text)
+
+    def test_incremental_backup_from_fixity_dry_run_does_not_copy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "source"
+            dest = root / "dest"
+            source.mkdir()
+            dest.mkdir()
+            (source / "a.txt").write_text("alpha", encoding="utf-8")
+            fixity_report = root / "fixity.txt"
+            apply_report = root / "apply.txt"
+            fixity_report.write_text(
+                "status\tpath\texpected_hash\tactual_hash\tdetail\n"
+                "MISSING\ta.txt\texpected\t\tAusente\n",
+                encoding="utf-8",
+            )
+
+            old_argv = sys.argv
+            try:
+                sys.argv = [
+                    "incremental_backup_from_fixity.py",
+                    "--relatorio-fixidez",
+                    str(fixity_report),
+                    "--origem",
+                    str(source),
+                    "--destino",
+                    str(dest),
+                    "--saida-relatorio",
+                    str(apply_report),
+                    "--dry-run",
+                ]
+                with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+                    rc = incremental_backup_fixity_main()
+            finally:
+                sys.argv = old_argv
+
+            self.assertEqual(rc, 0)
+            self.assertFalse((dest / "a.txt").exists())
+            self.assertIn("Modo simulação: sim", apply_report.read_text(encoding="utf-8"))
 
     def tearDown(self):
         # Defensive cleanup for Windows handles in case a test leaves a temp dir behind.

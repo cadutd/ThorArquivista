@@ -38,6 +38,7 @@ Os testes cobrem:
 - validação de pacote BagIt gerado pelo `build_bag.py`;
 - detecção de payload corrompido e arquivo extra em `data/`.
 - emissão de relatório TXT estruturado da verificação de fixidez para uso futuro em backup incremental.
+- aplicação de backup incremental usando o relatório estruturado da verificação de fixidez.
 
 ## Relatório HTML
 

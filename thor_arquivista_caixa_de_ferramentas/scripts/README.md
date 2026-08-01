@@ -19,6 +19,7 @@ Quando uma opção de progresso está disponível, os scripts usam logs econômi
 - [`hash_files.py`](#hash_filespy)
 - [`verify_fixity.py`](#verify_fixitypy)
 - [`build_bag.py`](#build_bagpy)
+- [`incremental_backup_from_fixity.py`](#incremental_backup_from_fixitypy)
 - [`build_sip.py`](#build_sippy)
 - [`format_identify.py`](#format_identifypy)
 - [`replicate_storage.py`](#replicate_storagepy)
@@ -306,6 +307,74 @@ Validações executadas:
 - hash dos arquivos listados em `tagmanifest-*.txt`, quando existirem.
 
 O script retorna `0` quando o pacote é válido e `2` quando encontra inconsistências.
+
+---
+
+## `incremental_backup_from_fixity.py`
+
+Aplica um backup incremental usando o relatório TXT estruturado emitido por `verify_fixity.py`.
+
+Uso básico:
+
+```bash
+python scripts/incremental_backup_from_fixity.py \
+  --relatorio-fixidez "D:/acervo/verify_fixity_report.txt" \
+  --origem "D:/origem" \
+  --destino "E:/backup" \
+  --progress
+```
+
+Uso em simulação:
+
+```bash
+python scripts/incremental_backup_from_fixity.py \
+  --relatorio-fixidez "D:/acervo/verify_fixity_report.txt" \
+  --origem "D:/origem" \
+  --destino "E:/backup" \
+  --saida-relatorio "D:/acervo/incremental_report.txt" \
+  --dry-run
+```
+
+Parâmetros:
+
+| Parâmetro | Descrição |
+|---|---|
+| `--relatorio-fixidez` | Relatório TXT gerado por `verify_fixity.py`. Obrigatório. |
+| `--origem` | Pasta de origem do backup. Obrigatório. |
+| `--destino` | Pasta de destino a atualizar. Obrigatório. |
+| `--saida-relatorio` | Relatório TXT da aplicação incremental. Se omitido, gera no destino. |
+| `--dry-run` | Simula sem copiar arquivos. |
+| `--progress` | Mostra progresso em marcos de 5%. |
+
+Regras por status do relatório de fixidez:
+
+| Status | Ação |
+|---|---|
+| `OK` | Ignora. |
+| `MISSING` | Copia o arquivo da origem para o destino. |
+| `CORRUPT` | Substitui o arquivo do destino pelo arquivo da origem. |
+| `ERROR` | Tenta copiar novamente da origem. |
+| `EXTRA` | Reporta, mas não exclui automaticamente. |
+
+Exemplo de relatório de aplicação:
+
+```text
+=== Backup incremental por relatório de fixidez ===
+Relatório de fixidez: D:\acervo\verify_fixity_report.txt
+Origem: D:\origem
+Destino: E:\backup
+Modo simulação: não
+Registros lidos: 5
+Registros OK ignorados: 1
+Registros EXTRA ignorados: 1
+Arquivos candidatos a copiar: 3
+Arquivos copiados: 3
+Arquivos ausentes na origem: 0
+Caminhos inválidos no relatório: 0
+Falhas de cópia: 0
+```
+
+Quando o caminho do relatório começa com `data/`, a origem também é testada sem esse prefixo. Isso permite usar relatórios de pacotes BagIt em que o destino mantém payload sob `data/`, mas a origem do backup é a pasta original.
 
 ---
 

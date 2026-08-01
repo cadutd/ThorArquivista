@@ -62,6 +62,7 @@ from ui.panels.delete_duplicates import create_panel as panel_delete_duplicates
 from ui.panels.premis_converter import create_panel as panel_premis_converter
 from ui.panels.preservation_backup import create_panel as panel_preservation_backup
 from ui.panels.backup_plan_editor import create_panel as panel_backup_plan_editor
+from ui.panels.incremental_backup_fixity import create_panel as panel_incremental_backup_fixity
 
 class MainApp(tb.Window):
     """Janela principal do Thor Arquivista – Caixa de Ferramentas de Preservação Digital."""
@@ -192,6 +193,7 @@ class MainApp(tb.Window):
 
         menu_tarefas.add_command(label="Copiar", command=lambda: _open("Copiar", panel_rep))
         menu_tarefas.add_command(label="Backup Preservacional", command=lambda: _open("Backup Preservacional", panel_preservation_backup))
+        menu_tarefas.add_command(label="Backup Incremental por Fixidez", command=lambda: _open("Backup Incremental por Fixidez", panel_incremental_backup_fixity))
         menu_tarefas.add_command(label="Editar Plano de Backup", command=lambda: _open("Editar Plano de Backup", panel_backup_plan_editor))
 
         submenu_duplicatas.add_command(label="Análise de Duplicatas", command=lambda: _open("Análise de Duplicatas", panel_duplicate_analysis))

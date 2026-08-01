@@ -239,6 +239,26 @@ def _args_verify_fixity(p: Dict[str, Any], cfg: AppConfig) -> list[str]:
         args += ["--report-file", str(p["report_file"])]
     return args
 
+
+def _args_incremental_backup_fixity(p: Dict[str, Any], cfg: AppConfig) -> list[str]:
+    relatorio = p.get("relatorio_fixidez") or p.get("report") or p.get("relatorio")
+    origem = p.get("origem") or p.get("source")
+    destino = p.get("destino") or p.get("destination")
+    if not relatorio or not origem or not destino:
+        raise ValueError("INCREMENTAL_BACKUP_FIXITY: relatorio_fixidez, origem e destino são obrigatórios.")
+    args = [
+        "--relatorio-fixidez", str(relatorio),
+        "--origem", str(origem),
+        "--destino", str(destino),
+    ]
+    if p.get("saida_relatorio"):
+        args += ["--saida-relatorio", str(p["saida_relatorio"])]
+    if p.get("dry_run"):
+        args.append("--dry-run")
+    if p.get("progress", True):
+        args.append("--progress")
+    return args
+
 def _args_backup_plan(p: Dict[str, Any], cfg: AppConfig) -> list[str]:
     config = p.get("config") or p.get("plano")
     if not config:
@@ -360,6 +380,10 @@ def get_scripts_map() -> ScriptsMap:
         "BACKUP_PLAN": (
             "backup_plan.py",
             _args_backup_plan,
+        ),
+        "INCREMENTAL_BACKUP_FIXITY": (
+            "incremental_backup_from_fixity.py",
+            _args_incremental_backup_fixity,
         ),
         "BACKUP_VERIFY": (
             "backup_verify.py",
