@@ -2,6 +2,12 @@
 
 Esta pasta contém a suíte automatizada do módulo de Backup Preservacional BagIt e do editor de plano JSON.
 
+## Índice
+
+- [Executar](#executar)
+- [Cobertura](#cobertura)
+- [Relatório HTML](#relatório-html)
+
 ## Executar
 
 A partir da raiz do projeto:

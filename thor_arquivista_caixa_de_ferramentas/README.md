@@ -8,6 +8,35 @@ O aplicativo usa Tkinter com `ttkbootstrap`, executa tarefas em fila local e gra
 
 ---
 
+## Índice
+
+- [Instalação Rápida](#instalação-rápida)
+- [Estrutura Essencial](#estrutura-essencial)
+- [Como a Fila Funciona](#como-a-fila-funciona)
+- [Manual da Interface](#manual-da-interface)
+- [Tarefas > Gerar Manifesto (Hash)](#tarefas--gerar-manifesto-hash)
+- [Tarefas > Verificar Fixidez](#tarefas--verificar-fixidez)
+- [Tarefas > Gerar Pacote BagIt](#tarefas--gerar-pacote-bagit)
+- [Tarefas > Validar Pacote BagIt](#tarefas--validar-pacote-bagit)
+- [Tarefas > Copiar](#tarefas--copiar)
+- [Tarefas > Backup Preservacional](#tarefas--backup-preservacional)
+- [Tarefas > Backup Incremental por Fixidez](#tarefas--backup-incremental-por-fixidez)
+- [Tarefas > Editar Plano de Backup](#tarefas--editar-plano-de-backup)
+- [Tarefas > Duplicatas > Análise de Duplicatas](#tarefas--duplicatas--análise-de-duplicatas)
+- [Tarefas > Duplicatas > Tratamento de Duplicatas](#tarefas--duplicatas--tratamento-de-duplicatas)
+- [Tarefas > Duplicatas > Excluir Duplicatas por Manifesto](#tarefas--duplicatas--excluir-duplicatas-por-manifesto)
+- [Tarefas > Conversor Premis](#tarefas--conversor-premis)
+- [Visualização > Eventos PREMIS](#visualização--eventos-premis)
+- [Visualização > Controle do Worker](#visualização--controle-do-worker)
+- [Scripts Disponíveis Pela Interface](#scripts-disponíveis-pela-interface)
+- [Testes](#testes)
+- [Configuração](#configuração)
+- [Boas Práticas](#boas-práticas)
+- [Solução de Problemas](#solução-de-problemas)
+- [Licença](#licença)
+
+---
+
 ## Instalação Rápida
 
 ### 1. Baixar o projeto

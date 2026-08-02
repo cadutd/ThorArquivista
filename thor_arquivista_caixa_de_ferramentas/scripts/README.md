@@ -19,6 +19,7 @@ Quando uma opção de progresso está disponível, os scripts usam logs econômi
 - [`hash_files.py`](#hash_filespy)
 - [`verify_fixity.py`](#verify_fixitypy)
 - [`build_bag.py`](#build_bagpy)
+- [`validate_bag.py`](#validate_bagpy)
 - [`incremental_backup_from_fixity.py`](#incremental_backup_from_fixitypy)
 - [`build_sip.py`](#build_sippy)
 - [`format_identify.py`](#format_identifypy)
@@ -30,6 +31,7 @@ Quando uma opção de progresso está disponível, os scripts usam logs econômi
 - [`premis_log.py`](#premis_logpy)
 - [Módulo de apoio: `pd_common.py`](#modulo-de-apoio-pd_commonpy)
 - [Boas práticas](#boas-praticas)
+- [Licença](#licenca)
 
 ---
 
