@@ -166,6 +166,7 @@ def build_report_lines(
                 "",
                 "=== Dados estruturados para backup incremental ===",
                 "# Formato: TSV",
+                "# Registros OK são omitidos para reduzir o tamanho do relatório.",
                 "# Colunas: status\tpath\texpected_hash\tactual_hash\tdetail",
                 "status\tpath\texpected_hash\tactual_hash\tdetail",
             ]
@@ -281,17 +282,18 @@ def main() -> int:
                 actual_hash = ""
                 detail = f"THREAD_ERROR {e}"
 
-            structured_records.append((status, rel, expected_hash, actual_hash, detail))
             if status == "OK":
                 ok += 1
-            elif status == "MISSING":
-                missing.append(rel)
-            elif status == "CORRUPT":
-                corrupted.append(rel)
-                mismatches.append(f"{rel} :: MISMATCH expected={expected_hash} got={actual_hash}")
             else:
-                corrupted.append(rel)
-                mismatches.append(f"{rel} :: ERROR {detail}")
+                structured_records.append((status, rel, expected_hash, actual_hash, detail))
+                if status == "MISSING":
+                    missing.append(rel)
+                elif status == "CORRUPT":
+                    corrupted.append(rel)
+                    mismatches.append(f"{rel} :: MISMATCH expected={expected_hash} got={actual_hash}")
+                else:
+                    corrupted.append(rel)
+                    mismatches.append(f"{rel} :: ERROR {detail}")
             done += 1
 
             if args.progress:

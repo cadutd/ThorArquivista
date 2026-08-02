@@ -199,8 +199,8 @@ As contagens e seções de listas aparecem mesmo quando o valor é `0`; listas v
 O relatório TXT é sempre emitido. Além da visualização humana, ele contém a seção `Dados estruturados para backup incremental` em TSV:
 
 ```text
+# Registros OK são omitidos para reduzir o tamanho do relatório.
 status	path	expected_hash	actual_hash	detail
-OK	data/a.txt	<hash>	<hash>
 MISSING	data/b.txt	<hash>		Arquivo listado no manifesto ausente na pasta analisada
 CORRUPT	data/c.txt	<hash>	<hash_atual>	Hash gerado diferente do hash no manifesto
 EXTRA	data/d.txt			Arquivo presente na pasta analisada e ausente no manifesto
@@ -313,6 +313,7 @@ O script retorna `0` quando o pacote é válido e `2` quando encontra inconsist�
 ## `incremental_backup_from_fixity.py`
 
 Aplica um backup incremental usando o relatório TXT estruturado emitido por `verify_fixity.py`.
+Nos relatórios novos, registros `OK` são omitidos da seção TSV para reduzir o tamanho do arquivo. O script continua aceitando relatórios antigos que tenham linhas `OK`, ignorando-as.
 
 Uso básico:
 
@@ -350,7 +351,7 @@ Regras por status do relatório de fixidez:
 
 | Status | Ação |
 |---|---|
-| `OK` | Ignora. |
+| `OK` | Ignora quando presente em relatórios antigos. |
 | `MISSING` | Copia o arquivo da origem para o destino. |
 | `CORRUPT` | Substitui o arquivo do destino pelo arquivo da origem. |
 | `ERROR` | Tenta copiar novamente da origem. |
@@ -364,8 +365,8 @@ Relatório de fixidez: D:\acervo\verify_fixity_report.txt
 Origem: D:\origem
 Destino: E:\backup
 Modo simulação: não
-Registros lidos: 5
-Registros OK ignorados: 1
+Registros lidos: 4
+Registros OK ignorados: 0
 Registros EXTRA ignorados: 1
 Arquivos candidatos a copiar: 3
 Arquivos copiados: 3

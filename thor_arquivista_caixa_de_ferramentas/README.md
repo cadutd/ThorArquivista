@@ -181,9 +181,9 @@ Exemplo da seção estruturada gravada no relatório TXT:
 ```text
 === Dados estruturados para backup incremental ===
 # Formato: TSV
+# Registros OK são omitidos para reduzir o tamanho do relatório.
 # Colunas: status	path	expected_hash	actual_hash	detail
 status	path	expected_hash	actual_hash	detail
-OK	data/documento.pdf	9f86d081...	9f86d081...
 MISSING	data/foto.jpg	3a6eb079...		Arquivo listado no manifesto ausente na pasta analisada
 CORRUPT	data/video.mp4	2cf24dba...	b94d27b9...	Hash gerado diferente do hash no manifesto
 EXTRA	data/novo.tif			Arquivo presente na pasta analisada e ausente no manifesto
@@ -311,6 +311,7 @@ Script usado: `scripts/incremental_backup_from_fixity.py`
 ![Painel Backup Incremental por Fixidez](docs/images/panel-incremental-backup-fixity.png)
 
 Aplica um backup incremental usando como entrada o relatório TXT estruturado gerado por **Verificar Fixidez**. A rotina copia da origem para o destino apenas os registros com status `MISSING`, `CORRUPT` ou `ERROR`.
+Registros `OK` não são gravados nos relatórios novos de fixidez para reduzir o tamanho do arquivo; relatórios antigos que ainda contenham `OK` continuam sendo aceitos e esses registros são ignorados.
 
 Campos principais:
 
@@ -339,8 +340,8 @@ Exemplo de saída:
 
 ```text
 === Backup incremental por relatório de fixidez ===
-Registros lidos: 5
-Registros OK ignorados: 1
+Registros lidos: 4
+Registros OK ignorados: 0
 Registros EXTRA ignorados: 1
 Arquivos candidatos a copiar: 3
 Arquivos copiados: 3

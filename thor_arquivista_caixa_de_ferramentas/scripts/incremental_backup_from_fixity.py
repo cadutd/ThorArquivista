@@ -3,6 +3,8 @@
 """
 incremental_backup_from_fixity.py - Aplica backup incremental a partir do
 relatório TXT estruturado emitido por verify_fixity.py.
+Relatórios novos omitem registros OK; relatórios antigos com OK continuam
+compatíveis e esses registros são ignorados.
 """
 from __future__ import annotations
 

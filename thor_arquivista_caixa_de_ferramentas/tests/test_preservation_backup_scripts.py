@@ -354,8 +354,9 @@ class PreservationBackupScriptTests(unittest.TestCase):
             self.assertIn("-- Arquivos na pasta analisada ausentes no manifesto --\nNenhum", text)
             self.assertIn("Relatório completo:", text)
             self.assertIn("=== Dados estruturados para backup incremental ===", report_text)
+            self.assertIn("# Registros OK são omitidos para reduzir o tamanho do relatório.", report_text)
             self.assertIn("status\tpath\texpected_hash\tactual_hash\tdetail", report_text)
-            self.assertIn(f"OK\tok.txt\t{ok_hash}\t{ok_hash}\t", report_text)
+            self.assertNotIn(f"OK\tok.txt\t{ok_hash}\t{ok_hash}\t", report_text)
 
     def test_verify_fixity_large_lists_are_capped_in_stdout_and_written_to_file(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -450,6 +451,7 @@ class PreservationBackupScriptTests(unittest.TestCase):
             self.assertTrue((dest / "extra.txt").exists())
             report_text = apply_report.read_text(encoding="utf-8")
             self.assertIn("Arquivos copiados: 3", report_text)
+            self.assertIn("Registros OK ignorados: 1", report_text)
             self.assertIn("Registros EXTRA ignorados: 1", report_text)
 
     def test_incremental_backup_from_fixity_dry_run_does_not_copy(self):
@@ -489,7 +491,9 @@ class PreservationBackupScriptTests(unittest.TestCase):
 
             self.assertEqual(rc, 0)
             self.assertFalse((dest / "a.txt").exists())
-            self.assertIn("Modo simulação: sim", apply_report.read_text(encoding="utf-8"))
+            report_text = apply_report.read_text(encoding="utf-8")
+            self.assertIn("Modo simulação: sim", report_text)
+            self.assertIn("Registros OK ignorados: 0", report_text)
 
     def tearDown(self):
         # Defensive cleanup for Windows handles in case a test leaves a temp dir behind.

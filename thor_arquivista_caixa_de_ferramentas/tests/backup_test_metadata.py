@@ -105,7 +105,7 @@ TEST_METADATA = {
     "test_preservation_backup_scripts.PreservationBackupScriptTests.test_verify_fixity_report_shows_zero_sections": {
         "purpose": "Garantir que o relatório final de verificação de fixidez mostra contagens zero, seções vazias e emite TXT estruturado.",
         "preconditions": "Uma pasta temporária contém apenas um arquivo íntegro e um manifesto correspondente.",
-        "postconditions": "verify_fixity retorna sucesso, imprime todas as seções com contagens zero e grava seção TSV para uso por backup incremental.",
+        "postconditions": "verify_fixity retorna sucesso, imprime todas as seções com contagens zero e grava seção TSV sem registros OK para uso por backup incremental.",
     },
     "test_preservation_backup_scripts.PreservationBackupScriptTests.test_verify_fixity_large_lists_are_capped_in_stdout_and_written_to_file": {
         "purpose": "Garantir que listas grandes da verificação de fixidez não inundem o log do Worker.",
@@ -114,13 +114,13 @@ TEST_METADATA = {
     },
     "test_preservation_backup_scripts.PreservationBackupScriptTests.test_incremental_backup_from_fixity_copies_missing_and_corrupt_records": {
         "purpose": "Validar a nova aplicação de backup incremental baseada no relatório estruturado de fixidez.",
-        "preconditions": "Um relatório TSV contém registros CORRUPT, MISSING, ERROR, EXTRA e OK; a origem contém os arquivos a repor.",
-        "postconditions": "A rotina copia apenas CORRUPT, MISSING e ERROR, preserva EXTRA e gera relatório de aplicação.",
+        "preconditions": "Um relatório TSV legado contém registros CORRUPT, MISSING, ERROR, EXTRA e OK; a origem contém os arquivos a repor.",
+        "postconditions": "A rotina copia apenas CORRUPT, MISSING e ERROR, preserva EXTRA, ignora OK legado e gera relatório de aplicação.",
     },
     "test_preservation_backup_scripts.PreservationBackupScriptTests.test_incremental_backup_from_fixity_dry_run_does_not_copy": {
         "purpose": "Validar o modo de simulação da aplicação incremental por fixidez.",
-        "preconditions": "Um relatório TSV indica um arquivo MISSING existente na origem.",
-        "postconditions": "A rotina retorna sucesso, registra modo simulação e não cria o arquivo no destino.",
+        "preconditions": "Um relatório TSV novo sem registros OK indica um arquivo MISSING existente na origem.",
+        "postconditions": "A rotina retorna sucesso, registra modo simulação, aceita ausência de OK e não cria o arquivo no destino.",
     },
     "test_jobstore.JobStoreTests.test_multiple_instances_can_append_logs_to_same_file_concurrently": {
         "purpose": "Validar que o JobStore suporta gravações concorrentes no mesmo arquivo JSON sem conflito no arquivo temporário.",
