@@ -686,8 +686,8 @@ Execute o aplicativo em uma pasta onde o usuário tenha permissão de leitura e 
 
 ## Licença
 
-Este projeto é licenciado sob a **GNU General Public License v3.0 (GPLv3)**.
+Este projeto é licenciado sob a **GNU Affero General Public License v3.0 (AGPLv3)**.
 
 © 2025 Carlos Eduardo Carvalho Amand.
 
-Mais informações: [https://www.gnu.org/licenses/gpl-3.0.html](https://www.gnu.org/licenses/gpl-3.0.html)
+Mais informações: [https://www.gnu.org/licenses/agpl-3.0.html](https://www.gnu.org/licenses/agpl-3.0.html)

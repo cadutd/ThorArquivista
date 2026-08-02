@@ -2,7 +2,7 @@
 # Copyright (C) 2025  Carlos Eduardo Carvalho Amand
 #
 # Este programa é software livre: você pode redistribuí-lo e/ou modificá-lo
-# sob os termos da Licença Pública Geral GNU (GNU GPL), conforme publicada
+# sob os termos da Licença Pública Geral Affero GNU (GNU AGPL), conforme publicada
 # pela Free Software Foundation, na versão 3 da Licença, ou (a seu critério)
 # qualquer versão posterior.
 

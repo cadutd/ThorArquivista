@@ -917,6 +917,6 @@ Não execute este arquivo como uma tarefa de preservação.
 
 ## Licença
 
-Este projeto é licenciado sob a GNU General Public License v3.0 (GPLv3).
+Este projeto é licenciado sob a GNU Affero General Public License v3.0 (AGPLv3).
 
 © 2025 Carlos Eduardo Carvalho Amand.
