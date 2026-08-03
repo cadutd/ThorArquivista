@@ -30,6 +30,7 @@ Quando uma opção de progresso está disponível, os scripts usam logs econômi
 - [`premis_converter.py`](#premis_converterpy)
 - [`premis_log.py`](#premis_logpy)
 - [Módulo de apoio: `pd_common.py`](#modulo-de-apoio-pd_commonpy)
+- [Utilitário de raiz: `gerador_bat.py`](#utilitario-de-raiz-gerador_batpy)
 - [Boas práticas](#boas-praticas)
 - [Licença](#licenca)
 
@@ -901,6 +902,35 @@ Exemplo de linha JSONL:
 - suporte opcional a `tqdm`.
 
 Não execute este arquivo como uma tarefa de preservação.
+
+---
+
+## Utilitário de raiz: `gerador_bat.py`
+
+`gerador_bat.py` fica na raiz do projeto, não na pasta `scripts/`, porque gera arquivos de inicialização ao lado de `app.py`.
+
+Uso padrão:
+
+```powershell
+python gerador_bat.py
+```
+
+Arquivos gerados:
+
+| Arquivo | Finalidade |
+|---|---|
+| `executar_thor_arquivista.bat` | Inicia a aplicação no Windows. |
+| `Thor Arquivista.lnk` | Atalho do Windows com o ícone `icons/favicon.ico`. |
+
+O `.bat` usa `.venv\Scripts\python.exe` quando existir e recorre ao `python` do sistema quando o ambiente virtual local não estiver presente.
+
+Opções:
+
+| Parâmetro | Descrição |
+|---|---|
+| `--bat` | Nome do arquivo `.bat` gerado. |
+| `--atalho` | Nome do atalho `.lnk` gerado. |
+| `--sem-atalho` | Gera apenas o `.bat`, sem criar o atalho com ícone. |
 
 ---
 

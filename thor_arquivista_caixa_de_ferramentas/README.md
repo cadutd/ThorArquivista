@@ -29,6 +29,7 @@ O aplicativo usa Tkinter com `ttkbootstrap`, executa tarefas em fila local e gra
 - [Visualização > Eventos PREMIS](#visualização--eventos-premis)
 - [Visualização > Controle do Worker](#visualização--controle-do-worker)
 - [Scripts Disponíveis Pela Interface](#scripts-disponíveis-pela-interface)
+- [Gerador de BAT para Windows](#gerador-de-bat-para-windows)
 - [Testes](#testes)
 - [Configuração](#configuração)
 - [Boas Práticas](#boas-práticas)
@@ -76,15 +77,32 @@ python app.py
 
 Na primeira execução, o aplicativo usa ou cria os arquivos locais de configuração e fila, como `preservacao_app.json`, `jobs_db.json` e `logs/premis_events.jsonl`.
 
+### 4. Gerar execução por BAT no Windows
+
+Para criar um arquivo `.bat` de inicialização na raiz do projeto:
+
+```powershell
+python gerador_bat.py
+```
+
+O comando gera:
+
+- `executar_thor_arquivista.bat`: executa `app.py`, usando `.venv\Scripts\python.exe` quando o ambiente virtual existir, ou `python` do sistema como fallback.
+- `Thor Arquivista.lnk`: atalho do Windows apontando para o `.bat` e usando o ícone `icons/favicon.ico`.
+
+Arquivos `.bat` não armazenam ícone próprio no Windows; por isso o ícone é aplicado ao atalho `.lnk`.
+
 ---
 
 ## Estrutura Essencial
 
 ```text
 app.py                         # entrada da aplicação
+gerador_bat.py                 # gera o .bat e o atalho .lnk para Windows
 preservacao_app.json           # configuração local
 jobs_db.json                   # fila local de jobs e logs
 logs/premis_events.jsonl       # eventos PREMIS gerados pelas tarefas
+icons/favicon.ico              # ícone usado pelo atalho gerado
 core/
   config.py                    # leitura/gravação da configuração
   jobstore.py                  # fila persistente em JSON
@@ -578,6 +596,27 @@ A interface gráfica usa estes scripts:
 | Conversor Premis | `scripts/premis_converter.py` |
 
 Outros scripts ou módulos podem existir no repositório como suporte interno, legado ou desenvolvimento, mas este README documenta apenas o que aparece na interface gráfica atual.
+
+---
+
+## Gerador de BAT para Windows
+
+O arquivo `gerador_bat.py`, localizado na raiz do projeto, cria uma entrada de execução para Windows:
+
+```powershell
+python gerador_bat.py
+```
+
+Por padrão, ele grava `executar_thor_arquivista.bat` e `Thor Arquivista.lnk` na raiz. O `.bat` muda o diretório de trabalho para a pasta do projeto, procura primeiro por `.venv\Scripts\python.exe` e executa `app.py`. O atalho `.lnk` usa `icons/favicon.ico` como ícone.
+
+Opções disponíveis:
+
+```powershell
+python gerador_bat.py --bat iniciar.bat --atalho "Thor Arquivista.lnk"
+python gerador_bat.py --sem-atalho
+```
+
+Use `--sem-atalho` quando quiser gerar apenas o `.bat`. Sem o atalho, o arquivo `.bat` continua funcional, mas não exibe o ícone personalizado no Explorer.
 
 ---
 

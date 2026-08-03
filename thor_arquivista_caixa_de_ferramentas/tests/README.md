@@ -6,6 +6,7 @@ Esta pasta contém a suíte automatizada do módulo de Backup Preservacional Bag
 
 - [Executar](#executar)
 - [Cobertura](#cobertura)
+- [Validação de utilitários](#validação-de-utilitários)
 - [Relatório HTML](#relatório-html)
 
 ## Executar
@@ -45,6 +46,17 @@ Os testes cobrem:
 - detecção de payload corrompido e arquivo extra em `data/`.
 - emissão de relatório TXT estruturado da verificação de fixidez para uso futuro em backup incremental.
 - aplicação de backup incremental usando o relatório estruturado da verificação de fixidez.
+
+## Validação de utilitários
+
+O gerador de execução para Windows fica na raiz do projeto e pode ser validado com:
+
+```powershell
+python -m py_compile gerador_bat.py
+python gerador_bat.py
+```
+
+A execução deve criar `executar_thor_arquivista.bat` e `Thor Arquivista.lnk`. O atalho usa `icons/favicon.ico`.
 
 ## Relatório HTML
 
