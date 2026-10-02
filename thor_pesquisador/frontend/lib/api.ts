@@ -1,5 +1,15 @@
 import { API_BASE_URL } from "@/lib/config";
-import type { CursorPage, DashboardStats, Instrumento, InstrumentoCampo, Page, Registro } from "@/types/domain";
+import type {
+  BuscaAvancadaResultado,
+  CursorPage,
+  DashboardStats,
+  FacetasResultado,
+  Instrumento,
+  InstrumentoCampo,
+  Page,
+  Registro,
+  ReindexacaoJob
+} from "@/types/domain";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -64,6 +74,10 @@ export function updateInstrumento(id: string, payload: Partial<Instrumento>) {
   return request<Instrumento>(`/instrumentos/${id}`, { method: "PUT", body: JSON.stringify(payload) });
 }
 
+export function deleteInstrumento(id: string) {
+  return request<void>(`/instrumentos/${id}`, { method: "DELETE" });
+}
+
 export function listCampos(id: string) {
   return request<InstrumentoCampo[]>(`/instrumentos/${id}/campos`);
 }
@@ -87,4 +101,22 @@ export function searchRegistros(id: string, q: string) {
 
 export function createRegistro(id: string, payload: { dados: Record<string, unknown>; status: string }) {
   return request<Registro>(`/instrumentos/${id}/registros`, { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function buscarAvancado(
+  id: string,
+  payload: { q?: string; filters?: Record<string, unknown>; sort?: string[]; limit?: number; offset?: number }
+) {
+  return request<BuscaAvancadaResultado>(`/instrumentos/${id}/buscar-avancado`, {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export function getFacetas(id: string) {
+  return request<FacetasResultado>(`/instrumentos/${id}/facetas`);
+}
+
+export function reindexarInstrumento(id: string) {
+  return request<ReindexacaoJob>(`/instrumentos/${id}/reindexar`, { method: "POST" });
 }

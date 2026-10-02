@@ -16,6 +16,7 @@ from app.db.mongo import registros_collection
 from app.models.enums import StatusRegistro, TipoCampo
 from app.models.instrumento import Instrumento, InstrumentoCampo
 from app.schemas.registro import RegistroCreate, RegistroOut, RegistroPage, RegistroUpdate
+from app.services.indexacao_service import enqueue_registro
 
 
 def criar_registro(db: Session, instrumento_id: uuid.UUID, payload: RegistroCreate, usuario_id: uuid.UUID | None, collection: Collection | None = None) -> RegistroOut:
@@ -35,6 +36,7 @@ def criar_registro(db: Session, instrumento_id: uuid.UUID, payload: RegistroCrea
         "texto_busca_basico": _texto_busca(campos, payload.dados),
     }
     _collection(collection).insert_one(documento)
+    enqueue_registro(instrumento_id, documento["_id"])
     return _to_out(documento)
 
 
@@ -105,6 +107,7 @@ def atualizar_registro(db: Session, instrumento_id: uuid.UUID, registro_id: str,
     )
     if not result:
         raise HTTPException(status_code=404, detail="Registro nao encontrado.")
+    enqueue_registro(instrumento_id, registro_id)
     return _to_out(result)
 
 
@@ -116,6 +119,7 @@ def excluir_registro(db: Session, instrumento_id: uuid.UUID, registro_id: str, c
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Registro nao encontrado.")
+    enqueue_registro(instrumento_id, registro_id, acao="delete")
 
 
 def _schema(db: Session, instrumento_id: uuid.UUID) -> tuple[Instrumento, list[InstrumentoCampo]]:

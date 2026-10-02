@@ -44,7 +44,25 @@ class InstrumentoCampo(Base):
     aparece_cadastro: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     aparece_listagem: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     aparece_busca: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    filtro_avancado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    facetavel: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
+    ordenavel: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     atualizado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
 
     instrumento = relationship("Instrumento", back_populates="campos")
+
+
+class IndexacaoJob(Base):
+    __tablename__ = "indexacao_jobs"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    instrumento_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("instrumentos.id", ondelete="CASCADE"), nullable=False, index=True)
+    tipo: Mapped[str] = mapped_column(String(40), nullable=False)
+    status: Mapped[str] = mapped_column(String(40), nullable=False, default="PENDENTE", server_default="PENDENTE", index=True)
+    total_estimado: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    processados: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    ultimo_cursor_mongodb: Mapped[str | None] = mapped_column(String(255))
+    erro: Mapped[str | None] = mapped_column(Text)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    atualizado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

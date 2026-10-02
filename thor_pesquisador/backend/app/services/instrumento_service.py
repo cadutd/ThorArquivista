@@ -7,9 +7,11 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
+from app.db.mongo import registros_collection
 from app.models.instrumento import Instrumento, InstrumentoCampo
 from app.schemas.instrumento import InstrumentoCreate, InstrumentoUpdate
 from app.schemas.instrumento_campo import InstrumentoCampoCreate, InstrumentoCampoUpdate
+from app.services.indexacao_service import enqueue_indexacao
 
 
 def listar_instrumentos(db: Session, limit: int, offset: int, q: str | None = None) -> tuple[list[Instrumento], int]:
@@ -51,6 +53,7 @@ def excluir_instrumento(db: Session, instrumento_id: uuid.UUID) -> None:
     instrumento = db.get(Instrumento, instrumento_id)
     if not instrumento:
         raise HTTPException(status_code=404, detail="Instrumento nao encontrado.")
+    registros_collection().delete_many({"instrumento_id": str(instrumento_id)})
     db.delete(instrumento)
     db.commit()
 
@@ -70,6 +73,7 @@ def criar_campo(db: Session, instrumento_id: uuid.UUID, payload: InstrumentoCamp
         db.rollback()
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Chave de campo ja existe no instrumento.") from exc
     db.refresh(campo)
+    enqueue_indexacao({"tipo": "schema", "instrumento_id": str(instrumento_id)})
     return campo
 
 
@@ -85,6 +89,7 @@ def atualizar_campo(db: Session, instrumento_id: uuid.UUID, campo_id: uuid.UUID,
         db.rollback()
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Chave de campo ja existe no instrumento.") from exc
     db.refresh(campo)
+    enqueue_indexacao({"tipo": "schema", "instrumento_id": str(instrumento_id)})
     return campo
 
 
@@ -94,6 +99,7 @@ def excluir_campo(db: Session, instrumento_id: uuid.UUID, campo_id: uuid.UUID) -
         raise HTTPException(status_code=404, detail="Campo nao encontrado.")
     db.delete(campo)
     db.commit()
+    enqueue_indexacao({"tipo": "schema", "instrumento_id": str(instrumento_id)})
 
 
 def _require_instrumento(db: Session, instrumento_id: uuid.UUID) -> Instrumento:

@@ -8,6 +8,7 @@ Interface web do `thor_pesquisador`, implementada com Next.js, React e TypeScrip
 - Dashboard inicial autenticado em `/dashboard`.
 - Shell administrativo com identidade visual alinhada ao Thor Gestor.
 - Instrumentos, campos dinamicos, registros e pesquisa.
+- Busca avancada por instrumento com filtros, facetas, ordenacao e reindexacao manual.
 - Consumo da API FastAPI.
 
 ## Identidade Visual
@@ -48,7 +49,35 @@ Rotas principais:
 - `http://localhost:3000/login`
 - `http://localhost:3000/dashboard`
 - `http://localhost:3000/instrumentos`
+- `http://localhost:3000/instrumentos/novo`
+- `http://localhost:3000/instrumentos/{id}`
+- `http://localhost:3000/instrumentos/{id}/editar`
 - `http://localhost:3000/pesquisa`
+
+## CRUD de Instrumentos
+
+O CRUD de instrumentos segue o padrao Thor CRUD Base:
+
+- listagem paginada no servidor com `limit` e `offset`;
+- busca simples por `q` com reset para a primeira pagina;
+- paginas completas para criacao e edicao;
+- visualizacao somente leitura em rota propria;
+- formulario reutilizavel com campos obrigatorios, erros de campo e estado `Salvando...`;
+- exclusao com confirmacao explicita antes de chamar a API.
+
+## Busca Avancada
+
+A rota `/pesquisa` consome:
+
+- `POST /instrumentos/{id}/buscar-avancado`
+- `GET /instrumentos/{id}/facetas`
+- `POST /instrumentos/{id}/reindexar`
+
+Os filtros e ordenacoes sao gerados a partir das propriedades dos campos dinamicos:
+
+- `filtro_avancado`
+- `facetavel`
+- `ordenavel`
 
 ## Configuracao
 

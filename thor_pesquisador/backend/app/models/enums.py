@@ -39,3 +39,16 @@ class StatusRegistro(StrEnum):
     ATIVO = "ATIVO"
     INATIVO = "INATIVO"
     EXCLUIDO = "EXCLUIDO"
+
+
+class TipoIndexacaoJob(StrEnum):
+    REGISTRO = "REGISTRO"
+    REINDEXACAO = "REINDEXACAO"
+    SCHEMA = "SCHEMA"
+
+
+class StatusIndexacaoJob(StrEnum):
+    PENDENTE = "PENDENTE"
+    PROCESSANDO = "PROCESSANDO"
+    CONCLUIDO = "CONCLUIDO"
+    FALHOU = "FALHOU"

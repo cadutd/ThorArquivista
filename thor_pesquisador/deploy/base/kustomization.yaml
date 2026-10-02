@@ -3,7 +3,10 @@ kind: Kustomization
 resources:
   - postgres.yaml
   - mongo.yaml
+  - redis.yaml
+  - meilisearch.yaml
   - backend.yaml
+  - index-worker.yaml
   - frontend.yaml
   - routes.yaml
 configMapGenerator:
@@ -18,11 +21,16 @@ configMapGenerator:
       - CORS_ORIGINS=["https://thor-pesquisador.apps.example.local"]
       - MONGODB_DATABASE=thor_pesquisador
       - GOVBR_DEV_LOGIN=false
+      - REDIS_URL=redis://thor-pesquisador-redis:6379/0
+      - INDEXACAO_QUEUE_NAME=thor_pesquisador:indexacao
+      - MEILISEARCH_URL=http://thor-pesquisador-meilisearch:7700
+      - INDEXACAO_BATCH_SIZE=500
 secretGenerator:
   - name: thor-pesquisador-secrets
     literals:
-      - DATABASE_URL=postgresql+psycopg://thor:thor@postgres:5432/thor_pesquisador
-      - MONGODB_URL=mongodb://mongo:27017/thor_pesquisador
+      - DATABASE_URL=postgresql+psycopg://thor:thor@thor-pesquisador-postgres:5432/thor_pesquisador
+      - MONGODB_URL=mongodb://thor-pesquisador-mongo:27017/thor_pesquisador
+      - MEILISEARCH_API_KEY=change-me-dev-master-key
       - GOVBR_CLIENT_ID=change-me
       - GOVBR_CLIENT_SECRET=change-me
       - APP_SESSION_SECRET=change-me

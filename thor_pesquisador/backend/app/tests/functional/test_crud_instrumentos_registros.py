@@ -4,6 +4,7 @@ import uuid
 
 from fastapi.testclient import TestClient
 
+from app.db.mongo import registros_collection
 from app.main import create_app
 
 
@@ -59,6 +60,8 @@ def test_crud_instrumento_por_funcao():
     found = client.get(f"/api/v1/instrumentos/{instrumento_id}")
     dashboard = client.get("/api/v1/dashboard")
     updated = client.put(f"/api/v1/instrumentos/{instrumento_id}", json={"status": "PUBLICADO"})
+    reindex = client.post(f"/api/v1/instrumentos/{instrumento_id}/reindexar")
+    dashboard_after_reindex = client.get("/api/v1/dashboard")
     deleted = client.delete(f"/api/v1/instrumentos/{instrumento_id}")
     missing_delete = client.delete(f"/api/v1/instrumentos/{instrumento_id}")
 
@@ -69,6 +72,10 @@ def test_crud_instrumento_por_funcao():
     assert dashboard.status_code == 200
     assert updated.status_code == 200
     assert updated.json()["status"] == "PUBLICADO"
+    assert reindex.status_code == 202
+    assert reindex.json()["status"] == "PENDENTE"
+    assert dashboard_after_reindex.status_code == 200
+    assert dashboard_after_reindex.json()["indexacao_jobs_recentes"]
     assert deleted.status_code == 200
     assert missing_delete.status_code == 404
 
@@ -102,7 +109,10 @@ def test_crud_campos_por_funcao():
     assert deleted.status_code == 200
     assert missing_delete.status_code == 404
 
-    client.delete(f"/api/v1/instrumentos/{instrumento_id}")
+    delete_instrumento = client.delete(f"/api/v1/instrumentos/{instrumento_id}")
+
+    assert delete_instrumento.status_code == 200
+    assert registros_collection().count_documents({"instrumento_id": instrumento_id}) == 0
 
 
 def test_crud_registros_dinamicos_por_funcao():
@@ -145,4 +155,7 @@ def test_crud_registros_dinamicos_por_funcao():
     assert listed_after_delete.status_code == 200
     assert all(item["id"] != registro_id for item in listed_after_delete.json()["items"])
 
-    client.delete(f"/api/v1/instrumentos/{instrumento_id}")
+    delete_instrumento = client.delete(f"/api/v1/instrumentos/{instrumento_id}")
+
+    assert delete_instrumento.status_code == 200
+    assert registros_collection().count_documents({"instrumento_id": instrumento_id}) == 0

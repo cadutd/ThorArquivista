@@ -1,12 +1,12 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: backend
+  name: thor-pesquisador-backend
 spec:
   template:
     spec:
       containers:
-        - name: backend
+        - name: thor-pesquisador-backend
           env:
             - name: GOVBR_DEV_LOGIN
               value: "true"

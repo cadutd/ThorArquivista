@@ -7,9 +7,11 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import current_user, db_dep
 from app.models.user import Usuario
+from app.schemas.busca import BuscaAvancadaIn, BuscaAvancadaOut, FacetasOut, ReindexacaoOut
 from app.schemas.instrumento import InstrumentoCreate, InstrumentoOut, InstrumentoPage, InstrumentoSchema, InstrumentoUpdate
 from app.schemas.instrumento_campo import InstrumentoCampoCreate, InstrumentoCampoOut, InstrumentoCampoUpdate
 from app.schemas.registro import RegistroCreate, RegistroOut, RegistroPage, RegistroSearch, RegistroUpdate
+from app.services import indexacao_service
 from app.services import instrumento_service, registro_service
 
 router = APIRouter()
@@ -103,6 +105,21 @@ def listar_registros(
 @router.post("/{instrumento_id}/buscar", response_model=RegistroPage)
 def buscar_registros(instrumento_id: uuid.UUID, payload: RegistroSearch, db: Session = Depends(db_dep), _usuario: Usuario = Depends(current_user)):
     return registro_service.buscar_registros(db, instrumento_id, payload.q, payload.page_size, payload.cursor)
+
+
+@router.post("/{instrumento_id}/buscar-avancado", response_model=BuscaAvancadaOut)
+def buscar_registros_avancado(instrumento_id: uuid.UUID, payload: BuscaAvancadaIn, db: Session = Depends(db_dep), _usuario: Usuario = Depends(current_user)):
+    return indexacao_service.buscar_avancado(db, instrumento_id, payload)
+
+
+@router.get("/{instrumento_id}/facetas", response_model=FacetasOut)
+def obter_facetas(instrumento_id: uuid.UUID, db: Session = Depends(db_dep), _usuario: Usuario = Depends(current_user)):
+    return indexacao_service.facetas(db, instrumento_id)
+
+
+@router.post("/{instrumento_id}/reindexar", response_model=ReindexacaoOut, status_code=status.HTTP_202_ACCEPTED)
+def reindexar_instrumento(instrumento_id: uuid.UUID, db: Session = Depends(db_dep), _usuario: Usuario = Depends(current_user)):
+    return indexacao_service.criar_job_reindexacao(db, instrumento_id)
 
 
 @router.get("/{instrumento_id}/registros/{registro_id}", response_model=RegistroOut)

@@ -1,5 +1,6 @@
 services:
   postgres:
+    container_name: thor_pesquisador_postgres
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: thor_pesquisador
@@ -16,19 +17,42 @@ services:
       retries: 30
 
   mongo:
+    container_name: thor_pesquisador_mongo
     image: mongo:7
     ports:
       - "27018:27017"
     volumes:
       - thor_pesquisador_mongo:/data/db
 
+  redis:
+    container_name: thor_pesquisador_redis
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+
+  meilisearch:
+    container_name: thor_pesquisador_meilisearch
+    image: getmeili/meilisearch:v1.11
+    environment:
+      MEILI_ENV: development
+      MEILI_MASTER_KEY: dev-master-key-123
+    ports:
+      - "7700:7700"
+    volumes:
+      - thor_pesquisador_meili:/meili_data
+
   backend:
+    container_name: thor_pesquisador_backend
     build:
       context: ./backend
     depends_on:
       postgres:
         condition: service_healthy
       mongo:
+        condition: service_started
+      redis:
+        condition: service_started
+      meilisearch:
         condition: service_started
     environment:
       app_env: dev
@@ -42,6 +66,11 @@ services:
       govbr_client_secret: change-me
       app_session_secret: dev-change-me
       govbr_dev_login: "true"
+      redis_url: redis://redis:6379/0
+      indexacao_queue_name: thor_pesquisador:indexacao
+      meilisearch_url: http://meilisearch:7700
+      meilisearch_api_key: dev-master-key-123
+      indexacao_batch_size: "500"
     ports:
       - "8000:8000"
     command: >
@@ -50,7 +79,33 @@ services:
       uvicorn app.main:app --host 0.0.0.0 --port 8000
       "
 
+  index_worker:
+    container_name: thor_pesquisador_index_worker
+    build:
+      context: ./backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_started
+      redis:
+        condition: service_started
+      meilisearch:
+        condition: service_started
+    environment:
+      app_env: dev
+      database_url: postgresql+psycopg://thor:thor@postgres:5432/thor_pesquisador
+      mongodb_url: mongodb://mongo:27017/thor_pesquisador
+      mongodb_database: thor_pesquisador
+      redis_url: redis://redis:6379/0
+      indexacao_queue_name: thor_pesquisador:indexacao
+      meilisearch_url: http://meilisearch:7700
+      meilisearch_api_key: dev-master-key-123
+      indexacao_batch_size: "500"
+    command: python -m app.worker
+
   frontend:
+    container_name: thor_pesquisador_frontend
     build:
       context: ./frontend
       args:
@@ -65,3 +120,4 @@ services:
 volumes:
   thor_pesquisador_postgres:
   thor_pesquisador_mongo:
+  thor_pesquisador_meili:

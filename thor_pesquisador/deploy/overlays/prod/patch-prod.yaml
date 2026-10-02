@@ -1,13 +1,13 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: backend
+  name: thor-pesquisador-backend
 spec:
   replicas: 2
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: frontend
+  name: thor-pesquisador-frontend
 spec:
   replicas: 2

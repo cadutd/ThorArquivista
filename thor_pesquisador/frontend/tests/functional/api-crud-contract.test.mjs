@@ -4,6 +4,12 @@ import { test } from "node:test";
 
 const api = readFileSync(new URL("../../lib/api.ts", import.meta.url), "utf8");
 const dashboard = readFileSync(new URL("../../app/dashboard/page.tsx", import.meta.url), "utf8");
+const pesquisa = readFileSync(new URL("../../app/pesquisa/page.tsx", import.meta.url), "utf8");
+const instrumentos = readFileSync(new URL("../../app/instrumentos/page.tsx", import.meta.url), "utf8");
+const novoInstrumento = readFileSync(new URL("../../app/instrumentos/novo/page.tsx", import.meta.url), "utf8");
+const editarInstrumento = readFileSync(new URL("../../app/instrumentos/[id]/editar/page.tsx", import.meta.url), "utf8");
+const detalheInstrumento = readFileSync(new URL("../../app/instrumentos/[id]/page.tsx", import.meta.url), "utf8");
+const instrumentoForm = readFileSync(new URL("../../components/instrumento-form.tsx", import.meta.url), "utf8");
 const login = readFileSync(new URL("../../app/login/page.tsx", import.meta.url), "utf8");
 const appShell = readFileSync(new URL("../../components/app-shell.tsx", import.meta.url), "utf8");
 const styles = readFileSync(new URL("../../app/globals.css", import.meta.url), "utf8");
@@ -38,25 +44,56 @@ test("funcoes CRUD de instrumentos, campos e registros estao cobertas no fronten
     "getSchema",
     "createInstrumento",
     "updateInstrumento",
+    "deleteInstrumento",
     "listCampos",
     "createCampo",
     "listRegistros",
     "searchRegistros",
     "createRegistro",
+    "buscarAvancado",
+    "getFacetas",
+    "reindexarInstrumento",
   ].forEach((name) => assertFunction(api, name));
 
   assertEndpoint(api, "/instrumentos");
+  assertEndpoint(api, "method: \"DELETE\"");
   assertEndpoint(api, "/campos");
   assertEndpoint(api, "/registros");
   assertEndpoint(api, "/buscar");
+  assertEndpoint(api, "/buscar-avancado");
+  assertEndpoint(api, "/facetas");
+  assertEndpoint(api, "/reindexar");
+});
+
+test("crud de instrumentos segue paginas completas e paginacao do padrao Thor", () => {
+  assert.match(instrumentos, /pageIndex/);
+  assert.match(instrumentos, /pageSize/);
+  assert.match(instrumentos, /Pagination/);
+  assert.match(instrumentos, /deleteInstrumento/);
+  assert.match(instrumentos, /window\.confirm/);
+  assert.ok(instrumentos.includes("/editar"));
+  assert.match(novoInstrumento, /InstrumentoForm/);
+  assert.match(editarInstrumento, /getInstrumento/);
+  assert.match(editarInstrumento, /updateInstrumento/);
+  assert.match(detalheInstrumento, /Visualizacao/);
+  assert.match(instrumentoForm, /Informe o nome do instrumento/);
+  assert.match(instrumentoForm, /Salvando\.\.\./);
 });
 
 test("dashboard e shell preservam pagina inicial administrativa", () => {
   assert.match(dashboard, /getDashboardStats/);
   assert.match(dashboard, /Instrumentos/);
+  assert.match(dashboard, /Indexacao/);
   assert.match(appShell, /\/dashboard/);
   assert.match(appShell, /\/instrumentos/);
   assert.match(appShell, /\/pesquisa/);
+});
+
+test("pagina de pesquisa usa busca avancada e reindexacao", () => {
+  assert.match(pesquisa, /buscarAvancado/);
+  assert.match(pesquisa, /getFacetas/);
+  assert.match(pesquisa, /reindexarInstrumento/);
+  assert.match(pesquisa, /Busca avancada/);
 });
 
 test("login preserva identidade visual e imagem do pesquisador", () => {

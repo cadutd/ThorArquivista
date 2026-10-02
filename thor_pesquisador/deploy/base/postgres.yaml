@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: postgres
+  name: thor-pesquisador-postgres
 spec:
-  serviceName: postgres
+  serviceName: thor-pesquisador-postgres
   replicas: 1
   selector:
     matchLabels:
-      app: postgres
+      app: thor-pesquisador-postgres
   template:
     metadata:
       labels:
-        app: postgres
+        app: thor-pesquisador-postgres
     spec:
       containers:
-        - name: postgres
+        - name: thor-pesquisador-postgres
           image: postgres:16-alpine
           env:
             - name: POSTGRES_DB
@@ -47,10 +47,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: postgres
+  name: thor-pesquisador-postgres
 spec:
   selector:
-    app: postgres
+    app: thor-pesquisador-postgres
   ports:
     - port: 5432
       targetPort: 5432

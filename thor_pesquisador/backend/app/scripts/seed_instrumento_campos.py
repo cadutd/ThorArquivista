@@ -33,6 +33,9 @@ class InstrumentoCampoSeed:
     aparece_cadastro: bool = True
     aparece_listagem: bool = True
     aparece_busca: bool = True
+    filtro_avancado: bool = False
+    facetavel: bool = False
+    ordenavel: bool = False
 
     @property
     def id(self) -> uuid.UUID:
@@ -45,10 +48,10 @@ class InstrumentoCampoSeed:
 
 def build_seed_data() -> list[InstrumentoCampoSeed]:
     return [
-        InstrumentoCampoSeed("TEST-PESQ-GUIA-ACERVO-GERAL", "Codigo de referencia", "codigo_referencia", TipoCampo.TEXTO_CURTO, 0, True),
-        InstrumentoCampoSeed("TEST-PESQ-GUIA-ACERVO-GERAL", "Titulo", "titulo", TipoCampo.TEXTO_CURTO, 1, True),
+        InstrumentoCampoSeed("TEST-PESQ-GUIA-ACERVO-GERAL", "Codigo de referencia", "codigo_referencia", TipoCampo.TEXTO_CURTO, 0, True, filtro_avancado=True, ordenavel=True),
+        InstrumentoCampoSeed("TEST-PESQ-GUIA-ACERVO-GERAL", "Titulo", "titulo", TipoCampo.TEXTO_CURTO, 1, True, filtro_avancado=True, ordenavel=True),
         InstrumentoCampoSeed("TEST-PESQ-GUIA-ACERVO-GERAL", "Resumo", "resumo", TipoCampo.TEXTO_LONGO, 2, aparece_listagem=False),
-        InstrumentoCampoSeed("TEST-PESQ-GUIA-ACERVO-GERAL", "Disponivel ao publico", "disponivel_publico", TipoCampo.BOOLEANO, 3),
+        InstrumentoCampoSeed("TEST-PESQ-GUIA-ACERVO-GERAL", "Disponivel ao publico", "disponivel_publico", TipoCampo.BOOLEANO, 3, filtro_avancado=True, facetavel=True),
         InstrumentoCampoSeed(
             "TEST-PESQ-INVENTARIO-FUNDO-ADM",
             "Serie documental",
@@ -57,12 +60,14 @@ def build_seed_data() -> list[InstrumentoCampoSeed]:
             0,
             True,
             opcoes=["ATAS", "CORRESPONDENCIA", "PROCESSOS", "RELATORIOS"],
+            filtro_avancado=True,
+            facetavel=True,
         ),
-        InstrumentoCampoSeed("TEST-PESQ-INVENTARIO-FUNDO-ADM", "Numero de folhas", "numero_folhas", TipoCampo.NUMERO, 1, aparece_busca=False),
-        InstrumentoCampoSeed("TEST-PESQ-INVENTARIO-FUNDO-ADM", "Data limite", "data_limite", TipoCampo.DATA, 2),
+        InstrumentoCampoSeed("TEST-PESQ-INVENTARIO-FUNDO-ADM", "Numero de folhas", "numero_folhas", TipoCampo.NUMERO, 1, aparece_busca=False, filtro_avancado=True, ordenavel=True),
+        InstrumentoCampoSeed("TEST-PESQ-INVENTARIO-FUNDO-ADM", "Data limite", "data_limite", TipoCampo.DATA, 2, filtro_avancado=True, ordenavel=True),
         InstrumentoCampoSeed("TEST-PESQ-INVENTARIO-FUNDO-ADM", "Observacoes internas", "observacoes_internas", TipoCampo.TEXTO_LONGO, 3, aparece_listagem=False, aparece_busca=False),
-        InstrumentoCampoSeed("TEST-PESQ-CATALOGO-FOTOGRAFICO", "Autor da fotografia", "autor_fotografia", TipoCampo.TEXTO_CURTO, 0, True),
-        InstrumentoCampoSeed("TEST-PESQ-CATALOGO-FOTOGRAFICO", "Data da captura", "data_captura", TipoCampo.DATA, 1),
+        InstrumentoCampoSeed("TEST-PESQ-CATALOGO-FOTOGRAFICO", "Autor da fotografia", "autor_fotografia", TipoCampo.TEXTO_CURTO, 0, True, filtro_avancado=True, facetavel=True),
+        InstrumentoCampoSeed("TEST-PESQ-CATALOGO-FOTOGRAFICO", "Data da captura", "data_captura", TipoCampo.DATA, 1, filtro_avancado=True, ordenavel=True),
         InstrumentoCampoSeed(
             "TEST-PESQ-CATALOGO-FOTOGRAFICO",
             "Palavras-chave",
@@ -71,15 +76,17 @@ def build_seed_data() -> list[InstrumentoCampoSeed]:
             2,
             multiplo=True,
             opcoes=["EDIFICIOS", "EVENTOS", "RETRATOS", "PAISAGENS"],
+            filtro_avancado=True,
+            facetavel=True,
         ),
-        InstrumentoCampoSeed("TEST-PESQ-INDICE-NOMINAL", "Nome citado", "nome_citado", TipoCampo.TEXTO_CURTO, 0, True),
+        InstrumentoCampoSeed("TEST-PESQ-INDICE-NOMINAL", "Nome citado", "nome_citado", TipoCampo.TEXTO_CURTO, 0, True, filtro_avancado=True, ordenavel=True),
         InstrumentoCampoSeed("TEST-PESQ-INDICE-NOMINAL", "Variacoes do nome", "variacoes_nome", TipoCampo.LISTA_MULTIPLA, 1, multiplo=True),
         InstrumentoCampoSeed("TEST-PESQ-INDICE-NOMINAL", "URL do documento", "url_documento", TipoCampo.URL, 2, aparece_listagem=False),
-        InstrumentoCampoSeed("TEST-PESQ-BASE-MIGRACAO", "Pais de origem", "pais_origem", TipoCampo.TEXTO_CURTO, 0, True),
-        InstrumentoCampoSeed("TEST-PESQ-BASE-MIGRACAO", "Ano de chegada", "ano_chegada", TipoCampo.NUMERO, 1),
+        InstrumentoCampoSeed("TEST-PESQ-BASE-MIGRACAO", "Pais de origem", "pais_origem", TipoCampo.TEXTO_CURTO, 0, True, filtro_avancado=True, facetavel=True),
+        InstrumentoCampoSeed("TEST-PESQ-BASE-MIGRACAO", "Ano de chegada", "ano_chegada", TipoCampo.NUMERO, 1, filtro_avancado=True, ordenavel=True),
         InstrumentoCampoSeed("TEST-PESQ-BASE-MIGRACAO", "Fonte externa", "fonte_externa", TipoCampo.URL, 2, aparece_listagem=False),
-        InstrumentoCampoSeed("TEST-PESQ-INDICE-ASSUNTOS", "Termo principal", "termo_principal", TipoCampo.TEXTO_CURTO, 0, True),
-        InstrumentoCampoSeed("TEST-PESQ-INDICE-ASSUNTOS", "Categoria", "categoria", TipoCampo.LISTA_SIMPLES, 1, opcoes=["PESSOA", "LOCAL", "ASSUNTO"]),
+        InstrumentoCampoSeed("TEST-PESQ-INDICE-ASSUNTOS", "Termo principal", "termo_principal", TipoCampo.TEXTO_CURTO, 0, True, filtro_avancado=True, ordenavel=True),
+        InstrumentoCampoSeed("TEST-PESQ-INDICE-ASSUNTOS", "Categoria", "categoria", TipoCampo.LISTA_SIMPLES, 1, opcoes=["PESSOA", "LOCAL", "ASSUNTO"], filtro_avancado=True, facetavel=True),
         InstrumentoCampoSeed("TEST-PESQ-INDICE-ASSUNTOS", "Nota de escopo", "nota_escopo", TipoCampo.TEXTO_LONGO, 2, aparece_listagem=False),
     ]
 
@@ -112,6 +119,9 @@ def upsert_campo(db: Session, seed: InstrumentoCampoSeed) -> bool:
     campo.aparece_cadastro = seed.aparece_cadastro
     campo.aparece_listagem = seed.aparece_listagem
     campo.aparece_busca = seed.aparece_busca
+    campo.filtro_avancado = seed.filtro_avancado
+    campo.facetavel = seed.facetavel
+    campo.ordenavel = seed.ordenavel
     return created
 
 

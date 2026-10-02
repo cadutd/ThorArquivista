@@ -49,6 +49,7 @@ export default function DashboardPage() {
           <MetricCard title="Campos configurados" value={stats?.total_campos ?? 0} icon={ListChecks} />
           <MetricCard title="Registros ativos" value={stats?.registros_ativos ?? 0} icon={Search} />
           <MetricCard title="Registros inativos" value={stats?.registros_inativos ?? 0} icon={AlertTriangle} />
+          <MetricCard title="Falhas de indexacao" value={stats?.indexacao_jobs_falhos ?? 0} icon={AlertTriangle} />
         </section>
 
         <section className="card">
@@ -78,6 +79,42 @@ export default function DashboardPage() {
                   {!stats?.instrumentos_por_tipo.length ? (
                     <tr>
                       <td colSpan={2} className="muted">Nenhum instrumento cadastrado.</td>
+                    </tr>
+                  ) : null}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section className="card">
+          <div className="card-content stack">
+            <div>
+              <h2 style={{ margin: 0 }}>Indexacao</h2>
+              <p className="muted" style={{ margin: "4px 0 0" }}>Jobs recentes de reindexacao e busca avancada.</p>
+            </div>
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Tipo</th>
+                    <th>Status</th>
+                    <th>Processados</th>
+                    <th>Erro</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(stats?.indexacao_jobs_recentes ?? []).map((job) => (
+                    <tr key={job.id}>
+                      <td>{job.tipo}</td>
+                      <td>{job.status}</td>
+                      <td>{job.processados}/{job.total_estimado}</td>
+                      <td>{job.erro ?? ""}</td>
+                    </tr>
+                  ))}
+                  {!stats?.indexacao_jobs_recentes.length ? (
+                    <tr>
+                      <td colSpan={4} className="muted">Nenhum job de indexacao recente.</td>
                     </tr>
                   ) : null}
                 </tbody>

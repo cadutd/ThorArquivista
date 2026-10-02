@@ -10,6 +10,7 @@ from app.models.enums import StatusInstrumento, StatusRegistro
 from app.models.instrumento import Instrumento, InstrumentoCampo
 from app.models.user import Usuario
 from app.schemas.dashboard import DashboardStats
+from app.services.indexacao_service import contar_jobs_falhos, jobs_recentes
 
 router = APIRouter()
 
@@ -31,6 +32,7 @@ def dashboard_stats(
     por_tipo_rows = db.execute(
         select(Instrumento.tipo, func.count()).group_by(Instrumento.tipo).order_by(Instrumento.tipo.asc())
     ).all()
+    jobs = jobs_recentes(db)
 
     return DashboardStats(
         total_instrumentos=total_instrumentos,
@@ -41,4 +43,17 @@ def dashboard_stats(
         registros_ativos=collection.count_documents({"status": StatusRegistro.ATIVO.value}),
         registros_inativos=collection.count_documents({"status": StatusRegistro.INATIVO.value}),
         instrumentos_por_tipo=[{"tipo": tipo, "total": total} for tipo, total in por_tipo_rows],
+        indexacao_jobs_recentes=[
+            {
+                "id": str(job.id),
+                "instrumento_id": str(job.instrumento_id),
+                "tipo": job.tipo,
+                "status": job.status,
+                "processados": job.processados,
+                "total_estimado": job.total_estimado,
+                "erro": job.erro,
+            }
+            for job in jobs
+        ],
+        indexacao_jobs_falhos=contar_jobs_falhos(db),
     )

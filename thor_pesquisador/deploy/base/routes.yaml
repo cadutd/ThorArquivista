@@ -1,11 +1,11 @@
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: frontend
+  name: thor-pesquisador-frontend
 spec:
   to:
     kind: Service
-    name: frontend
+    name: thor-pesquisador-frontend
   port:
     targetPort: 3000
   tls:
@@ -14,11 +14,11 @@ spec:
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: backend
+  name: thor-pesquisador-backend
 spec:
   to:
     kind: Service
-    name: backend
+    name: thor-pesquisador-backend
   port:
     targetPort: 8000
   tls:

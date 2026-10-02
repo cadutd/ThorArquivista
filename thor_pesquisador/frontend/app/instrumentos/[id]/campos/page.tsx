@@ -20,7 +20,10 @@ export default function CamposPage() {
     obrigatorio: false,
     aparece_busca: true,
     aparece_listagem: true,
-    aparece_cadastro: true
+    aparece_cadastro: true,
+    filtro_avancado: false,
+    facetavel: false,
+    ordenavel: false
   });
 
   async function load() {
@@ -74,6 +77,9 @@ export default function CamposPage() {
           <label><input type="checkbox" checked={form.aparece_cadastro} onChange={(e) => setForm({ ...form, aparece_cadastro: e.target.checked })} /> Cadastro</label>
           <label><input type="checkbox" checked={form.aparece_listagem} onChange={(e) => setForm({ ...form, aparece_listagem: e.target.checked })} /> Listagem</label>
           <label><input type="checkbox" checked={form.aparece_busca} onChange={(e) => setForm({ ...form, aparece_busca: e.target.checked })} /> Busca</label>
+          <label><input type="checkbox" checked={form.filtro_avancado} onChange={(e) => setForm({ ...form, filtro_avancado: e.target.checked })} /> Filtro avancado</label>
+          <label><input type="checkbox" checked={form.facetavel} onChange={(e) => setForm({ ...form, facetavel: e.target.checked })} /> Faceta</label>
+          <label><input type="checkbox" checked={form.ordenavel} onChange={(e) => setForm({ ...form, ordenavel: e.target.checked })} /> Ordenacao</label>
         </div>
         {error ? <p className="error">{error}</p> : null}
         <button className="button" type="submit">Adicionar campo</button>
@@ -81,9 +87,9 @@ export default function CamposPage() {
       <section className="panel">
         <div className="table-wrap">
         <table className="table">
-          <thead><tr><th>Ordem</th><th>Nome</th><th>Chave</th><th>Tipo</th><th>Obrigatorio</th></tr></thead>
+          <thead><tr><th>Ordem</th><th>Nome</th><th>Chave</th><th>Tipo</th><th>Obrigatorio</th><th>Busca avancada</th></tr></thead>
           <tbody>
-            {campos.map((campo) => <tr key={campo.id}><td>{campo.ordem}</td><td>{campo.nome}</td><td>{campo.chave}</td><td>{campo.tipo}</td><td>{campo.obrigatorio ? "Sim" : "Nao"}</td></tr>)}
+            {campos.map((campo) => <tr key={campo.id}><td>{campo.ordem}</td><td>{campo.nome}</td><td>{campo.chave}</td><td>{campo.tipo}</td><td>{campo.obrigatorio ? "Sim" : "Nao"}</td><td>{[campo.filtro_avancado ? "Filtro" : "", campo.facetavel ? "Faceta" : "", campo.ordenavel ? "Ordenacao" : ""].filter(Boolean).join(", ") || "Nao"}</td></tr>)}
           </tbody>
         </table>
         </div>

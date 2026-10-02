@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     govbr_redirect_uri: str = "http://localhost:8000/api/v1/auth/govbr/callback"
     govbr_dev_login: bool = True
     auth_disabled_for_tests: bool = False
+    redis_url: str = "redis://redis:6379/0"
+    indexacao_queue_name: str = "thor_pesquisador:indexacao"
+    meilisearch_url: str = "http://meilisearch:7700"
+    meilisearch_api_key: str = "dev-master-key"
+    indexacao_batch_size: int = 500
 
 
 settings = Settings()

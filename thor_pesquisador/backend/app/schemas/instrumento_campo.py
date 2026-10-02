@@ -21,6 +21,9 @@ class InstrumentoCampoBase(BaseModel):
     aparece_cadastro: bool = True
     aparece_listagem: bool = True
     aparece_busca: bool = True
+    filtro_avancado: bool = False
+    facetavel: bool = False
+    ordenavel: bool = False
 
 
 class InstrumentoCampoCreate(InstrumentoCampoBase):
@@ -39,6 +42,9 @@ class InstrumentoCampoUpdate(BaseModel):
     aparece_cadastro: bool | None = None
     aparece_listagem: bool | None = None
     aparece_busca: bool | None = None
+    filtro_avancado: bool | None = None
+    facetavel: bool | None = None
+    ordenavel: bool | None = None
 
 
 class InstrumentoCampoOut(InstrumentoCampoBase):

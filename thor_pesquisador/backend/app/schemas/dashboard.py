@@ -12,3 +12,5 @@ class DashboardStats(BaseModel):
     registros_ativos: int
     registros_inativos: int
     instrumentos_por_tipo: list[dict[str, int | str]]
+    indexacao_jobs_recentes: list[dict[str, str | int | None]] = []
+    indexacao_jobs_falhos: int = 0
