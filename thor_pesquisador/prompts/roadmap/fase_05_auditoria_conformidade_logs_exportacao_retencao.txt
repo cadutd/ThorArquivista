@@ -1,0 +1,141 @@
+Voce e o Codex trabalhando no projeto `thor_pesquisador`.
+
+Objetivo da fase 5:
+Adicionar auditoria, conformidade, logs de acesso, exportacao de dados, relatorios administrativos e politicas basicas de retencao.
+
+Estado atual esperado:
+- Nucleo administrativo, dashboard, gov.br, instrumentos, campos e registros dinamicos ja existem.
+- MongoDB continua como fonte canonica dos registros dinamicos.
+- PostgreSQL guarda governanca, usuarios, sessoes, permissoes, workflows e auditoria.
+- Meilisearch/Redis/worker ja existem para busca e indexacao.
+- Imagens opcionais e publicacao ja existem.
+- O deploy continua suportando Docker Compose e Kubernetes/OKD.
+- A identidade visual deve continuar alinhada ao Thor Gestor.
+
+Arquitetura de dados:
+- Auditoria, exportacoes, usuarios, permissoes e configuracoes de retencao ficam no PostgreSQL.
+- Exportacoes de registros leem MongoDB por cursor e em lotes.
+- Exportacoes de instrumentos com milhoes de registros nao podem carregar tudo em memoria.
+- Arquivos de exportacao devem ir para object storage, nunca para filesystem efemero do pod.
+- Em Kubernetes/OKD, exportacoes e limpezas devem rodar em worker ou CronJob com progresso persistido.
+
+Escopo funcional:
+1. Auditoria de eventos de negocio.
+2. Logs de acesso consultivo.
+3. Exportacao de instrumentos e registros.
+4. Relatorios administrativos.
+5. Politicas basicas de retencao e descarte logico.
+6. Painel operacional no dashboard.
+
+Auditoria:
+Criar modelo `auditoria_eventos` com:
+- id;
+- usuario_id;
+- usuario_cpf_hash;
+- acao;
+- entidade_tipo;
+- entidade_id;
+- instrumento_id;
+- registro_id;
+- antes_json;
+- depois_json;
+- ip;
+- user_agent;
+- request_id;
+- criado_em.
+
+Eventos auditaveis:
+- login;
+- logout;
+- criacao/alteracao/arquivamento de instrumento;
+- criacao/alteracao/reordenacao de campo;
+- criacao/alteracao/publicacao/arquivamento de registro;
+- upload de imagem;
+- vinculo/desvinculo de imagem;
+- alteracao de permissoes;
+- reindexacao;
+- exportacao de dados;
+- alteracao de retencao.
+
+Logs de acesso consultivo:
+- Registrar acesso a registros publicados quando habilitado por configuracao.
+- Nao armazenar dados sensiveis desnecessarios.
+- Permitir anonimizar ou hashear CPF quando adequado.
+
+Exportacao:
+Criar exportacoes:
+1. CSV de registros de um instrumento.
+2. JSON completo de instrumento com schema e registros.
+3. Pacote de publicacao com metadados, registros e referencias de imagens.
+
+Endpoints:
+- `POST /api/v1/instrumentos/{id}/exportacoes`
+- `GET /api/v1/exportacoes/{id}`
+- `GET /api/v1/exportacoes/{id}/download`
+
+Worker:
+- Exportacoes grandes devem ser processadas em segundo plano.
+- Exportacoes devem usar streaming ou escrita incremental em objeto.
+- O worker deve gravar progresso por cursor MongoDB/checkpoint.
+- O tamanho do lote deve ser configuravel.
+- Criar filas separadas para indexacao e exportacao ou roteamento equivalente.
+- Para rotinas periodicas de retencao, criar CronJob Kubernetes/OKD.
+- Status: PENDENTE, PROCESSANDO, CONCLUIDA, FALHOU.
+
+Relatorios:
+- total de instrumentos por status;
+- total de registros por instrumento;
+- registros publicados por periodo;
+- registros alterados por usuario;
+- imagens sem vinculo;
+- falhas de indexacao;
+- ultimas exportacoes;
+- jobs pendentes/falhos.
+
+Dashboard:
+Atualizar `/dashboard` para incluir resumo de auditoria recente, exportacoes recentes, jobs falhos, indicadores de retencao e alertas operacionais basicos.
+
+Retencao:
+- Configurar retencao para logs de acesso, exportacoes, sessoes expiradas e registros excluidos logicamente.
+- Limpeza de MongoDB deve ser feita em lotes com filtros indexados.
+- CronJobs devem usar `concurrencyPolicy` adequada.
+
+Seguranca:
+- Evitar expor CPF puro em listagens administrativas.
+- Usar hash para identificadores sensiveis em auditoria quando possivel.
+- Exportacoes devem respeitar permissao do solicitante.
+- Registrar auditoria de quem exportou o que.
+- Proteger downloads por sessao, permissao e, quando aplicavel, URL assinada com expiracao.
+
+Frontend:
+1. Manter identidade visual existente.
+2. Criar area "Auditoria" com filtros por periodo, usuario, acao, entidade e instrumento.
+3. Criar area "Exportacoes".
+4. Criar painel de relatorios operacionais.
+5. Criar tela de configuracoes de retencao.
+
+Kubernetes/OKD:
+- Atualizar manifests para worker de exportacao ou filas separadas.
+- Criar CronJob de retencao.
+- Configurar Secrets de object storage se ainda nao existirem.
+- Definir requests/limits e probes quando aplicavel.
+- Documentar comandos `oc` para acompanhar jobs, logs e falhas.
+
+Testes:
+- Auditoria para alteracoes relevantes.
+- Permissao para exportacao.
+- Limpeza de exportacoes expiradas.
+- Garantia de que dados nao publicados nao entram em exportacao publica.
+- Execucao de jobs em lote com checkpoint.
+
+README:
+Atualizar documentacao com auditoria, exportacoes, politicas de retencao, operacao de workers/CronJobs, conformidade e cuidados com dados pessoais.
+
+Entrega esperada:
+- Auditoria funcional.
+- Exportacao CSV e JSON.
+- Relatorios administrativos.
+- Politicas basicas de retencao.
+- Dashboard operacional ampliado.
+- Manifests Kubernetes/OKD atualizados.
+- README atualizado.

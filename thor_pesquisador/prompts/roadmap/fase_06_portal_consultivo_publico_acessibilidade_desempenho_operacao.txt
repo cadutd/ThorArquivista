@@ -1,0 +1,133 @@
+Voce e o Codex trabalhando no projeto `thor_pesquisador`.
+
+Objetivo da fase 6:
+Consolidar o portal consultivo publico/autenticado, acessibilidade, desempenho, observabilidade, operacao em producao e documentacao final.
+
+Estado atual esperado:
+- As fases 1 a 5 ja implementaram o nucleo administrativo, dashboard, autenticacao gov.br, instrumentos dinamicos, MongoDB, busca avancada, imagens, publicacao, auditoria, exportacao e retencao.
+- A rota `/pesquisa` existe desde o MVP e foi evoluida nas fases anteriores.
+- O sistema deve manter a identidade visual harmonizada com o `thor_gestor_de_arquivos_digitais`.
+- A pagina inicial autenticada permanece `/dashboard`.
+- O login permanece usando `login_pesquisador.png`.
+- O projeto deve continuar pronto para Docker Compose e Kubernetes/OKD.
+
+Escopo funcional:
+1. Refinar portal consultivo.
+2. Consolidar acessibilidade.
+3. Otimizar desempenho.
+4. Melhorar observabilidade.
+5. Preparar configuracao final de producao em Kubernetes/OKD.
+6. Criar documentacao operacional final.
+
+Portal consultivo:
+- Rota principal `/pesquisa`.
+- Listagem de instrumentos publicados.
+- Pagina do instrumento com descricao, campos pesquisaveis, filtros avancados, facetas, ordenacao, paginacao e resultados com titulo/resumo.
+- Pagina do registro com metadados organizados, imagens vinculadas, link externo/IIIF, citacao/referencia e botao de copiar link permanente.
+
+Links permanentes:
+- Criar URLs estaveis para instrumento publicado, registro publicado e imagem publica.
+- Evitar expor IDs internos sensiveis quando possivel.
+- Usar slug publico ou identificador persistente quando houver regra definida.
+
+Acessibilidade:
+- Usar HTML semantico.
+- Garantir navegacao por teclado.
+- Garantir foco visivel.
+- Garantir contraste adequado.
+- Adicionar labels acessiveis em filtros e formularios.
+- Evitar texto apenas por cor.
+- Testar estados vazios, erros e carregamento.
+- Garantir que botoes com icones tenham nome acessivel.
+
+Experiencia visual:
+- Manter paleta, espacamento, sidebar/header e componentes alinhados ao Thor Gestor.
+- Telas administrativas e consultivas podem ser distintas, mas devem parecer parte do mesmo produto.
+- Evitar landing page de marketing; a experiencia principal deve ser a pesquisa/dashboard.
+- Em mobile, garantir que cards, tabelas, filtros e botoes nao estourem o layout.
+
+Desempenho:
+- Paginar resultados.
+- Evitar carregar imagens grandes na listagem.
+- Usar thumbnails.
+- Cachear schema publico de instrumento quando apropriado.
+- Usar compressao HTTP em producao.
+- Otimizar chamadas de busca para nao recalcular facetas sem necessidade.
+- Considerar milhoes de registros como caso normal.
+- Usar Meilisearch para busca/facetas.
+- Usar MongoDB para leitura canonica paginada por cursor.
+- Evitar `skip` profundo no MongoDB.
+- Garantir indices MongoDB documentados e verificados por startup idempotente ou comando operacional.
+
+Observabilidade:
+- Adicionar logs estruturados no backend.
+- Adicionar correlacao por `request_id`.
+- Criar health detalhado interno para PostgreSQL, MongoDB, Meilisearch, Redis e object storage.
+- Expor metricas basicas de latencia, falhas de indexacao, tamanho da fila, registros indexados, jobs de exportacao e erros por endpoint.
+- Preparar endpoints e labels para Prometheus/OpenShift Monitoring.
+- Documentar consultas basicas de logs no OKD.
+
+Producao Kubernetes/OKD:
+- Consolidar `deploy/` com overlays dev, homolog e prod.
+- Separar variaveis de desenvolvimento e producao.
+- Documentar HTTPS obrigatorio para gov.br.
+- Documentar dominio oficial necessario para credencial de producao gov.br.
+- Configurar CORS restrito e cookies HttpOnly, Secure e SameSite adequado.
+- Remover credenciais de desenvolvimento de homolog/prod.
+- Usar Route do OpenShift para frontend e, se necessario, backend.
+- Usar TLS edge ou reencrypt conforme padrao institucional.
+- Garantir callback gov.br com URL HTTPS publica estavel.
+- Garantir compatibilidade com Security Context Constraints: sem root, sem privileged, sem hostPath, sem capacidades Linux desnecessarias e escrita apenas em volumes permitidos.
+- Definir requests e limits para todos os containers.
+- Definir replicas minimas para frontend e backend.
+- Avaliar HPA para frontend, backend e workers.
+- Usar Secrets para gov.br, bancos, Redis, Meilisearch e object storage.
+- Usar ConfigMaps para configuracoes nao sensiveis.
+- Usar PVC somente para servicos stateful implantados no cluster.
+- Preferir bancos e object storage gerenciados em producao quando disponiveis.
+- Criar NetworkPolicies quando o cluster exigir segmentacao.
+- Documentar migrations Alembic por Job pre-deploy, comando operacional ou etapa controlada no pipeline.
+- Documentar verificacao/criacao de indices MongoDB por Job pre-deploy, comando operacional ou rotina idempotente no startup.
+
+Backup e restore:
+- Documentar backup de PostgreSQL, MongoDB, object storage/imagens e arquivos de exportacao.
+- Explicar que Meilisearch e reconstituivel por reindexacao.
+- Documentar restore testado para PostgreSQL, MongoDB e object storage.
+- Documentar atualizacao de imagem e rollback no OKD.
+
+Frontend:
+- Refinar layout consultivo.
+- Criar estados vazios profissionais.
+- Criar mensagens de erro claras.
+- Garantir responsividade em desktop e mobile.
+- Garantir acessibilidade minima verificavel.
+- Manter dashboard administrativo como pagina inicial autenticada.
+
+Testes:
+- Testes e2e para busca publica.
+- Testes e2e para login e fluxo autenticado.
+- Testes de acessibilidade basicos.
+- Testes de permissao para conteudo restrito.
+- Testes de smoke do Docker Compose.
+- Testes de smoke em Kubernetes/OKD para rollout, health/readiness, login/callback e conexoes com PostgreSQL, MongoDB, Redis, Meilisearch e object storage.
+
+Documentacao:
+- README de desenvolvimento.
+- README do backend.
+- README do frontend.
+- Guia de configuracao gov.br.
+- Guia de Docker Compose.
+- Guia de Kubernetes/OKD.
+- Guia de backup e restauracao.
+- Guia de operacao de indexacao.
+- Guia de exportacao e auditoria.
+- Guia de workers, Jobs e CronJobs.
+- Guia de variaveis, ConfigMaps e Secrets.
+- Secao de licenciamento AGPL-3.0.
+
+Entrega esperada:
+- Portal consultivo pronto para demonstracao institucional.
+- Configuracao de producao Kubernetes/OKD documentada.
+- Testes de smoke e e2e.
+- Checklist final de seguranca, acessibilidade e operacao.
+- READMEs atualizados.

@@ -1,0 +1,30 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - postgres.yaml
+  - mongo.yaml
+  - backend.yaml
+  - frontend.yaml
+  - routes.yaml
+configMapGenerator:
+  - name: thor-pesquisador-config
+    literals:
+      - APP_ENV=dev
+      - PUBLIC_APP_URL=https://thor-pesquisador.apps.example.local
+      - GOVBR_AUTHORIZE_URL=https://sso.staging.acesso.gov.br/authorize
+      - GOVBR_TOKEN_URL=https://sso.staging.acesso.gov.br/token
+      - GOVBR_JWKS_URL=https://sso.staging.acesso.gov.br/jwk
+      - GOVBR_REDIRECT_URI=https://thor-pesquisador-api.apps.example.local/api/v1/auth/govbr/callback
+      - CORS_ORIGINS=["https://thor-pesquisador.apps.example.local"]
+      - MONGODB_DATABASE=thor_pesquisador
+      - GOVBR_DEV_LOGIN=false
+secretGenerator:
+  - name: thor-pesquisador-secrets
+    literals:
+      - DATABASE_URL=postgresql+psycopg://thor:thor@postgres:5432/thor_pesquisador
+      - MONGODB_URL=mongodb://mongo:27017/thor_pesquisador
+      - GOVBR_CLIENT_ID=change-me
+      - GOVBR_CLIENT_SECRET=change-me
+      - APP_SESSION_SECRET=change-me
+generatorOptions:
+  disableNameSuffixHash: true

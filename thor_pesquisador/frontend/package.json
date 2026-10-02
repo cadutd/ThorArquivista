@@ -1,0 +1,29 @@
+{
+  "name": "thor-pesquisador-frontend",
+  "version": "0.1.0",
+  "license": "AGPL-3.0-or-later",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test:functional": "node --test tests/functional/*.test.mjs",
+    "test:functional:report": "node -e \"require('node:fs').mkdirSync('../test-reports/frontend', { recursive: true })\" && node --test --test-reporter=junit --test-reporter-destination=../test-reports/frontend/junit.xml tests/functional/*.test.mjs"
+  },
+  "dependencies": {
+    "lucide-react": "0.468.0",
+    "next": "15.5.24",
+    "react": "19.0.1",
+    "react-dom": "19.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.2",
+    "@types/react": "19.0.2",
+    "@types/react-dom": "19.0.2",
+    "eslint": "9.17.0",
+    "eslint-config-next": "15.1.3",
+    "typescript": "5.7.2"
+  }
+}

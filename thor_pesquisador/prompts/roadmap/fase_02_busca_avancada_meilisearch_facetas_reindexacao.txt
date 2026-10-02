@@ -1,0 +1,156 @@
+Voce e o Codex trabalhando no projeto `thor_pesquisador`.
+
+Objetivo da fase 2:
+Evoluir o MVP ja implementado para adicionar busca avancada em registros dinamicos, com Meilisearch como indice derivado, facetas, filtros dinamicos, ordenacao e reindexacao em worker.
+
+Estado atual do projeto:
+- Monorepo `thor_pesquisador` ja existe.
+- Backend FastAPI com PostgreSQL para usuarios, sessoes, instrumentos, campos e governanca.
+- MongoDB ja e a fonte canonica dos registros dinamicos.
+- Frontend Next.js/React/TypeScript ja possui login, dashboard inicial, shell autenticado, instrumentos, campos, registros e pagina `/pesquisa`.
+- A identidade visual deve continuar alinhada ao `thor_gestor_de_arquivos_digitais`.
+- A tela inicial autenticada deve continuar sendo o dashboard.
+- O login usa a imagem `frontend/public/images/login_pesquisador.png`.
+- Docker Compose e manifests Kustomize para Kubernetes/OKD ja existem e devem ser evoluidos, nao substituidos.
+
+Contexto arquitetural:
+O MongoDB continua sendo a fonte canonica dos registros. O PostgreSQL continua sendo a fonte canonica de schemas, usuarios, permissoes, sessoes e metadados administrativos. O Meilisearch deve ser apenas uma projecao de busca, eventualmente consistente e totalmente reconstituivel.
+
+Premissas de escala:
+- O sistema deve considerar instrumentos com milhoes de registros como caso normal.
+- Nao use varreduras completas em requisicoes HTTP.
+- Nao use `skip` profundo no MongoDB para listagens operacionais.
+- Reindexacoes completas devem rodar em worker dedicado, com lotes e checkpoint persistido.
+- Busca avancada, filtros textuais e facetas devem ser respondidos pelo Meilisearch.
+
+Stack adicional:
+- Meilisearch.
+- Redis.
+- Worker Python, preferencialmente Celery, RQ ou estrutura equivalente simples e testavel.
+
+Escopo funcional:
+1. Adicionar `meilisearch` ao Docker Compose.
+2. Adicionar `redis` ao Docker Compose.
+3. Criar worker de indexacao separado do backend HTTP.
+4. Publicar evento de indexacao quando:
+   - registro for criado;
+   - registro for atualizado;
+   - registro for excluido logicamente;
+   - instrumento for reindexado manualmente;
+   - schema pesquisavel do instrumento mudar.
+5. Criar um indice por instrumento:
+   - padrao: `instrumento_{instrumento_id}`.
+6. Criar documento indexavel contendo:
+   - id;
+   - instrumento_id;
+   - schema_version;
+   - titulo;
+   - texto_geral;
+   - dados;
+   - status;
+   - possui_imagens, quando existir em fase posterior;
+   - criado_em;
+   - atualizado_em.
+7. Gerar `titulo` automaticamente a partir de campos preferenciais:
+   - titulo;
+   - nome;
+   - assunto;
+   - descricao;
+   - primeiro campo textual preenchido.
+8. Gerar `texto_geral` concatenando valores pesquisaveis.
+9. Criar busca avancada:
+   - `POST /api/v1/instrumentos/{id}/buscar-avancado`
+   - entrada:
+     - q;
+     - filters;
+     - sort;
+     - limit;
+     - offset ou cursor compativel com Meilisearch;
+   - saida:
+     - items;
+     - total;
+     - limit;
+     - offset/cursor;
+     - indice_atualizado_em ou sinal de eventual defasagem.
+10. Criar endpoint de facetas:
+    - `GET /api/v1/instrumentos/{id}/facetas`
+11. Criar endpoint de reindexacao:
+    - `POST /api/v1/instrumentos/{id}/reindexar`
+12. Criar controle de jobs de indexacao no PostgreSQL:
+    - id;
+    - instrumento_id;
+    - tipo;
+    - status;
+    - total_estimado;
+    - processados;
+    - ultimo_cursor_mongodb;
+    - erro;
+    - criado_em;
+    - atualizado_em.
+13. Atualizar o dashboard inicial para exibir pelo menos:
+    - jobs de indexacao recentes;
+    - falhas de indexacao;
+    - total aproximado de registros indexados por instrumento, quando disponivel.
+
+Campos dinamicos:
+Adicionar propriedades aos campos, se ainda nao existirem:
+- filtro_avancado;
+- facetavel;
+- ordenavel.
+
+Regras de filtro:
+- TEXTO_CURTO, LISTA_SIMPLES, BOOLEANO: igualdade.
+- LISTA_MULTIPLA: contem algum valor.
+- NUMERO: igualdade e intervalo.
+- DATA: igualdade e intervalo.
+- URL: igualdade ou texto, quando fizer sentido.
+- TEXTO_LONGO: busca textual, nao facetar por padrao.
+
+Frontend:
+1. Manter `AppShell`, paleta, tipografia, botoes e cards harmonizados com o Thor Gestor.
+2. Evoluir a rota `/pesquisa` para busca avancada administrativa/consultiva inicial.
+3. Criar tela de busca avancada por instrumento.
+4. Gerar controles de filtro automaticamente a partir do schema:
+   - texto: input;
+   - numero/data: intervalo de/ate;
+   - booleano: seletor;
+   - lista: select ou multiselect.
+5. Exibir facetas quando disponiveis.
+6. Exibir total de resultados.
+7. Permitir ordenacao por campos ordenaveis.
+8. Indicar quando o indice estiver eventualmente defasado.
+
+Kubernetes/OKD:
+- Atualizar `deploy/base` e overlays `dev`, `homolog` e `prod`.
+- Adicionar Deployment separado para `index-worker`.
+- Adicionar Redis para desenvolvimento/homologacao ou apontamento para Redis externo em producao.
+- Adicionar Meilisearch com PVC para desenvolvimento/homologacao ou apontamento externo em producao.
+- Usar ConfigMaps e Secrets para URLs e chaves.
+- Definir probes, requests e limits para backend, frontend, worker, Redis e Meilisearch quando aplicavel.
+- Garantir compatibilidade com UID arbitrario e execucao sem root.
+- Documentar escala horizontal do worker e como evitar processamento duplicado.
+
+Regras importantes:
+- Falha no Meilisearch nao pode impedir criacao/atualizacao do registro canonico no MongoDB.
+- Bulk indexing deve ser usado em reindexacoes.
+- Tamanho do lote deve ser configuravel por variavel de ambiente.
+- Worker deve ser stateless; progresso/checkpoint deve ficar no banco.
+- Nao duplicar regra de negocio sem necessidade; extrair servicos compartilhaveis quando fizer sentido.
+- Criar testes para documento indexavel, validacao de filtros, jobs e endpoint de busca avancada.
+
+README:
+Atualizar o README principal e, se existirem READMEs por componente, atualizar backend/frontend/deploy com:
+- arquitetura de busca;
+- variaveis do Meilisearch e Redis;
+- comandos Docker Compose;
+- operacao de reindexacao;
+- orientacoes OKD.
+
+Entrega esperada:
+- Busca avancada funcional.
+- Worker de indexacao.
+- Reindexacao manual com checkpoint.
+- Facetas dinamicas.
+- Dashboard atualizado com informacoes de indexacao.
+- Manifests Kubernetes/OKD atualizados.
+- Testes executaveis e documentacao atualizada.

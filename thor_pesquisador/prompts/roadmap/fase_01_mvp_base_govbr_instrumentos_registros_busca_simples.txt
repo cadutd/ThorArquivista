@@ -1,0 +1,192 @@
+Voce e o Codex trabalhando no projeto `thor_pesquisador`.
+
+Objetivo da fase 1:
+Criar o MVP do sistema `thor_pesquisador`: uma aplicacao web para instrumentos de pesquisa dinamicos, autenticada via gov.br em homologacao, com cadastro de instrumentos, configuracao de campos dinamicos, cadastro de registros e busca simples.
+
+Contexto de produto:
+O `thor_pesquisador` deve ser um sistema independente do `thor_gestor_de_arquivos_digitais`. Ele deve reaproveitar apenas ideias arquiteturais: instrumentos configuraveis, registros dinamicos, busca e autenticacao OIDC. Nao copie modulos de admissao, midias, enderecamento, preservacao digital ou fichas espelho.
+
+Stack desejada:
+- Backend: FastAPI, SQLAlchemy, Alembic, Pydantic.
+- Frontend: Next.js, React, TypeScript, Tailwind CSS.
+- Bancos:
+  - PostgreSQL para governanca, usuarios, sessoes, instrumentos, campos, permissoes e auditoria.
+  - MongoDB para registros dinamicos dos instrumentos de pesquisa.
+- Autenticacao: gov.br via OpenID Connect/OAuth2 Authorization Code + PKCE.
+- Ambiente local: Docker Compose.
+- Ambiente de implantacao: Kubernetes, preferencialmente OKD/OpenShift.
+
+Decisao de infraestrutura obrigatoria:
+- O sistema deve poder rodar localmente com Docker Compose e em cluster Kubernetes/OKD.
+- Desde o MVP, criar estrutura de deploy em `deploy/` usando Kustomize ou Helm.
+- Separar manifests por ambiente:
+  - `deploy/base`
+  - `deploy/overlays/dev`
+  - `deploy/overlays/homolog`
+  - `deploy/overlays/prod`
+- Em OKD/OpenShift, os containers devem funcionar com UID arbitrario e sem root.
+- Nao depender de escrita no filesystem da imagem; usar volume temporario, PVC ou object storage quando necessario.
+- Configuracoes devem vir de ConfigMaps e Secrets, nunca hardcoded.
+- Backend e frontend devem expor probes de readiness e liveness.
+- Banco de dados e servicos de estado devem poder ser usados de duas formas:
+  - dentro do cluster para desenvolvimento/homologacao;
+  - externos/gerenciados em producao.
+
+Decisao arquitetural obrigatoria:
+- Os registros dinamicos devem ser persistidos no MongoDB desde o MVP.
+- Nao use JSONB PostgreSQL como armazenamento canonico dos registros dinamicos.
+- O projeto precisa nascer preparado para consultas sobre milhoes de registros.
+- PostgreSQL guarda o schema e a governanca do instrumento; MongoDB guarda o conteudo variavel dos registros.
+- Cada documento de registro no MongoDB deve conter os campos necessarios para particionamento logico, filtros basicos e paginacao eficiente.
+
+Requisitos de autenticacao:
+- Implementar fluxo gov.br com Authorization Code + PKCE.
+- Usar `state`, `nonce`, `code_challenge` e `code_verifier`.
+- Validar tokens usando JWK/JWKS do gov.br.
+- Criar sessao propria da aplicacao apos validar o retorno do gov.br.
+- Nao usar token gov.br como sessao permanente de negocio.
+- Persistir usuario local associado ao identificador gov.br, especialmente CPF/sub.
+- Configurar por variaveis de ambiente:
+  - GOVBR_AUTHORIZE_URL
+  - GOVBR_TOKEN_URL
+  - GOVBR_JWKS_URL
+  - GOVBR_CLIENT_ID
+  - GOVBR_CLIENT_SECRET
+  - GOVBR_REDIRECT_URI
+  - APP_SESSION_SECRET
+  - DATABASE_URL
+  - MONGODB_URL
+  - CORS_ORIGINS
+  - PUBLIC_APP_URL
+  - SESSION_COOKIE_DOMAIN
+  - SESSION_COOKIE_SECURE
+
+Escopo funcional:
+1. Criar monorepo `thor_pesquisador` com:
+   - `backend/`
+   - `frontend/`
+   - `deploy/`
+   - `docker-compose.yml`
+   - `README.md`
+2. Backend:
+   - Health check publico.
+   - Endpoints de autenticacao:
+     - `GET /api/v1/auth/govbr/start`
+     - `GET /api/v1/auth/govbr/callback`
+     - `POST /api/v1/auth/logout`
+     - `GET /api/v1/auth/me`
+   - CRUD de instrumentos:
+     - nome
+     - tipo
+     - descricao
+     - status: RASCUNHO, PUBLICADO, ARQUIVADO
+     - visibilidade: INTERNO, PUBLICO, RESTRITO
+   - CRUD de campos dinamicos por instrumento:
+     - nome
+     - chave
+     - tipo
+     - ordem
+     - obrigatorio
+     - multiplo
+     - opcoes
+     - validacoes
+     - aparece_cadastro
+     - aparece_listagem
+     - aparece_busca
+   - CRUD de registros dinamicos por instrumento usando MongoDB.
+   - Validacao dos registros conforme schema dos campos.
+   - Busca simples em registros usando campos marcados com `aparece_busca`.
+3. Frontend:
+   - Tela de login com botao "Entrar com GOV.BR".
+   - Callback de autenticacao.
+   - Layout autenticado.
+   - Listagem de instrumentos.
+   - Criacao/edicao de instrumento.
+   - Configuracao de campos do instrumento.
+   - Listagem de registros.
+   - Formulario dinamico para novo registro.
+   - Busca simples por instrumento.
+
+Modelo minimo de dados:
+- usuarios
+- sessoes
+- instrumentos
+- instrumento_campos
+- instrumento_registros no MongoDB
+
+Documento minimo no MongoDB:
+- _id
+- instrumento_id
+- schema_version
+- dados
+- status
+- criado_por
+- atualizado_por
+- criado_em
+- atualizado_em
+- texto_busca_basico
+
+Indices MongoDB obrigatorios no MVP:
+- `{ instrumento_id: 1, status: 1, criado_em: -1, _id: -1 }`
+- `{ instrumento_id: 1, atualizado_em: -1, _id: -1 }`
+- indice textual ou estrategia equivalente para `texto_busca_basico`, apenas para busca simples inicial.
+
+Paginacao:
+- Para listagem de registros, usar cursor baseado em `criado_em` e `_id`.
+- Evitar paginacao profunda baseada apenas em `skip/offset` no MongoDB.
+
+Tipos de campo da fase 1:
+- TEXTO_CURTO
+- TEXTO_LONGO
+- NUMERO
+- DATA
+- BOOLEANO
+- LISTA_SIMPLES
+- LISTA_MULTIPLA
+- URL
+
+Regras importantes:
+- O sistema deve ser independente e nao depender de Keycloak.
+- O backend deve ser a unica porta de acesso ao banco.
+- O frontend nao deve armazenar segredo do client gov.br.
+- A troca do `code` por tokens deve ocorrer no backend.
+- Todas as rotas de dominio devem exigir usuario autenticado.
+- A rota de health deve ser publica.
+- Adicionar migrations Alembic.
+- Criar inicializacao/garantia de indices MongoDB de forma idempotente.
+- Adicionar seeds minimos para desenvolvimento.
+- Adicionar testes backend para health, validacao de registros e CRUD basico.
+- Documentar no README como subir o ambiente e quais variaveis configurar.
+- Criar Dockerfiles adequados para Kubernetes/OKD:
+  - imagem pequena;
+  - processo unico por container;
+  - execucao sem root;
+  - configuracao por variavel de ambiente;
+  - porta exposta explicitamente.
+- Criar manifests Kubernetes/OKD minimos:
+  - Namespace ou Project documentado;
+  - Deployment do backend;
+  - Deployment do frontend;
+  - Service do backend;
+  - Service do frontend;
+  - Route do OpenShift ou Ingress Kubernetes;
+  - ConfigMap;
+  - Secret com placeholders;
+  - probes de liveness/readiness;
+  - requests/limits de CPU e memoria.
+- Para desenvolvimento/homologacao no cluster, criar manifests parametrizados para:
+  - PostgreSQL com PVC;
+  - MongoDB com PVC;
+  - Secrets de credenciais dos bancos;
+  - Services internos para acesso do backend.
+- Para producao, permitir desligar os bancos internos e apontar para PostgreSQL/MongoDB externos ou gerenciados por operador.
+- Os manifests devem ser aplicaveis com `kubectl apply -k` ou `oc apply -k`, caso Kustomize seja escolhido.
+- O deploy em OKD deve considerar TLS na borda e URLs publicas HTTPS para o callback gov.br.
+
+Entrega esperada:
+- Codigo implementado.
+- Docker Compose funcional.
+- Manifests Kubernetes/OKD iniciais funcionais ou claramente parametrizados.
+- README com instrucoes.
+- Testes executaveis.
+- Uma explicacao curta das decisoes tomadas.

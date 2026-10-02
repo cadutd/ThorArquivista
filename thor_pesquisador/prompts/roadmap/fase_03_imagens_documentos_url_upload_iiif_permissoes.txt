@@ -1,0 +1,139 @@
+Voce e o Codex trabalhando no projeto `thor_pesquisador`.
+
+Objetivo da fase 3:
+Adicionar suporte opcional a imagens de documentos vinculadas aos registros dos instrumentos de pesquisa. Um registro pode nao ter imagem, pode ter uma ou varias imagens, ou pode apenas apontar para imagens externas.
+
+Estado atual esperado:
+- Fase 1 implementada com FastAPI, PostgreSQL, MongoDB, Next.js, dashboard inicial e identidade visual alinhada ao Thor Gestor.
+- Fase 2 implementada com Meilisearch, Redis, worker de indexacao, busca avancada e facetas.
+- Registros dinamicos continuam canonicos no MongoDB.
+- A pagina inicial autenticada continua sendo `/dashboard`.
+- O frontend continua usando `AppShell` e a identidade visual do `thor_gestor_de_arquivos_digitais`.
+- O login continua usando `login_pesquisador.png`.
+- O deploy continua preparado para Docker Compose e Kubernetes/OKD.
+
+Contexto:
+As imagens sao recursos associados aos registros, nao sao obrigatorias e nao devem dominar o modelo dinamico. O sistema deve aceitar:
+- upload para object storage;
+- URL externa;
+- manifest IIIF;
+- referencia a repositorio externo.
+
+Arquitetura de dados:
+- Registros dinamicos continuam no MongoDB.
+- Metadados de imagens, permissoes, armazenamento e auditoria ficam no PostgreSQL.
+- O vinculo entre registro e imagem deve armazenar explicitamente `instrumento_id` e `registro_id`.
+- A listagem de registros nao deve carregar imagens em massa.
+- A visualizacao do registro deve carregar imagens sob demanda.
+- Para producao em OKD, uploads nao podem depender de filesystem local do pod.
+- Para producao, usar armazenamento S3 compativel ou servico institucional de objetos.
+- Para desenvolvimento/homologacao, permitir MinIO por Docker Compose/manifests opcionais ou bucket externo.
+
+Escopo funcional:
+1. Criar modelo `imagem_documento`.
+2. Criar modelo/tabela `registro_imagem`.
+3. Permitir que uma imagem seja vinculada a mais de um registro quando necessario.
+4. Permitir ordenacao de imagens dentro de um registro.
+5. Permitir marcar imagem principal/capa.
+6. Registrar auditoria basica de upload, vinculo, desvinculo e exclusao.
+7. Atualizar a projecao de busca com resumo de imagens.
+
+Modelo sugerido:
+- imagem_documento:
+  - id;
+  - titulo;
+  - descricao;
+  - tipo_referencia: UPLOAD, URL, IIIF, REPOSITORIO_EXTERNO;
+  - uri;
+  - thumbnail_uri;
+  - manifest_iiif_uri;
+  - mime_type;
+  - tamanho_bytes;
+  - largura;
+  - altura;
+  - checksum_sha256;
+  - direitos_acesso;
+  - metadados_json;
+  - criado_por;
+  - criado_em;
+  - atualizado_em.
+- registro_imagem:
+  - instrumento_id;
+  - registro_id;
+  - imagem_id;
+  - ordem;
+  - principal;
+  - legenda;
+  - criado_em.
+
+Backend:
+- Endpoints:
+  - `POST /api/v1/imagens`
+  - `GET /api/v1/imagens/{id}`
+  - `PUT /api/v1/imagens/{id}`
+  - `DELETE /api/v1/imagens/{id}`
+  - `POST /api/v1/instrumentos/{instrumento_id}/registros/{registro_id}/imagens`
+  - `GET /api/v1/instrumentos/{instrumento_id}/registros/{registro_id}/imagens`
+  - `PATCH /api/v1/instrumentos/{instrumento_id}/registros/{registro_id}/imagens/reordenar`
+  - `DELETE /api/v1/instrumentos/{instrumento_id}/registros/{registro_id}/imagens/{imagem_id}`
+- Criar servico de armazenamento com interface:
+  - salvar_upload;
+  - obter_url_acesso;
+  - remover_objeto;
+  - calcular_checksum.
+- Criar validacoes de tamanho e mime type.
+- Para imagens restritas, servir por URL assinada ou endpoint mediado pelo backend.
+
+Frontend:
+1. Manter identidade visual do Thor Gestor.
+2. Adicionar aba/secao "Imagens" na visualizacao/edicao do registro.
+3. Permitir:
+   - vincular imagem por URL;
+   - informar manifest IIIF;
+   - fazer upload;
+   - editar legenda;
+   - marcar imagem principal;
+   - reordenar imagens;
+   - remover vinculo.
+4. Exibir galeria simples.
+5. Exibir previa grande ao selecionar imagem.
+6. Usar thumbnails nas listagens e imagens maiores apenas sob demanda.
+
+Busca:
+- Atualizar documento indexavel com:
+  - possui_imagens;
+  - imagem_principal_thumbnail;
+  - total_imagens.
+- Nao indexar conteudo binario.
+- Evitar consultar PostgreSQL imagem a imagem em paginas grandes de resultado.
+- Ao alterar imagens, publicar evento para atualizar a projecao Meilisearch.
+
+Kubernetes/OKD:
+- Atualizar Docker Compose com MinIO opcional ou documentar bucket externo.
+- Atualizar manifests com Secrets/ConfigMaps:
+  - S3_ENDPOINT_URL;
+  - S3_BUCKET;
+  - S3_REGION;
+  - S3_ACCESS_KEY_ID;
+  - S3_SECRET_ACCESS_KEY;
+  - S3_FORCE_PATH_STYLE.
+- Para OKD, manter containers sem root e sem escrita persistente no filesystem da imagem.
+- Usar PVC apenas para servicos stateful de desenvolvimento/homologacao.
+
+Regras importantes:
+- Registro sem imagem deve continuar plenamente valido.
+- Excluir um registro nao deve apagar imagem automaticamente se houver outros vinculos.
+- Excluir imagem deve verificar vinculos existentes.
+- Imagens restritas nao devem ser servidas publicamente sem autorizacao.
+- Criar testes para upload, URL, IIIF, vinculo, reordenacao e permissao.
+
+README:
+Atualizar a documentacao com configuracao de armazenamento, MinIO/S3, restricoes de upload, URLs assinadas e operacao em OKD.
+
+Entrega esperada:
+- Vinculo opcional de imagens funcionando.
+- Galeria no frontend.
+- Abstracao de armazenamento pronta para S3/MinIO.
+- Busca atualizada com resumo de imagens.
+- Manifests Kubernetes/OKD atualizados.
+- Testes e README atualizados.

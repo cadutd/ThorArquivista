@@ -1,0 +1,25 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: frontend
+spec:
+  to:
+    kind: Service
+    name: frontend
+  port:
+    targetPort: 3000
+  tls:
+    termination: edge
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: backend
+spec:
+  to:
+    kind: Service
+    name: backend
+  port:
+    targetPort: 8000
+  tls:
+    termination: edge

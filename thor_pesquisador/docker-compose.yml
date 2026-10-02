@@ -1,0 +1,67 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: thor_pesquisador
+      POSTGRES_USER: thor
+      POSTGRES_PASSWORD: thor
+    ports:
+      - "5434:5432"
+    volumes:
+      - thor_pesquisador_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U thor -d thor_pesquisador"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27018:27017"
+    volumes:
+      - thor_pesquisador_mongo:/data/db
+
+  backend:
+    build:
+      context: ./backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_started
+    environment:
+      app_env: dev
+      database_url: postgresql+psycopg://thor:thor@postgres:5432/thor_pesquisador
+      mongodb_url: mongodb://mongo:27017/thor_pesquisador
+      mongodb_database: thor_pesquisador
+      cors_origins: '["http://localhost:3000"]'
+      public_app_url: http://localhost:3000
+      govbr_redirect_uri: http://localhost:8000/api/v1/auth/govbr/callback
+      govbr_client_id: change-me
+      govbr_client_secret: change-me
+      app_session_secret: dev-change-me
+      govbr_dev_login: "true"
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "
+      alembic -c alembic.ini upgrade head &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000
+      "
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api/v1
+    depends_on:
+      - backend
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api/v1
+    ports:
+      - "3000:3000"
+
+volumes:
+  thor_pesquisador_postgres:
+  thor_pesquisador_mongo:
