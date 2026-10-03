@@ -1,15 +1,24 @@
 Voce e o Codex trabalhando no projeto `thor_pesquisador`.
 
 Objetivo da fase 6:
-Consolidar o portal consultivo publico/autenticado, acessibilidade, desempenho, observabilidade, operacao em producao e documentacao final.
+Consolidar o portal consultivo publico/autenticado, acessibilidade, desempenho, observabilidade, operacao em producao e documentacao final, deixando o sistema pronto para demonstracao institucional e operacao em Kubernetes/OKD.
 
 Estado atual esperado:
 - As fases 1 a 5 ja implementaram o nucleo administrativo, dashboard, autenticacao gov.br, instrumentos dinamicos, MongoDB, busca avancada, imagens, publicacao, auditoria, exportacao e retencao.
+- CRUDs administrativos novos seguem `thor-crud-base`.
+- Arvores/navegacoes hierarquicas eventualmente criadas seguem `thor-lazy-tree`.
 - A rota `/pesquisa` existe desde o MVP e foi evoluida nas fases anteriores.
 - O sistema deve manter a identidade visual harmonizada com o `thor_gestor_de_arquivos_digitais`.
 - A pagina inicial autenticada permanece `/dashboard`.
 - O login permanece usando `login_pesquisador.png`.
 - O projeto deve continuar pronto para Docker Compose e Kubernetes/OKD.
+- Docker Compose usa prefixo `thor_pesquisador_`; Kubernetes/OKD usa prefixo `thor-pesquisador-`.
+
+Skills e padroes Thor a considerar:
+- Use `thor-crud-base` para qualquer tela administrativa final ainda pendente.
+- Use `thor-lazy-tree` para qualquer navegacao hierarquica consultiva ou administrativa.
+- Use `testar-com-docker` para smoke tests, suites automatizadas e validacoes de build.
+- Mantenha telas administrativas densas, previsiveis e alinhadas ao Thor Gestor.
 
 Escopo funcional:
 1. Refinar portal consultivo.
@@ -18,12 +27,14 @@ Escopo funcional:
 4. Melhorar observabilidade.
 5. Preparar configuracao final de producao em Kubernetes/OKD.
 6. Criar documentacao operacional final.
+7. Criar checklist final de seguranca, backup, restore e rollback.
 
 Portal consultivo:
 - Rota principal `/pesquisa`.
 - Listagem de instrumentos publicados.
 - Pagina do instrumento com descricao, campos pesquisaveis, filtros avancados, facetas, ordenacao, paginacao e resultados com titulo/resumo.
 - Pagina do registro com metadados organizados, imagens vinculadas, link externo/IIIF, citacao/referencia e botao de copiar link permanente.
+- Se houver navegação por estrutura arquivistica, carregar arvore por lazy load e buscar detalhes separadamente, conforme `thor-lazy-tree`.
 
 Links permanentes:
 - Criar URLs estaveis para instrumento publicado, registro publicado e imagem publica.
@@ -38,13 +49,15 @@ Acessibilidade:
 - Adicionar labels acessiveis em filtros e formularios.
 - Evitar texto apenas por cor.
 - Testar estados vazios, erros e carregamento.
-- Garantir que botoes com icones tenham nome acessivel.
+- Garantir que botoes com icones tenham nome acessivel por texto visivel, `title` ou `aria-label`.
+- Garantir que tabelas tenham cabecalhos corretos e mensagens de vazio.
 
 Experiencia visual:
 - Manter paleta, espacamento, sidebar/header e componentes alinhados ao Thor Gestor.
 - Telas administrativas e consultivas podem ser distintas, mas devem parecer parte do mesmo produto.
-- Evitar landing page de marketing; a experiencia principal deve ser a pesquisa/dashboard.
+- Evitar landing page de marketing; a experiencia principal deve ser pesquisa/dashboard.
 - Em mobile, garantir que cards, tabelas, filtros e botoes nao estourem o layout.
+- Evitar cards aninhados e hero sections em telas operacionais.
 
 Desempenho:
 - Paginar resultados.
@@ -58,6 +71,7 @@ Desempenho:
 - Usar MongoDB para leitura canonica paginada por cursor.
 - Evitar `skip` profundo no MongoDB.
 - Garantir indices MongoDB documentados e verificados por startup idempotente ou comando operacional.
+- Validar que nenhuma listagem administrativa ou publica carrega datasets completos.
 
 Observabilidade:
 - Adicionar logs estruturados no backend.
@@ -66,6 +80,7 @@ Observabilidade:
 - Expor metricas basicas de latencia, falhas de indexacao, tamanho da fila, registros indexados, jobs de exportacao e erros por endpoint.
 - Preparar endpoints e labels para Prometheus/OpenShift Monitoring.
 - Documentar consultas basicas de logs no OKD.
+- Dashboard administrativo deve exibir alertas operacionais basicos sem substituir monitoramento externo.
 
 Producao Kubernetes/OKD:
 - Consolidar `deploy/` com overlays dev, homolog e prod.
@@ -88,12 +103,14 @@ Producao Kubernetes/OKD:
 - Criar NetworkPolicies quando o cluster exigir segmentacao.
 - Documentar migrations Alembic por Job pre-deploy, comando operacional ou etapa controlada no pipeline.
 - Documentar verificacao/criacao de indices MongoDB por Job pre-deploy, comando operacional ou rotina idempotente no startup.
+- Manter nomes de recursos com prefixo `thor-pesquisador-`.
 
 Backup e restore:
 - Documentar backup de PostgreSQL, MongoDB, object storage/imagens e arquivos de exportacao.
 - Explicar que Meilisearch e reconstituivel por reindexacao.
 - Documentar restore testado para PostgreSQL, MongoDB e object storage.
 - Documentar atualizacao de imagem e rollback no OKD.
+- Incluir procedimento de reindexacao pos-restore.
 
 Frontend:
 - Refinar layout consultivo.
@@ -102,6 +119,7 @@ Frontend:
 - Garantir responsividade em desktop e mobile.
 - Garantir acessibilidade minima verificavel.
 - Manter dashboard administrativo como pagina inicial autenticada.
+- Preservar o CRUD de instrumentos no padrao `thor-crud-base`.
 
 Testes:
 - Testes e2e para busca publica.
@@ -110,6 +128,13 @@ Testes:
 - Testes de permissao para conteudo restrito.
 - Testes de smoke do Docker Compose.
 - Testes de smoke em Kubernetes/OKD para rollout, health/readiness, login/callback e conexoes com PostgreSQL, MongoDB, Redis, Meilisearch e object storage.
+- Validacoes obrigatorias:
+  - `docker compose exec backend python -m pytest app/tests`
+  - `npm.cmd run test:functional` em `frontend`
+  - `docker compose build backend index_worker frontend`
+  - `kubectl kustomize deploy/base`
+  - `kubectl kustomize deploy/overlays/dev`
+  - `kubectl kustomize deploy/overlays/prod`
 
 Documentacao:
 - README de desenvolvimento.
@@ -123,6 +148,7 @@ Documentacao:
 - Guia de exportacao e auditoria.
 - Guia de workers, Jobs e CronJobs.
 - Guia de variaveis, ConfigMaps e Secrets.
+- Guia de seguranca e LGPD/cuidados com dados pessoais.
 - Secao de licenciamento AGPL-3.0.
 
 Entrega esperada:

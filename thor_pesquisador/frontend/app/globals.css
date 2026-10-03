@@ -1,30 +1,8 @@
-:root {
-  --background: #f8fafc;
-  --foreground: #151f2f;
-  --card: #ffffff;
-  --primary: #0e6694;
-  --primary-foreground: #ffffff;
-  --secondary: #e7f2ef;
-  --secondary-foreground: #1d4d49;
-  --muted: #eef2f7;
-  --muted-foreground: #566274;
-  --destructive: #d22f27;
-  --border: #d4dbe7;
-  --input: #d4dbe7;
-  --ring: #0e6694;
-}
+@import "./thor-theme.css";
 
 * {
   box-sizing: border-box;
-  border-color: var(--border);
-}
-
-body {
-  margin: 0;
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-  letter-spacing: 0;
+  border-color: hsl(var(--border));
 }
 
 a {
@@ -41,7 +19,7 @@ select {
 
 .app-frame {
   min-height: 100vh;
-  background: var(--background);
+  background: hsl(var(--background));
 }
 
 .sidebar {
@@ -50,7 +28,7 @@ select {
   z-index: 30;
   display: none;
   width: 288px;
-  border-right: 1px solid var(--border);
+  border-right: 1px solid hsl(var(--border));
   background: #fff;
 }
 
@@ -59,7 +37,7 @@ select {
   height: 64px;
   align-items: center;
   gap: 12px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid hsl(var(--border));
   padding: 0 16px;
 }
 
@@ -75,17 +53,17 @@ select {
   height: 40px;
   width: 40px;
   flex: 0 0 auto;
-  background: var(--primary);
-  color: var(--primary-foreground);
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
 }
 
 .brand-title {
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .brand-subtitle {
-  color: var(--muted-foreground);
+  color: hsl(var(--muted-foreground));
   font-size: 12px;
 }
 
@@ -101,20 +79,20 @@ select {
   align-items: center;
   gap: 12px;
   border-radius: 6px;
-  color: var(--muted-foreground);
+  color: hsl(var(--muted-foreground));
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
   padding: 0 12px;
 }
 
 .nav-link:hover {
-  background: var(--muted);
-  color: var(--foreground);
+  background: hsl(var(--muted));
+  color: hsl(var(--foreground));
 }
 
 .nav-link.active {
-  background: var(--secondary);
-  color: var(--secondary-foreground);
+  background: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
 }
 
 .app-content {
@@ -129,7 +107,7 @@ select {
   height: 64px;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid hsl(var(--border));
   background: rgba(255, 255, 255, 0.95);
   padding: 0 16px;
   backdrop-filter: blur(10px);
@@ -139,10 +117,10 @@ select {
   display: none;
   align-items: center;
   gap: 8px;
-  border: 1px solid var(--border);
+  border: 1px solid hsl(var(--border));
   border-radius: 6px;
-  background: var(--muted);
-  color: var(--muted-foreground);
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
   font-size: 14px;
   padding: 8px 12px;
 }
@@ -152,7 +130,7 @@ select {
   align-items: center;
   gap: 10px;
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .header-actions {
@@ -175,19 +153,20 @@ select {
 .page-heading h1 {
   margin: 0;
   font-size: 24px;
-  font-weight: 700;
+  line-height: 32px;
+  font-weight: 600;
 }
 
 .page-heading p {
   margin: 0;
-  color: var(--muted-foreground);
+  color: hsl(var(--muted-foreground));
   font-size: 14px;
 }
 
 .card,
 .panel {
-  background: var(--card);
-  border: 1px solid var(--border);
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
   border-radius: 8px;
 }
 
@@ -205,21 +184,22 @@ select {
 }
 
 .metric-title {
-  color: var(--muted-foreground);
+  color: hsl(var(--muted-foreground));
   font-size: 14px;
 }
 
 .metric-value {
   margin-top: 8px;
-  font-size: 32px;
-  font-weight: 700;
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
 }
 
 .metric-icon {
   height: 44px;
   width: 44px;
-  background: var(--secondary);
-  color: var(--secondary-foreground);
+  background: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
 }
 
 .stack {
@@ -249,27 +229,27 @@ select {
 
 .field span,
 .field label {
-  color: var(--muted-foreground);
-  font-size: 13px;
-  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .input,
 .select,
 .textarea {
   width: 100%;
-  border: 1px solid var(--input);
+  border: 1px solid hsl(var(--input));
   border-radius: 6px;
   min-height: 40px;
-  padding: 8px 10px;
+  padding: 8px 12px;
   background: #fff;
-  color: var(--foreground);
+  color: hsl(var(--foreground));
 }
 
 .input:focus,
 .select:focus,
 .textarea:focus {
-  outline: 2px solid var(--ring);
+  outline: 2px solid hsl(var(--ring));
   outline-offset: 1px;
 }
 
@@ -279,22 +259,22 @@ select {
 }
 
 .button {
-  border: 1px solid var(--primary);
-  background: var(--primary);
+  border: 1px solid hsl(var(--primary));
+  background: hsl(var(--primary));
   color: #fff;
-  min-height: 38px;
-  padding: 8px 12px;
+  min-height: 40px;
+  padding: 8px 16px;
   border-radius: 6px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .button.secondary {
   background: #fff;
-  color: var(--primary);
+  color: hsl(var(--primary));
 }
 
 .button:disabled,
@@ -307,22 +287,22 @@ select {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: 1px solid var(--border);
+  width: 40px;
+  height: 40px;
+  border: 1px solid hsl(var(--border));
   border-radius: 6px;
   background: #fff;
-  color: var(--primary);
+  color: hsl(var(--primary));
   cursor: pointer;
 }
 
 .icon-button.danger {
-  color: var(--destructive);
+  color: hsl(var(--destructive));
 }
 
 .table-wrap {
   overflow: auto;
-  border: 1px solid var(--border);
+  border: 1px solid hsl(var(--border));
   border-radius: 8px;
 }
 
@@ -333,24 +313,24 @@ select {
 
 .table th,
 .table td {
-  border-bottom: 1px solid var(--border);
-  padding: 10px;
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 12px;
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .table th {
-  font-size: 13px;
-  color: var(--muted-foreground);
-  background: var(--muted);
+  font-size: 14px;
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--muted));
 }
 
 .muted {
-  color: var(--muted-foreground);
+  color: hsl(var(--muted-foreground));
 }
 
 .error {
-  color: var(--destructive);
+  color: hsl(var(--destructive));
   font-size: 14px;
 }
 
@@ -390,19 +370,19 @@ select {
 }
 
 .detail-item span {
-  color: var(--muted-foreground);
-  font-size: 13px;
-  font-weight: 600;
+  color: hsl(var(--muted-foreground));
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .detail-item strong {
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .compact-list {
   margin: 8px 0 0;
   padding-left: 18px;
-  color: var(--muted-foreground);
+  color: hsl(var(--muted-foreground));
   font-size: 14px;
 }
 
@@ -410,7 +390,7 @@ select {
   display: grid;
   min-height: 100vh;
   grid-template-columns: 1fr;
-  background: var(--background);
+  background: hsl(var(--background));
 }
 
 .login-hero {
@@ -475,4 +455,74 @@ select {
     min-height: 100vh;
     padding: 48px;
   }
+}
+.button,
+.input,
+.select,
+.textarea,
+.table,
+.pagination,
+.detail-grid,
+.panel p,
+.card-content p {
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.panel h2,
+.card-content h2,
+.panel h3,
+.card-content h3 {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+}
+
+.table th {
+  height: 44px;
+  font-weight: 500;
+  background: transparent;
+}
+
+.table tbody tr:hover {
+  background: hsl(var(--muted) / 0.5);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.button:hover:not(:disabled) {
+  background: hsl(var(--primary) / 0.9);
+}
+
+.button.secondary {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+}
+
+.button.secondary:hover:not(:disabled),
+.icon-button:hover:not(:disabled) {
+  background: hsl(var(--muted));
+}
+
+.button:focus-visible,
+.icon-button:focus-visible,
+a:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
+.input,
+.select,
+.textarea {
+  background: hsl(var(--background));
+}
+
+.input:disabled,
+.select:disabled,
+.textarea:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }

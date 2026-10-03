@@ -1,15 +1,21 @@
 Voce e o Codex trabalhando no projeto `thor_pesquisador`.
 
 Objetivo da fase 4:
-Adicionar fluxo de publicacao, revisao, versionamento e evoluir a area consultiva de pesquisa. O sistema deve separar gestao interna, revisao editorial e consulta de registros publicados.
+Adicionar fluxo de publicacao, revisao, versionamento e evoluir a area consultiva de pesquisa. O sistema deve separar gestao interna, revisao editorial e consulta de registros publicados, preservando a busca atual e a arquitetura ja implementada.
 
-Estado atual esperado:
+Estado atual obrigatorio:
 - Fase 1 implementou o nucleo administrativo, gov.br/dev-login, dashboard inicial, MongoDB canonico e deploy Docker/OKD.
-- Fase 2 implementou busca avancada com Meilisearch, Redis e worker.
-- Fase 3 implementou imagens opcionais com armazenamento por URL, IIIF ou object storage.
+- Fase 2 implementou Meilisearch, Redis, `index_worker`, busca avancada, facetas, reindexacao, nomes padronizados de containers/pods e CRUD de instrumentos no padrao `thor-crud-base`.
+- Fase 3 deve ter implementado imagens opcionais com armazenamento por URL, IIIF ou object storage, CRUD de imagens no padrao `thor-crud-base` e resumo de imagens na indexacao.
 - A rota `/pesquisa` ja existe e deve ser evoluida, nao recriada do zero.
 - A pagina inicial autenticada deve continuar sendo `/dashboard`.
 - A identidade visual deve permanecer harmonizada com o Thor Gestor.
+
+Skills e padroes Thor a considerar:
+- Use `thor-crud-base` para CRUDs novos: papeis, permissoes, filas de revisao, snapshots, configuracoes de publicacao e historico editorial.
+- Use `thor-lazy-tree` caso a fase implemente navegacao hierarquica de instrumentos, fundos, series, dossies, colecoes ou taxonomias no portal consultivo.
+- Use `testar-com-docker` para validar tudo dentro dos containers.
+- Preserve o padrao de rotas, servicos, schemas, testes e READMEs ja existente no `thor_pesquisador`.
 
 Arquitetura de dados:
 - Instrumentos, campos, permissoes, workflow e eventos editoriais ficam no PostgreSQL.
@@ -17,10 +23,12 @@ Arquitetura de dados:
 - Snapshots de publicacao de registros podem ficar no MongoDB para preservar escala e flexibilidade.
 - O indice publico no Meilisearch deve ser derivado apenas de registros/snapshots publicados.
 - Workflows em lote devem rodar em workers ou Jobs/CronJobs no Kubernetes/OKD, nunca em requisicoes HTTP longas.
+- O indice interno da fase 2 deve continuar funcionando para usuarios autorizados.
 
 Estados:
 - Instrumento: RASCUNHO, EM_REVISAO, PUBLICADO, ARQUIVADO.
 - Registro: RASCUNHO, EM_REVISAO, PUBLICADO, ARQUIVADO, EXCLUIDO.
+- Transicoes invalidas devem retornar erro consistente, preferencialmente 409 quando houver conflito de estado.
 
 Escopo funcional:
 1. Criar workflow de instrumentos: enviar para revisao, aprovar, devolver, publicar, arquivar e republicar.
@@ -29,8 +37,10 @@ Escopo funcional:
 4. Criar versionamento simples com versao do schema, versao do registro, snapshot publicado e autor da publicacao.
 5. Evoluir area consultiva com instrumentos publicados, busca em publicados, visualizacao de registro e imagens permitidas.
 6. Atualizar dashboard com instrumentos em rascunho, em revisao, registros pendentes e publicacoes recentes.
+7. Garantir que a publicacao atualize a indexacao interna/publica por evento no worker.
 
 Backend:
+- Criar migrations, modelos, schemas, servicos e rotas.
 - Endpoints administrativos:
   - `POST /api/v1/instrumentos/{id}/enviar-revisao`
   - `POST /api/v1/instrumentos/{id}/aprovar`
@@ -46,21 +56,26 @@ Backend:
   - `GET /api/v1/publico/instrumentos/{id}`
   - `POST /api/v1/publico/instrumentos/{id}/buscar`
   - `GET /api/v1/publico/instrumentos/{id}/registros/{registro_id}`
+- Se houver arvore consultiva, criar endpoint lazy conforme `thor-lazy-tree`, por exemplo:
+  - `GET /api/v1/publico/arvore?parent_id=...`
+  - cada no com `id`, `label`, `parent_id`, `has_children` e `children: []`.
 
 Frontend administrativo:
 1. Manter `AppShell` e padrao visual existente.
 2. Mostrar status editorial de instrumentos e registros.
 3. Exibir acoes conforme permissao: enviar para revisao, aprovar, devolver, publicar e arquivar.
 4. Adicionar comentario/justificativa nas transicoes.
-5. Criar tela de fila de revisao.
+5. Criar tela de fila de revisao no padrao operacional Thor, sem hero/landing page.
+6. Quando houver CRUD de configuracoes editoriais, usar paginas completas e formulario reutilizavel conforme `thor-crud-base`.
 
 Frontend consultivo:
-1. Evoluir rota `/pesquisa`.
+1. Evoluir rota `/pesquisa` sem quebrar a busca interna existente.
 2. Listar instrumentos publicados.
 3. Exibir pagina do instrumento com descricao, campos publicos e busca.
 4. Exibir resultados sem botoes administrativos.
 5. Exibir registro publicado com campos configurados para exibicao publica.
 6. Exibir imagens quando permitidas.
+7. Se houver arvore consultiva, carregar filhos sob demanda seguindo `thor-lazy-tree`.
 
 Permissoes:
 - ADMIN: tudo.
@@ -69,30 +84,46 @@ Permissoes:
 - REVISOR: aprova/devolve registros.
 - CONSULTA_INTERNA: consulta registros internos.
 - PUBLICO_AUTENTICADO: consulta instrumentos publicados/restritos conforme regra.
+- A implementacao inicial pode usar papeis simples em PostgreSQL, desde que deixe o contrato pronto para evolucao.
 
 Busca e indexacao:
 - Separar indice interno e indice publico, ou usar atributo obrigatorio de filtro `publicado = true`.
 - Garantir que busca publica retorne apenas registros publicados.
 - Reindexar instrumento quando houver publicacao, arquivamento ou mudanca de visibilidade.
 - Publicacao/arquivamento em massa deve usar worker com lotes e checkpoint.
+- A busca publica tambem deve respeitar imagens, direitos de acesso e campos publicos.
 
 Kubernetes/OKD:
 - Atualizar manifests se houver novo worker/job de publicacao.
+- Manter prefixos de nomes:
+  - Docker Compose: `thor_pesquisador_`;
+  - Kubernetes/OKD: `thor-pesquisador-`.
 - Documentar execucao operacional de publicacoes em massa.
 - Manter compatibilidade com UID arbitrario, Secrets, ConfigMaps, probes e recursos.
 
 Regras importantes:
 - Registro em rascunho nunca pode aparecer na consulta publica.
 - Campos internos nao devem aparecer em paginas publicas.
+- Imagens restritas nao devem aparecer em paginas publicas sem autorizacao.
 - Alteracoes depois da publicacao devem gerar nova versao ou rascunho de revisao.
 - Testes devem cobrir permissoes e vazamento de dados nao publicados.
 
+Testes e validacao:
+- Testes backend para transicoes de estado, snapshots, permissoes e consulta publica.
+- Testes frontend funcionais de contrato para rotas administrativas e publicas.
+- Validar com:
+  - `docker compose exec backend python -m pytest app/tests`
+  - `npm.cmd run test:functional` em `frontend`
+  - `docker compose build frontend`
+  - `kubectl kustomize deploy/base`, `deploy/overlays/dev` e `deploy/overlays/prod` quando manifests mudarem.
+
 README:
-Atualizar documentacao com estados editoriais, papeis, fluxo de publicacao, area administrativa/consultiva e operacao em OKD.
+Atualizar documentacao com estados editoriais, papeis, fluxo de publicacao, area administrativa/consultiva, indexacao publica e operacao em OKD.
 
 Entrega esperada:
 - Fluxo editorial funcional.
 - Area consultiva inicial.
 - Versionamento simples de publicacao.
 - Dashboard atualizado.
+- Busca publica sem vazamento de rascunhos/restritos.
 - Testes cobrindo estados, permissoes e consulta publica.

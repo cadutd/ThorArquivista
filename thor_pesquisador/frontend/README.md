@@ -22,6 +22,14 @@ O frontend deve manter a mesma linguagem visual do `thor_gestor_de_arquivos_digi
 - tabelas e formularios objetivos;
 - dashboard como pagina inicial autenticada.
 
+Os dois frontends importam uma copia identica de `app/thor-theme.css`, com
+tokens de cor e tipografia base do Thor Gestor. As copias permitem builds Docker
+independentes; ao alterar o tema, atualizar ambos os arquivos. O teste
+`theme-contract.test.mjs` verifica a paridade quando executado no monorepo.
+Os estilos especificos do Pesquisador continuam em `app/globals.css`, usando
+14 px para controles e tabelas, 16 px para titulos de paineis e 24 px para
+titulos de pagina, sem reduzir o tamanho raiz de 16 px.
+
 A tela de login usa o asset:
 
 ```text

@@ -1,16 +1,23 @@
 Voce e o Codex trabalhando no projeto `thor_pesquisador`.
 
 Objetivo da fase 5:
-Adicionar auditoria, conformidade, logs de acesso, exportacao de dados, relatorios administrativos e politicas basicas de retencao.
+Adicionar auditoria, conformidade, logs de acesso, exportacao de dados, relatorios administrativos e politicas basicas de retencao, mantendo escala para milhoes de registros e operacao em Docker Compose/OKD.
 
 Estado atual esperado:
 - Nucleo administrativo, dashboard, gov.br, instrumentos, campos e registros dinamicos ja existem.
+- CRUD de instrumentos segue `thor-crud-base`.
 - MongoDB continua como fonte canonica dos registros dinamicos.
 - PostgreSQL guarda governanca, usuarios, sessoes, permissoes, workflows e auditoria.
 - Meilisearch/Redis/worker ja existem para busca e indexacao.
 - Imagens opcionais e publicacao ja existem.
-- O deploy continua suportando Docker Compose e Kubernetes/OKD.
+- O deploy usa nomes padronizados: `thor_pesquisador_` no Docker Compose e `thor-pesquisador-` no Kubernetes/OKD.
 - A identidade visual deve continuar alinhada ao Thor Gestor.
+
+Skills e padroes Thor a considerar:
+- Use `thor-crud-base` para CRUDs de auditoria consultavel, exportacoes, politicas de retencao e relatorios administrativos.
+- Use `thor-lazy-tree` se houver navegacao hierarquica em relatorios, classificacao, estrutura arquivistica ou filtros por arvore.
+- Use `testar-com-docker` para validacao final.
+- Preserve a arquitetura atual de backend: modelos, schemas, servicos, rotas, testes e README.
 
 Arquitetura de dados:
 - Auditoria, exportacoes, usuarios, permissoes e configuracoes de retencao ficam no PostgreSQL.
@@ -18,6 +25,7 @@ Arquitetura de dados:
 - Exportacoes de instrumentos com milhoes de registros nao podem carregar tudo em memoria.
 - Arquivos de exportacao devem ir para object storage, nunca para filesystem efemero do pod.
 - Em Kubernetes/OKD, exportacoes e limpezas devem rodar em worker ou CronJob com progresso persistido.
+- Reutilize Redis/worker quando fizer sentido, mas separe filas logicamente por nome/configuracao.
 
 Escopo funcional:
 1. Auditoria de eventos de negocio.
@@ -26,6 +34,7 @@ Escopo funcional:
 4. Relatorios administrativos.
 5. Politicas basicas de retencao e descarte logico.
 6. Painel operacional no dashboard.
+7. Documentacao operacional para workers, CronJobs, object storage e conformidade.
 
 Auditoria:
 Criar modelo `auditoria_eventos` com:
@@ -47,9 +56,9 @@ Criar modelo `auditoria_eventos` com:
 Eventos auditaveis:
 - login;
 - logout;
-- criacao/alteracao/arquivamento de instrumento;
+- criacao/alteracao/arquivamento/publicacao de instrumento;
 - criacao/alteracao/reordenacao de campo;
-- criacao/alteracao/publicacao/arquivamento de registro;
+- criacao/alteracao/publicacao/arquivamento/exclusao logica de registro;
 - upload de imagem;
 - vinculo/desvinculo de imagem;
 - alteracao de permissoes;
@@ -57,10 +66,17 @@ Eventos auditaveis:
 - exportacao de dados;
 - alteracao de retencao.
 
+CRUDs e telas administrativas:
+- Auditoria: listagem paginada com filtros por periodo, usuario, acao, entidade e instrumento; detalhe somente leitura.
+- Exportacoes: criar, listar, acompanhar status, baixar resultado e consultar erro.
+- Politicas de retencao: CRUD completo seguindo `thor-crud-base`.
+- Relatorios: telas operacionais densas, com filtros e sem landing page.
+
 Logs de acesso consultivo:
 - Registrar acesso a registros publicados quando habilitado por configuracao.
 - Nao armazenar dados sensiveis desnecessarios.
 - Permitir anonimizar ou hashear CPF quando adequado.
+- Aplicar retencao configuravel.
 
 Exportacao:
 Criar exportacoes:
@@ -70,8 +86,10 @@ Criar exportacoes:
 
 Endpoints:
 - `POST /api/v1/instrumentos/{id}/exportacoes`
+- `GET /api/v1/exportacoes`
 - `GET /api/v1/exportacoes/{id}`
 - `GET /api/v1/exportacoes/{id}/download`
+- `DELETE /api/v1/exportacoes/{id}`
 
 Worker:
 - Exportacoes grandes devem ser processadas em segundo plano.
@@ -99,6 +117,7 @@ Retencao:
 - Configurar retencao para logs de acesso, exportacoes, sessoes expiradas e registros excluidos logicamente.
 - Limpeza de MongoDB deve ser feita em lotes com filtros indexados.
 - CronJobs devem usar `concurrencyPolicy` adequada.
+- Nunca apagar dados sem registrar auditoria e sem teste cobrindo a regra.
 
 Seguranca:
 - Evitar expor CPF puro em listagens administrativas.
@@ -106,13 +125,15 @@ Seguranca:
 - Exportacoes devem respeitar permissao do solicitante.
 - Registrar auditoria de quem exportou o que.
 - Proteger downloads por sessao, permissao e, quando aplicavel, URL assinada com expiracao.
+- Garantir que dados nao publicados nao entram em exportacao publica.
 
 Frontend:
 1. Manter identidade visual existente.
 2. Criar area "Auditoria" com filtros por periodo, usuario, acao, entidade e instrumento.
-3. Criar area "Exportacoes".
+3. Criar area "Exportacoes" no padrao CRUD Thor.
 4. Criar painel de relatorios operacionais.
 5. Criar tela de configuracoes de retencao.
+6. Usar tabelas paginadas no servidor; nao carregar tudo em memoria.
 
 Kubernetes/OKD:
 - Atualizar manifests para worker de exportacao ou filas separadas.
@@ -120,16 +141,23 @@ Kubernetes/OKD:
 - Configurar Secrets de object storage se ainda nao existirem.
 - Definir requests/limits e probes quando aplicavel.
 - Documentar comandos `oc` para acompanhar jobs, logs e falhas.
+- Manter convencao de nomes `thor-pesquisador-`.
 
-Testes:
+Testes e validacao:
 - Auditoria para alteracoes relevantes.
 - Permissao para exportacao.
 - Limpeza de exportacoes expiradas.
 - Garantia de que dados nao publicados nao entram em exportacao publica.
 - Execucao de jobs em lote com checkpoint.
+- Teste funcional frontend de contrato para novas areas.
+- Validar com:
+  - `docker compose exec backend python -m pytest app/tests`
+  - `npm.cmd run test:functional` em `frontend`
+  - `docker compose build frontend`
+  - `kubectl kustomize deploy/base`, `deploy/overlays/dev` e `deploy/overlays/prod` quando manifests mudarem.
 
 README:
-Atualizar documentacao com auditoria, exportacoes, politicas de retencao, operacao de workers/CronJobs, conformidade e cuidados com dados pessoais.
+Atualizar documentacao com auditoria, exportacoes, politicas de retencao, operacao de workers/CronJobs, conformidade, dados pessoais e comandos Docker/OKD.
 
 Entrega esperada:
 - Auditoria funcional.
@@ -138,4 +166,4 @@ Entrega esperada:
 - Politicas basicas de retencao.
 - Dashboard operacional ampliado.
 - Manifests Kubernetes/OKD atualizados.
-- README atualizado.
+- READMEs atualizados.

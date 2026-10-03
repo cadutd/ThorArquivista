@@ -48,11 +48,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="app-content">
         <header className="app-header">
           <Link href="/dashboard" className="mobile-brand">
-            <Database size={20} color="var(--primary)" />
+            <Database size={20} color="hsl(var(--primary))" />
             Thor Pesquisador
           </Link>
           <div className="header-pill">
-            <ShieldCheck size={16} color="var(--primary)" />
+            <ShieldCheck size={16} color="hsl(var(--primary))" />
             Sessão gov.br ativa
           </div>
           <div className="header-actions">

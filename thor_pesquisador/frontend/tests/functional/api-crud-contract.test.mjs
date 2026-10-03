@@ -99,5 +99,5 @@ test("pagina de pesquisa usa busca avancada e reindexacao", () => {
 test("login preserva identidade visual e imagem do pesquisador", () => {
   assert.match(login, /Entrar com GOV\.BR/);
   assert.match(styles, /login_pesquisador\.png/);
-  assert.match(styles, /--primary: #0e6694/);
+  assert.match(styles, /@import "\.\/thor-theme\.css"/);
 });

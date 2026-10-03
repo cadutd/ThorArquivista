@@ -31,7 +31,7 @@ export default function DashboardPage() {
         {error ? (
           <div className="panel row">
             <div className="actions">
-              <AlertTriangle color="var(--destructive)" />
+              <AlertTriangle color="hsl(var(--destructive))" />
               <span className="error">{error}</span>
             </div>
             <Link className="button secondary" href="/login">Entrar novamente</Link>
