@@ -526,3 +526,24 @@ a:focus-visible {
   cursor: not-allowed;
   opacity: 0.5;
 }
+
+.image-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.image-thumb { width: 64px; height: 48px; object-fit: contain; flex-shrink: 0; }
+.image-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 16px; }
+.image-tile { display: grid; align-content: start; gap: 8px; padding: 12px; border: 1px solid hsl(var(--border)); border-radius: 6px; background: hsl(var(--card)); min-width: 0; font-size: 14px; }
+.image-tile strong, .image-title span { overflow-wrap: anywhere; }
+.thumbnail-button { width: 100%; aspect-ratio: 4 / 3; display: flex; align-items: center; justify-content: center; background: hsl(var(--muted)); border: 0; border-radius: 4px; cursor: pointer; color: hsl(var(--muted-foreground)); }
+.thumbnail-button img { width: 100%; height: 100%; object-fit: contain; }
+.media-modal { display: grid; gap: 16px; width: min(100%, 960px); max-height: calc(100dvh - 32px); overflow: auto; background: hsl(var(--card)); border-radius: 8px; padding: 20px; font-size: 14px; }
+.native-modal { width: min(calc(100% - 32px), 960px); border: 1px solid hsl(var(--border)); margin: auto; }
+.native-modal:not([open]) { display: none; }
+.native-modal::backdrop { background: rgb(0 0 0 / 0.5); }
+.media-modal h2, .stack > .row h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.media-modal > .row > strong { overflow-wrap: anywhere; min-width: 0; }
+.media-large { width: 100%; height: min(65dvh, 640px); object-fit: contain; }
+.tabs { display: flex; gap: 16px; border-bottom: 1px solid hsl(var(--border)); }
+.tabs button { padding: 8px 4px; background: none; border: 0; border-bottom: 2px solid transparent; cursor: pointer; font-size: 14px; color: hsl(var(--muted-foreground)); }
+.tabs button[aria-selected=true] { color: hsl(var(--primary)); border-bottom-color: hsl(var(--primary)); }
+.break-text, .record-link { overflow-wrap: anywhere; white-space: pre-wrap; min-width: 0; }
+.record-link { color: hsl(var(--primary)); text-decoration: underline; }
+.thumbnail-button:focus-visible, .tabs button:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }

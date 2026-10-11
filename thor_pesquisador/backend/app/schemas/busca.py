@@ -23,6 +23,9 @@ class BuscaAvancadaItem(BaseModel):
     texto_geral: str
     dados: dict[str, Any]
     status: str
+    possui_imagens: bool = False
+    total_imagens: int = Field(default=0, ge=0)
+    imagem_principal_thumbnail: str | None = None
     criado_em: datetime | str
     atualizado_em: datetime | str
 

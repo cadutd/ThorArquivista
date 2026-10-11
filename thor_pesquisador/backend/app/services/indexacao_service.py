@@ -81,12 +81,14 @@ def documento_indexavel(campos: list[InstrumentoCampo], doc: dict[str, Any]) -> 
         "dados": dados,
         "status": doc.get("status", StatusRegistro.ATIVO.value),
         "possui_imagens": False,
+        "total_imagens": 0,
+        "imagem_principal_thumbnail": None,
         "criado_em": _iso(doc.get("criado_em")),
         "atualizado_em": _iso(doc.get("atualizado_em")),
     }
 
 
-def buscar_avancado(db: Session, instrumento_id: uuid.UUID, payload: BuscaAvancadaIn) -> dict[str, Any]:
+def buscar_avancado(db: Session, instrumento_id: uuid.UUID, payload: BuscaAvancadaIn, usuario=None) -> dict[str, Any]:
     campos = _campos(db, instrumento_id)
     filtro = _build_filter(campos, payload.filters)
     sort = _build_sort(campos, payload.sort)
@@ -114,6 +116,11 @@ def buscar_avancado(db: Session, instrumento_id: uuid.UUID, payload: BuscaAvanca
             "indice_defasado": True,
         }
     hits = response.get("hits", [])
+    if usuario and hits:
+        from app.services.imagem_service import resumos
+        summary = resumos(db, instrumento_id, [hit["id"] for hit in hits], usuario)
+        for hit in hits:
+            hit.update(summary.get(hit["id"], {"possui_imagens": False, "total_imagens": 0, "imagem_principal_thumbnail": None}))
     latest = _ultimo_job_concluido(db, instrumento_id)
     return {
         "items": hits,
@@ -184,7 +191,7 @@ def _indexar_registro(db: Session, instrumento_id: uuid.UUID, registro_id: str, 
         return
     campos = _campos(db, instrumento_id)
     _configurar_indice(instrumento_id, campos)
-    _meili_request("POST", f"/indexes/{indice_nome(instrumento_id)}/documents", json=[documento_indexavel(campos, doc)])
+    _meili_request("POST", f"/indexes/{indice_nome(instrumento_id)}/documents", json=_com_imagens(db, instrumento_id, [documento_indexavel(campos, doc)]))
 
 
 def _reindexar(db: Session, job_id: uuid.UUID, instrumento_id: uuid.UUID) -> None:
@@ -204,7 +211,7 @@ def _reindexar(db: Session, job_id: uuid.UUID, instrumento_id: uuid.UUID) -> Non
         for doc in collection.find(filtro).sort([("_id", 1)]):
             batch.append(documento_indexavel(campos, doc))
             if len(batch) >= settings.indexacao_batch_size:
-                _meili_request("POST", f"/indexes/{indice_nome(instrumento_id)}/documents", json=batch)
+                _meili_request("POST", f"/indexes/{indice_nome(instrumento_id)}/documents", json=_com_imagens(db, instrumento_id, batch))
                 processados += len(batch)
                 job.processados = processados
                 job.ultimo_cursor_mongodb = batch[-1]["id"]
@@ -212,7 +219,7 @@ def _reindexar(db: Session, job_id: uuid.UUID, instrumento_id: uuid.UUID) -> Non
                 db.commit()
                 batch = []
         if batch:
-            _meili_request("POST", f"/indexes/{indice_nome(instrumento_id)}/documents", json=batch)
+            _meili_request("POST", f"/indexes/{indice_nome(instrumento_id)}/documents", json=_com_imagens(db, instrumento_id, batch))
             processados += len(batch)
             job.processados = processados
             job.ultimo_cursor_mongodb = batch[-1]["id"]
@@ -232,7 +239,7 @@ def _reindexar(db: Session, job_id: uuid.UUID, instrumento_id: uuid.UUID) -> Non
 def _configurar_indice(instrumento_id: uuid.UUID, campos: list[InstrumentoCampo]) -> None:
     uid = indice_nome(instrumento_id)
     _meili_request("POST", "/indexes", json={"uid": uid, "primaryKey": "id"}, allow_conflict=True)
-    filterable = ["status", "instrumento_id"] + [f"dados.{campo.chave}" for campo in campos if campo.filtro_avancado or campo.facetavel]
+    filterable = ["status", "instrumento_id", "possui_imagens"] + [f"dados.{campo.chave}" for campo in campos if campo.filtro_avancado or campo.facetavel]
     sortable = ["criado_em", "atualizado_em"] + [f"dados.{campo.chave}" for campo in campos if campo.ordenavel]
     _meili_request("PUT", f"/indexes/{uid}/settings/filterable-attributes", json=filterable)
     _meili_request("PUT", f"/indexes/{uid}/settings/sortable-attributes", json=sortable)
@@ -242,6 +249,12 @@ def _campos(db: Session, instrumento_id: uuid.UUID) -> list[InstrumentoCampo]:
     if not db.get(Instrumento, instrumento_id):
         raise HTTPException(status_code=404, detail="Instrumento nao encontrado.")
     return list(db.scalars(select(InstrumentoCampo).where(InstrumentoCampo.instrumento_id == instrumento_id).order_by(InstrumentoCampo.ordem.asc())))
+
+
+def _com_imagens(db, instrumento_id, documentos):
+    from app.services.imagem_service import resumos
+    summary = resumos(db, instrumento_id, [doc["id"] for doc in documentos])
+    return [dict(doc, **summary.get(doc["id"], {})) for doc in documentos]
 
 
 def _build_filter(campos: list[InstrumentoCampo], filters: dict[str, Any]) -> list[str]:

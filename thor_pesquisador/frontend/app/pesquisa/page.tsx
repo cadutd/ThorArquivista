@@ -3,6 +3,8 @@
 import { RefreshCw, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import Link from "next/link";
+import { mediaUrl } from "@/lib/imagens";
 import { buscarAvancado, getFacetas, getSchema, listInstrumentos, reindexarInstrumento } from "@/lib/api";
 import type { BuscaAvancadaResultado, FacetasResultado, Instrumento, InstrumentoCampo } from "@/types/domain";
 
@@ -154,7 +156,7 @@ export default function PesquisaPage() {
                 <tbody>
                   {(resultado?.items ?? []).map((item) => (
                     <tr key={item.id}>
-                      <td><strong>{item.titulo}</strong><br /><span className="muted">{item.texto_geral}</span></td>
+                      <td><div className="image-title">{item.imagem_principal_thumbnail&&<img className="image-thumb" src={mediaUrl(item.imagem_principal_thumbnail)} alt="" loading="lazy"/>}<div><Link className="record-link" href={`/instrumentos/${item.instrumento_id}/registros/${encodeURIComponent(item.id)}`}>{item.titulo}</Link><br/><span className="muted">{item.texto_geral}</span>{item.possui_imagens&&<p className="muted">{item.total_imagens} imagem(ns)</p>}</div></div></td>
                       <td>{item.status}</td>
                       <td>{String(item.atualizado_em).slice(0, 10)}</td>
                     </tr>

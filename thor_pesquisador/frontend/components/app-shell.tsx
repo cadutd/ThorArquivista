@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Database, FileSearch, Gauge, LogOut, Search, ShieldCheck } from "lucide-react";
+import { Database, FileSearch, Gauge, Image, LogOut, Search, ShieldCheck } from "lucide-react";
 import { logout } from "@/lib/api";
 
 const navigation = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
   { href: "/instrumentos", label: "Instrumentos", icon: FileSearch },
+  { href: "/imagens", label: "Imagens", icon: Image },
   { href: "/pesquisa", label: "Pesquisa", icon: Search }
 ];
 

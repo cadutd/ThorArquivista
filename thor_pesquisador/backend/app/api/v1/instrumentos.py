@@ -61,7 +61,7 @@ def atualizar_instrumento(instrumento_id: uuid.UUID, payload: InstrumentoUpdate,
 
 @router.delete("/{instrumento_id}")
 def excluir_instrumento(instrumento_id: uuid.UUID, db: Session = Depends(db_dep), _usuario: Usuario = Depends(current_user)):
-    instrumento_service.excluir_instrumento(db, instrumento_id)
+    instrumento_service.excluir_instrumento(db, instrumento_id, _usuario.id)
     return {"status": "ok"}
 
 
@@ -109,7 +109,7 @@ def buscar_registros(instrumento_id: uuid.UUID, payload: RegistroSearch, db: Ses
 
 @router.post("/{instrumento_id}/buscar-avancado", response_model=BuscaAvancadaOut)
 def buscar_registros_avancado(instrumento_id: uuid.UUID, payload: BuscaAvancadaIn, db: Session = Depends(db_dep), _usuario: Usuario = Depends(current_user)):
-    return indexacao_service.buscar_avancado(db, instrumento_id, payload)
+    return indexacao_service.buscar_avancado(db, instrumento_id, payload, _usuario)
 
 
 @router.get("/{instrumento_id}/facetas", response_model=FacetasOut)
@@ -134,5 +134,5 @@ def atualizar_registro(instrumento_id: uuid.UUID, registro_id: str, payload: Reg
 
 @router.delete("/{instrumento_id}/registros/{registro_id}")
 def excluir_registro(instrumento_id: uuid.UUID, registro_id: str, db: Session = Depends(db_dep), _usuario: Usuario = Depends(current_user)):
-    registro_service.excluir_registro(db, instrumento_id, registro_id)
+    registro_service.excluir_registro(db, instrumento_id, registro_id, usuario_id=_usuario.id)
     return {"status": "ok"}

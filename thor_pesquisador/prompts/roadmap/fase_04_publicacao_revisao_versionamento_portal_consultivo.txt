@@ -1,129 +1,126 @@
-Voce e o Codex trabalhando no projeto `thor_pesquisador`.
+Voce e o Codex trabalhando no projeto thor_pesquisador.
 
 Objetivo da fase 4:
-Adicionar fluxo de publicacao, revisao, versionamento e evoluir a area consultiva de pesquisa. O sistema deve separar gestao interna, revisao editorial e consulta de registros publicados, preservando a busca atual e a arquitetura ja implementada.
+Implementar governanca de acesso, revisao editorial, publicacao versionada e consulta publica inicial, partindo das fases 1 a 3 concluidas. Nao recriar busca, imagens, armazenamento ou galeria.
 
-Estado atual obrigatorio:
-- Fase 1 implementou o nucleo administrativo, gov.br/dev-login, dashboard inicial, MongoDB canonico e deploy Docker/OKD.
-- Fase 2 implementou Meilisearch, Redis, `index_worker`, busca avancada, facetas, reindexacao, nomes padronizados de containers/pods e CRUD de instrumentos no padrao `thor-crud-base`.
-- Fase 3 deve ter implementado imagens opcionais com armazenamento por URL, IIIF ou object storage, CRUD de imagens no padrao `thor-crud-base` e resumo de imagens na indexacao.
-- A rota `/pesquisa` ja existe e deve ser evoluida, nao recriada do zero.
-- A pagina inicial autenticada deve continuar sendo `/dashboard`.
-- A identidade visual deve permanecer harmonizada com o Thor Gestor.
+Base verificada em 2026-10-11 (nao confundir com entregas futuras):
+- As fases 1, 2 e 3 estao implementadas no checkout local. Nao presumir que todas as alteracoes ja foram commitadas ou enviadas ao remoto.
+- FastAPI, SQLAlchemy, Pydantic, Alembic e PostgreSQL para dados relacionais; instrumento_registros no MongoDB continua como fonte canonica dos registros dinamicos.
+- gov.br/dev-login e sessoes locais ja existem. current_user valida sessao, mas ainda nao existe RBAC geral nem autorizacao por instrumento.
+- StatusInstrumento atual: RASCUNHO, PUBLICADO, ARQUIVADO. StatusRegistro atual: ATIVO, INATIVO, EXCLUIDO. EM_REVISAO e demais estados editoriais de registros ainda nao existem.
+- /dashboard e a pagina inicial autenticada; /pesquisa e busca INTERNA autenticada, nao um portal publico.
+- Meilisearch e projecao derivada; Redis e index_worker processam indexacao e reindexacao com indexacao_jobs, lotes e checkpoint. O worker atual nao e um executor generico de exportacao/publicacao.
+- A listagem de registros usa page_size/next_cursor/has_more. Busca simples envia POST /api/v1/instrumentos/{id}/buscar e preserva termo aplicado e cursor ao carregar mais; Enter submete e termo vazio restaura a listagem. Nao substituir por paginacao local ou perder esse comportamento.
+- CRUD de imagens pronto: UPLOAD, URL, IIIF e REPOSITORIO_EXTERNO; imagens_documento, registro_imagens e auditoria_imagens no PostgreSQL; migration 20261003_000003_imagens.py.
+- Galeria na aba Imagens dos detalhes do registro, carregada sob demanda: miniaturas, previa grande, legenda, principal, ordem, vinculo compartilhado e desvinculo confirmado. Exclusao de imagem vinculada retorna 409.
+- Atualmente PUBLICO permite conteudo anonimo, INTERNO exige sessao, RESTRITO exige criador. Editar/excluir imagem exige criador. Essas regras sao aplicadas no backend e nao representam RBAC completo.
+- Originais e miniaturas de upload usam GET /api/v1/imagens/{id}/conteudo, com thumbnail=true para miniatura e streaming autorizado. ArmazenamentoS3 ja oferece salvar_upload, obter_objeto, obter_url_acesso, remover_objeto e calcular_checksum.
+- Upload valida MIME real, tamanho, dimensoes, SHA-256 e gera miniatura. Nao ha armazenamento final no filesystem do pod.
+- A projecao interna persiste somente resumo de imagens PUBLICO: possui_imagens, total_imagens, imagem_principal_thumbnail. A busca autenticada enriquece a pagina em uma consulta SQL por lote com as imagens acessiveis. Isso NAO torna o indice interno seguro para consulta publica de registros.
+- Auditoria de imagens ja registra criacao, upload, alteracao, vinculo, alteracao de vinculo, desvinculo, ordem e exclusao, com usuario autenticado e historico preservado.
+- Excluir instrumento atualmente remove registros do MongoDB e vinculos SQL; excluir registro e logico. Ambos preservam imagens compartilhadas e auditoria. Publicacao/retencao exigirao evoluir essas regras, nao presumir soft delete geral.
+- Compose usa thor_pesquisador_; Kubernetes/OKD usa thor-pesquisador-. deploy/base e overlays dev, homolog, prod ja existem.
+- MinIO e opcional via perfil storage, com bucket privado inicializado por app.scripts.init_storage apenas em desenvolvimento. Producao deve usar S3 institucional/compativel, nao assumir que o MinIO local e um deploy de producao.
+- Configuracao S3 existente: S3_ENDPOINT_URL, S3_BUCKET, S3_REGION, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_FORCE_PATH_STYLE, S3_URL_EXPIRATION, UPLOAD_MAX_BYTES, UPLOAD_ALLOWED_MIME_TYPES. Secrets/ConfigMaps base ja incluem configuracao S3.
+- AppShell, login_pesquisador.png e app/thor-theme.css ja existem. Preservar paridade visual com o Gestor sem modificar o outro projeto.
+- Testes backend, contratos frontend e e2e imagens.smoke.cjs/registros-busca.smoke.cjs ja existem; reaproveitar e ampliar.
 
-Skills e padroes Thor a considerar:
-- Use `thor-crud-base` para CRUDs novos: papeis, permissoes, filas de revisao, snapshots, configuracoes de publicacao e historico editorial.
-- Use `thor-lazy-tree` caso a fase implemente navegacao hierarquica de instrumentos, fundos, series, dossies, colecoes ou taxonomias no portal consultivo.
-- Use `testar-com-docker` para validar tudo dentro dos containers.
-- Preserve o padrao de rotas, servicos, schemas, testes e READMEs ja existente no `thor_pesquisador`.
+Instrucoes comuns:
+- Trabalhar apenas no thor_pesquisador. Ler codigo, migrations, READMEs e git status antes de editar; preservar alteracoes locais e nao usar um hash remoto fixo como fonte de verdade.
+- Reutilizar camadas, componentes, autenticacao, armazenamento, fila e contratos existentes. Nao recriar funcionalidades concluidas.
+- Usar thor-crud-base nas novas superficies CRUD; auditoria/historico sao listagem e detalhe somente leitura, nao CRUD destrutivo.
+- Usar thor-lazy-tree somente se surgir hierarquia real, com filhos sob demanda; nao criar arvore artificial como requisito desta fase.
+- Usar testar-com-docker para validacoes. Nao instalar dependencias no host quando ha fluxo Docker.
+- Nao fazer commit/push nem modificar fases anteriores sem solicitacao explicita.
 
-Arquitetura de dados:
-- Instrumentos, campos, permissoes, workflow e eventos editoriais ficam no PostgreSQL.
-- Registros dinamicos operacionais continuam no MongoDB.
-- Snapshots de publicacao de registros podem ficar no MongoDB para preservar escala e flexibilidade.
-- O indice publico no Meilisearch deve ser derivado apenas de registros/snapshots publicados.
-- Workflows em lote devem rodar em workers ou Jobs/CronJobs no Kubernetes/OKD, nunca em requisicoes HTTP longas.
-- O indice interno da fase 2 deve continuar funcionando para usuarios autorizados.
+Dependencias e limites desta fase:
+- Publicacao, snapshots, papeis, fila de revisao, historico editorial e portal publico sao NOVOS nesta fase.
+- Os campos status/visibilidade de instrumento existentes sao metadados, nao prova de revisao ou autorizacao.
+- A auditoria de imagens continua sendo reutilizada; auditoria geral, exportacao e retencao ampla ficam para a fase 5.
+- A fase 6 refinara o portal e a operacao, sem recriar os contratos publicos estabelecidos aqui.
 
-Estados:
-- Instrumento: RASCUNHO, EM_REVISAO, PUBLICADO, ARQUIVADO.
-- Registro: RASCUNHO, EM_REVISAO, PUBLICADO, ARQUIVADO, EXCLUIDO.
-- Transicoes invalidas devem retornar erro consistente, preferencialmente 409 quando houver conflito de estado.
-
-Escopo funcional:
-1. Criar workflow de instrumentos: enviar para revisao, aprovar, devolver, publicar, arquivar e republicar.
-2. Criar workflow de registros: salvar rascunho, enviar para revisao, aprovar, publicar e arquivar.
-3. Criar historico editorial com usuario, data/hora, estado anterior, estado novo, justificativa e comentario.
-4. Criar versionamento simples com versao do schema, versao do registro, snapshot publicado e autor da publicacao.
-5. Evoluir area consultiva com instrumentos publicados, busca em publicados, visualizacao de registro e imagens permitidas.
-6. Atualizar dashboard com instrumentos em rascunho, em revisao, registros pendentes e publicacoes recentes.
-7. Garantir que a publicacao atualize a indexacao interna/publica por evento no worker.
-
-Backend:
-- Criar migrations, modelos, schemas, servicos e rotas.
-- Endpoints administrativos:
-  - `POST /api/v1/instrumentos/{id}/enviar-revisao`
-  - `POST /api/v1/instrumentos/{id}/aprovar`
-  - `POST /api/v1/instrumentos/{id}/devolver`
-  - `POST /api/v1/instrumentos/{id}/publicar`
-  - `POST /api/v1/instrumentos/{id}/arquivar`
-  - `POST /api/v1/instrumentos/{instrumento_id}/registros/{registro_id}/enviar-revisao`
-  - `POST /api/v1/instrumentos/{instrumento_id}/registros/{registro_id}/aprovar`
-  - `POST /api/v1/instrumentos/{instrumento_id}/registros/{registro_id}/publicar`
-  - `POST /api/v1/instrumentos/{instrumento_id}/registros/{registro_id}/arquivar`
-- Endpoints consultivos:
-  - `GET /api/v1/publico/instrumentos`
-  - `GET /api/v1/publico/instrumentos/{id}`
-  - `POST /api/v1/publico/instrumentos/{id}/buscar`
-  - `GET /api/v1/publico/instrumentos/{id}/registros/{registro_id}`
-- Se houver arvore consultiva, criar endpoint lazy conforme `thor-lazy-tree`, por exemplo:
-  - `GET /api/v1/publico/arvore?parent_id=...`
-  - cada no com `id`, `label`, `parent_id`, `has_children` e `children: []`.
-
-Frontend administrativo:
-1. Manter `AppShell` e padrao visual existente.
-2. Mostrar status editorial de instrumentos e registros.
-3. Exibir acoes conforme permissao: enviar para revisao, aprovar, devolver, publicar e arquivar.
-4. Adicionar comentario/justificativa nas transicoes.
-5. Criar tela de fila de revisao no padrao operacional Thor, sem hero/landing page.
-6. Quando houver CRUD de configuracoes editoriais, usar paginas completas e formulario reutilizavel conforme `thor-crud-base`.
-
-Frontend consultivo:
-1. Evoluir rota `/pesquisa` sem quebrar a busca interna existente.
-2. Listar instrumentos publicados.
-3. Exibir pagina do instrumento com descricao, campos publicos e busca.
-4. Exibir resultados sem botoes administrativos.
-5. Exibir registro publicado com campos configurados para exibicao publica.
-6. Exibir imagens quando permitidas.
-7. Se houver arvore consultiva, carregar filhos sob demanda seguindo `thor-lazy-tree`.
+Modelo e migracao:
+1. Manter StatusRegistro ATIVO/INATIVO/EXCLUIDO como estado operacional. Adicionar status_editorial separado, com RASCUNHO, EM_REVISAO, APROVADO, PUBLICADO e ARQUIVADO; nao substituir silenciosamente o enum usado pelo CRUD, seeds e worker.
+2. Evoluir StatusInstrumento com os estados editoriais necessarios, incluindo EM_REVISAO e APROVADO, preservando os valores existentes e migrando constraints quando houver.
+3. Acrescentar versao do registro, referencia da versao publicada, historico editorial e metadados de autoria/data. schema_version existente NAO e versao de publicacao.
+4. Criar snapshots imutaveis no MongoDB, com instrumento_id, registro_id, versao, schema correspondente e referencias de imagens/legendas/ordem/principal, sem duplicar binarios.
+5. Manter controle relacional de publicacoes, permissoes e transicoes no PostgreSQL. Definir protocolo idempotente de persistencia/reconciliacao entre PostgreSQL e MongoDB; nao prometer uma transacao atomica entre ambos.
+6. Versionar tambem o schema publicado e sua politica de campos publicos. Adicionar sinalizador explicito de exibicao publica, conservador por padrao; aparece_busca/aparece_listagem nao autorizam divulgacao.
+7. Backfill em lotes e comando repetivel: preservar dados, IDs e estado operacional; registros legados nao viram PUBLICADO automaticamente. Instrumentos legados PUBLICADO sem snapshot valido nao liberam registros ao publico. Documentar tratamento, revisao necessaria e relatorio da migracao.
+8. Encadear novas migrations ao head real do Alembic, que atualmente inclui 20261003_000003. Verificar indices, seeds e contratos antigos.
 
 Permissoes:
-- ADMIN: tudo.
-- GESTOR_INSTRUMENTOS: cria, edita e publica instrumentos.
-- EDITOR: cria e edita registros.
-- REVISOR: aprova/devolve registros.
-- CONSULTA_INTERNA: consulta registros internos.
-- PUBLICO_AUTENTICADO: consulta instrumentos publicados/restritos conforme regra.
-- A implementacao inicial pode usar papeis simples em PostgreSQL, desde que deixe o contrato pronto para evolucao.
+- Criar papeis/permissoes no PostgreSQL integrados ao Usuario/sessao existentes, sem substituir gov.br.
+- Perfis iniciais: ADMIN, GESTOR_INSTRUMENTOS, EDITOR, REVISOR, CONSULTA_INTERNA, PUBLICO_AUTENTICADO. Definir permissoes por acao e escopo de instrumento explicitamente.
+- ADMIN gerencia tudo; GESTOR_INSTRUMENTOS gerencia/publica instrumentos autorizados; EDITOR cria/altera registros; REVISOR aprova/devolve; CONSULTA_INTERNA consulta dentro do escopo; PUBLICO_AUTENTICADO nao ganha acesso a todo INTERNO/RESTRITO apenas por login.
+- Aplicar regras em rotas E servicos de instrumentos, campos, registros, busca, facetas, reindexacao, imagens e vinculos. Esconder botoes nao e autorizacao.
+- Definir provisionamento seguro do primeiro administrador e perfil minimo dos usuarios existentes/novos. Nao promover todo usuario gov.br nem todo dono de imagem a administrador.
+- Reusar criado_por/direitos_acesso de imagens. Qualquer ampliacao para gestores deve exigir permissao explicita e ser testada; preservar a protecao de RESTRITO e alteracoes de direitos compartilhados.
+- A regra PUBLICO de uma imagem isolada da fase 3 nao equivale a publicacao editorial de seu registro. Documentar essa diferenca e nao mudar silenciosamente URLs publicas existentes.
+
+Maquinas de estado e historico:
+- Declarar matrizes de transicao por entidade antes de codificar: enviar-revisao, aprovar, devolver, publicar, arquivar e republicar por nova versao.
+- APROVADO deve ter semantica distinta de PUBLICADO. Devolucao exige justificativa e retorna a rascunho; publicacao exige permissao, revisao valida, snapshot e schema aprovados.
+- Registro INATIVO/EXCLUIDO nunca e elegivel para consulta publica. EXCLUIDO nao pode ser republicado por um atalho.
+- Instrumento ARQUIVADO/INTERNO/RESTRITO nao aparece no portal anonimo. Arquivar/restringir instrumento ou registro revoga acesso imediatamente.
+- Edicao de registro publicado cria novo rascunho, mantendo a ultima versao aprovada disponivel ate nova publicacao, exceto revogacao explicita. Mudanca de campos/imagens nao pode alterar silenciosamente o snapshot vigente.
+- Alteracao de direitos de imagem e revogacao devem ser reavaliadas no acesso, mesmo para snapshots antigos.
+- PUT generico nao pode contornar workflow, gravar PUBLICADO diretamente, alterar revisao aprovada sem invalidar aprovacao ou publicar versao concorrente.
+- Usar controle de versao/concorrencia, conflitos 409 e comandos idempotentes. Historico append-only com usuario, instante, estados anterior/novo, versao, justificativa e identificador da operacao.
+- Evoluir exclusao de instrumentos com publicacoes/historico para arquivamento ou bloqueio de exclusao fisica; preservar o comportamento atual para rascunhos descartaveis quando seguro. Nunca destruir historico publicado via cascade.
+
+API administrativa:
+- POST /api/v1/instrumentos/{id}/enviar-revisao, /aprovar, /devolver, /publicar, /arquivar.
+- POST /api/v1/instrumentos/{instrumento_id}/registros/{registro_id}/enviar-revisao, /aprovar, /devolver, /publicar, /arquivar.
+- Expor historico/versoes/fila de revisao paginados e leitura de snapshot autorizado.
+- Republicacao deve criar nova versao, com rota/contrato documentado; nao sobrescrever uma versao publicada.
+- Reutilizar CRUD existente e criar apenas as rotas faltantes, com payloads tipados e validacao consistente.
+
+Consulta publica inicial:
+- GET /api/v1/publico/instrumentos e /instrumentos/{id}.
+- POST /api/v1/publico/instrumentos/{id}/buscar e GET /instrumentos/{id}/facetas.
+- GET /api/v1/publico/instrumentos/{id}/registros/{registro_id}.
+- Expor galeria publica paginada/sob demanda do snapshot, reutilizando serializacao e conteudo de imagens permitidas. Nao usar endpoint administrativo como bypass.
+- PUBLICO + publicacao vigente + snapshot valido + campos permitidos sao requisitos cumulativos. Retornar 404 uniforme para recurso nao divulgavel, sem revelar existencia de registros internos.
+- Definir rotas consultivas separadas, preferencialmente /consulta, preservando /pesquisa como busca interna autenticada. Nao remover AppShell/admin nem fazer a pagina inicial autenticada deixar de ser /dashboard.
+- Nao criar landing page; a primeira tela consultiva e pesquisa utilizavel, sem botoes administrativos.
 
 Busca e indexacao:
-- Separar indice interno e indice publico, ou usar atributo obrigatorio de filtro `publicado = true`.
-- Garantir que busca publica retorne apenas registros publicados.
-- Reindexar instrumento quando houver publicacao, arquivamento ou mudanca de visibilidade.
-- Publicacao/arquivamento em massa deve usar worker com lotes e checkpoint.
-- A busca publica tambem deve respeitar imagens, direitos de acesso e campos publicos.
+- Preservar indice interno e enriquecimento autenticado de imagens. Criar projecao publica separada alimentada por snapshots, sem campos internos, dados de rascunho ou imagens nao PUBLICO.
+- Nao conectar portal publico diretamente ao indice interno nem confiar so no resumo PUBLICO das imagens.
+- Publicar/republicar/arquivar/restringir/remover imagem publica gera evento idempotente de atualizacao/revogacao. Filtrar elegibilidade atual na API, inclusive quando indice/cache esta defasado.
+- Totais, facetas, destaques, titulos, exportacoes futuras e miniaturas tambem nao podem revelar conteudo restrito.
+- Reusar index_worker e indexacao_jobs para indexacao. Operacoes massivas usam jobs/lotes/checkpoints; persistencia canonica e historico nao podem depender da disponibilidade Redis/Meilisearch.
+- Para efeitos obrigatorios de publicacao/revogacao, criar mecanismo duravel de reenfileiramento/reconciliacao; a fila best-effort atual nao garante entrega. Nao mascarar falha de projecao como publicacao completa.
 
-Kubernetes/OKD:
-- Atualizar manifests se houver novo worker/job de publicacao.
-- Manter prefixos de nomes:
-  - Docker Compose: `thor_pesquisador_`;
-  - Kubernetes/OKD: `thor-pesquisador-`.
-- Documentar execucao operacional de publicacoes em massa.
-- Manter compatibilidade com UID arbitrario, Secrets, ConfigMaps, probes e recursos.
+Frontend e dashboard:
+- Manter paginas completas/formularios reutilizaveis, filtros recolhidos, paginacao no servidor, acoes com icones/nome acessivel/tooltip.
+- Fila editorial, historico somente leitura, versoes e comentarios/justificativas; acoes conforme estado e permissao.
+- Evoluir a visualizacao de registro e galeria atuais, sem duplicar components/registro-imagens.tsx e media-preview.tsx.
+- Dashboard mostra pendencias editoriais e publicacoes recentes com consultas agregadas/paginadas, nao varredura de todos os registros por requisicao.
+- Testar explicitamente Busca simples, Enter, busca vazia, Carregar mais filtrado e busca interna/consultiva; abrir filtros e submeter busca sao acoes distintas.
 
-Regras importantes:
-- Registro em rascunho nunca pode aparecer na consulta publica.
-- Campos internos nao devem aparecer em paginas publicas.
-- Imagens restritas nao devem aparecer em paginas publicas sem autorizacao.
-- Alteracoes depois da publicacao devem gerar nova versao ou rascunho de revisao.
-- Testes devem cobrir permissoes e vazamento de dados nao publicados.
+Docker/OKD:
+- Reusar Compose, S3 e manifests existentes; acrescentar configuracoes/permissoes/jobs necessarios, nao recriar MinIO ou secrets S3.
+- Jobs massivos fora da requisicao HTTP; manter nomes, UID arbitrario, configuracao por ambiente e operacao de recuperacao documentada.
 
-Testes e validacao:
-- Testes backend para transicoes de estado, snapshots, permissoes e consulta publica.
-- Testes frontend funcionais de contrato para rotas administrativas e publicas.
-- Validar com:
-  - `docker compose exec backend python -m pytest app/tests`
-  - `npm.cmd run test:functional` em `frontend`
-  - `docker compose build frontend`
-  - `kubectl kustomize deploy/base`, `deploy/overlays/dev` e `deploy/overlays/prod` quando manifests mudarem.
+Testes especificos:
+- Todos os estados/transicoes validas e invalidas, papeis/escopos, PUT como bypass, concorrencia, idempotencia, devolucao, revisao invalidada e republicacao.
+- Migracao de ATIVO/INATIVO/EXCLUIDO e instrumentos legados PUBLICADO sem liberacao automatica.
+- Snapshot preservado apos edicao, campos internos omitidos, imagens compartilhadas/restritas, revogacao com indice stale e ausencia de vazamento por facetas/totais/URLs.
+- Falhas Redis/Meilisearch/S3 e persistencia parcial entre bancos, retomada do job e reconciliacao.
+- E2e editorial e consulta anonima/autenticada, preservando os e2e de imagens e busca existentes.
 
-README:
-Atualizar documentacao com estados editoriais, papeis, fluxo de publicacao, area administrativa/consultiva, indexacao publica e operacao em OKD.
+Validacao e entrega:
+- Usar PostgreSQL e MongoDB exclusivos de testes, com DATABASE_URL, MONGODB_DATABASE e INDEXACAO_QUEUE_NAME isolados; migrar esse banco antes de executar python -m pytest app/tests em container.
+- Nao executar testes funcionais que limpam tabelas/colecoes contra os cadastros operacionais. Revisar esse cuidado tambem nos scripts de relatorio.
+- Rodar contratos frontend em container e build Docker de backend/index_worker/frontend quando alterados; incluir novos workers nos builds quando existirem.
+- Reexecutar os e2e existentes pertinentes, com API real. imagens.smoke.cjs requer bucket privado e perfil storage ou S3 externo; registros-busca.smoke.cjs nao requer storage. Usar dados proprios e limpeza controlada, nunca mocks da API como unica prova do fluxo.
+- Quando manifests mudarem, renderizar kubectl kustomize para deploy/base e overlays dev, homolog e prod. Renderizacao nao prova rollout; registrar validacao em cluster separadamente ou declarar que nao foi possivel.
+- Manter a stack completa acessivel apos validacao, nao subir somente frontend com API/bancos parados.
+- Atualizar README raiz/backend/frontend e documentacao operacional afetada. Relatar implementado, pendencias, riscos, comandos e resultados reais; nao declarar fases futuras concluidas.
 
-Entrega esperada:
-- Fluxo editorial funcional.
-- Area consultiva inicial.
-- Versionamento simples de publicacao.
-- Dashboard atualizado.
-- Busca publica sem vazamento de rascunhos/restritos.
-- Testes cobrindo estados, permissoes e consulta publica.
+Criterios de aceite:
+- Workflow e RBAC novos funcionam sem quebrar estados operacionais ou CRUD atual.
+- Publicacao e versionada/auditavel, com recuperacao de falhas e consulta inicial segura.
+- Portal anonimo usa apenas snapshots elegiveis; dashboard, busca interna e galeria atuais permanecem funcionais.

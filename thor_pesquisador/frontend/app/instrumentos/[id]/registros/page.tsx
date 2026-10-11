@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { Eye, Search } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { getSchema, listRegistros, searchRegistros } from "@/lib/api";
 import type { InstrumentoCampo, Registro } from "@/types/domain";
@@ -15,37 +15,55 @@ export default function RegistrosPage() {
   const [items, setItems] = useState<Registro[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [q, setQ] = useState("");
+  const [appliedQuery, setAppliedQuery] = useState("");
+  const [loading, setLoading] = useState(false);
+  const requestId = useRef(0);
   const [error, setError] = useState("");
 
-  async function load(cursor?: string | null) {
+  const load = useCallback(async (query: string, cursor?: string | null, withSchema = false) => {
+    const currentRequest = ++requestId.current;
+    setLoading(true);
+    setError("");
+    if (!cursor) {
+      setItems([]);
+      setNextCursor(null);
+    }
     try {
-      const [schema, page] = await Promise.all([getSchema(id), listRegistros(id, cursor)]);
-      setNome(schema.nome);
-      setCampos(schema.campos);
-      setItems(cursor ? [...items, ...page.items] : page.items);
+      const [schema, page] = await Promise.all([
+        withSchema ? getSchema(id) : Promise.resolve(null),
+        query ? searchRegistros(id, query, cursor) : listRegistros(id, cursor)
+      ]);
+      if (currentRequest !== requestId.current) return;
+      if (schema) {
+        setNome(schema.nome);
+        setCampos(schema.campos);
+      }
+      setItems((previous) => cursor ? [...previous, ...page.items] : page.items);
       setNextCursor(page.next_cursor ?? null);
       setError("");
     } catch (err) {
+      if (currentRequest !== requestId.current) return;
       setError(err instanceof Error ? err.message : "Falha ao carregar registros.");
+    } finally {
+      if (currentRequest === requestId.current) setLoading(false);
     }
-  }
+  }, [id]);
 
-  useEffect(() => { load(); }, [id]);
+  useEffect(() => {
+    setQ("");
+    setAppliedQuery("");
+    setNome("");
+    setCampos([]);
+    load("", null, true);
+    return () => { requestId.current++; };
+  }, [load]);
 
   async function buscar(event: React.FormEvent) {
     event.preventDefault();
-    if (!q.trim()) {
-      await load();
-      return;
-    }
-    try {
-      const page = await searchRegistros(id, q);
-      setItems(page.items);
-      setNextCursor(page.next_cursor ?? null);
-      setError("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao buscar registros.");
-    }
+    if (loading) return;
+    const query = q.trim();
+    setAppliedQuery(query);
+    await load(query);
   }
 
   const listagem = campos.filter((campo) => campo.aparece_listagem);
@@ -65,16 +83,17 @@ export default function RegistrosPage() {
       </div>
       <section className="panel stack">
         <form className="row" onSubmit={buscar}>
-          <input className="input" style={{ maxWidth: 420 }} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Busca simples" />
-          <button className="button" type="submit"><Search size={18} /> Buscar</button>
+          <input className="input" name="q" aria-label="Busca simples" style={{ maxWidth: 420 }} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Busca simples" />
+          <button className="button" type="submit" disabled={loading}><Search size={18} />{loading ? "Buscando..." : "Buscar"}</button>
         </form>
         {error ? <p className="error">{error}</p> : null}
         <div className="table-wrap">
-        <table className="table">
+        <table className="table" aria-busy={loading}>
           <thead>
             <tr>
               {listagem.map((campo) => <th key={campo.id}>{campo.nome}</th>)}
               <th>Status</th>
+              <th>Acoes</th>
             </tr>
           </thead>
           <tbody>
@@ -82,13 +101,14 @@ export default function RegistrosPage() {
               <tr key={item.id}>
                 {listagem.map((campo) => <td key={campo.id}>{formatValue(item.dados[campo.chave])}</td>)}
                 <td>{item.status}</td>
+                <td><Link className="icon-button" title="Visualizar registro" aria-label="Visualizar registro" href={`/instrumentos/${id}/registros/${encodeURIComponent(item.id)}`}><Eye size={16}/></Link></td>
               </tr>
             ))}
-            {!items.length ? <tr><td colSpan={listagem.length + 1} className="muted">Nenhum registro encontrado.</td></tr> : null}
+            {!items.length ? <tr><td colSpan={listagem.length + 2} className="muted">{loading ? "Carregando..." : error ? "Listagem indisponivel." : "Nenhum registro encontrado."}</td></tr> : null}
           </tbody>
         </table>
         </div>
-        {nextCursor ? <button className="button secondary" onClick={() => load(nextCursor)}>Carregar mais</button> : null}
+        {nextCursor ? <button className="button secondary" disabled={loading} onClick={() => load(appliedQuery, nextCursor)}>Carregar mais</button> : null}
       </section>
     </div>
     </AppShell>

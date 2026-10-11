@@ -1,159 +1,128 @@
-Voce e o Codex trabalhando no projeto `thor_pesquisador`.
+Voce e o Codex trabalhando no projeto thor_pesquisador.
 
 Objetivo da fase 6:
-Consolidar o portal consultivo publico/autenticado, acessibilidade, desempenho, observabilidade, operacao em producao e documentacao final, deixando o sistema pronto para demonstracao institucional e operacao em Kubernetes/OKD.
+Consolidar o portal entregue na fase 4 e as operacoes da fase 5, com acessibilidade, desempenho, observabilidade e validacao real de seguranca/operacao Docker e OKD. Esta fase e de endurecimento e acabamento, nao de reconstruir as fases anteriores.
 
-Estado atual esperado:
-- As fases 1 a 5 ja implementaram o nucleo administrativo, dashboard, autenticacao gov.br, instrumentos dinamicos, MongoDB, busca avancada, imagens, publicacao, auditoria, exportacao e retencao.
-- CRUDs administrativos novos seguem `thor-crud-base`.
-- Arvores/navegacoes hierarquicas eventualmente criadas seguem `thor-lazy-tree`.
-- A rota `/pesquisa` existe desde o MVP e foi evoluida nas fases anteriores.
-- O sistema deve manter a identidade visual harmonizada com o `thor_gestor_de_arquivos_digitais`.
-- A pagina inicial autenticada permanece `/dashboard`.
-- O login permanece usando `login_pesquisador.png`.
-- O projeto deve continuar pronto para Docker Compose e Kubernetes/OKD.
-- Docker Compose usa prefixo `thor_pesquisador_`; Kubernetes/OKD usa prefixo `thor-pesquisador-`.
+Base verificada em 2026-10-11 (nao confundir com entregas futuras):
+- As fases 1, 2 e 3 estao implementadas no checkout local. Nao presumir que todas as alteracoes ja foram commitadas ou enviadas ao remoto.
+- FastAPI, SQLAlchemy, Pydantic, Alembic e PostgreSQL para dados relacionais; instrumento_registros no MongoDB continua como fonte canonica dos registros dinamicos.
+- gov.br/dev-login e sessoes locais ja existem. current_user valida sessao, mas ainda nao existe RBAC geral nem autorizacao por instrumento.
+- StatusInstrumento atual: RASCUNHO, PUBLICADO, ARQUIVADO. StatusRegistro atual: ATIVO, INATIVO, EXCLUIDO. EM_REVISAO e demais estados editoriais de registros ainda nao existem.
+- /dashboard e a pagina inicial autenticada; /pesquisa e busca INTERNA autenticada, nao um portal publico.
+- Meilisearch e projecao derivada; Redis e index_worker processam indexacao e reindexacao com indexacao_jobs, lotes e checkpoint. O worker atual nao e um executor generico de exportacao/publicacao.
+- A listagem de registros usa page_size/next_cursor/has_more. Busca simples envia POST /api/v1/instrumentos/{id}/buscar e preserva termo aplicado e cursor ao carregar mais; Enter submete e termo vazio restaura a listagem. Nao substituir por paginacao local ou perder esse comportamento.
+- CRUD de imagens pronto: UPLOAD, URL, IIIF e REPOSITORIO_EXTERNO; imagens_documento, registro_imagens e auditoria_imagens no PostgreSQL; migration 20261003_000003_imagens.py.
+- Galeria na aba Imagens dos detalhes do registro, carregada sob demanda: miniaturas, previa grande, legenda, principal, ordem, vinculo compartilhado e desvinculo confirmado. Exclusao de imagem vinculada retorna 409.
+- Atualmente PUBLICO permite conteudo anonimo, INTERNO exige sessao, RESTRITO exige criador. Editar/excluir imagem exige criador. Essas regras sao aplicadas no backend e nao representam RBAC completo.
+- Originais e miniaturas de upload usam GET /api/v1/imagens/{id}/conteudo, com thumbnail=true para miniatura e streaming autorizado. ArmazenamentoS3 ja oferece salvar_upload, obter_objeto, obter_url_acesso, remover_objeto e calcular_checksum.
+- Upload valida MIME real, tamanho, dimensoes, SHA-256 e gera miniatura. Nao ha armazenamento final no filesystem do pod.
+- A projecao interna persiste somente resumo de imagens PUBLICO: possui_imagens, total_imagens, imagem_principal_thumbnail. A busca autenticada enriquece a pagina em uma consulta SQL por lote com as imagens acessiveis. Isso NAO torna o indice interno seguro para consulta publica de registros.
+- Auditoria de imagens ja registra criacao, upload, alteracao, vinculo, alteracao de vinculo, desvinculo, ordem e exclusao, com usuario autenticado e historico preservado.
+- Excluir instrumento atualmente remove registros do MongoDB e vinculos SQL; excluir registro e logico. Ambos preservam imagens compartilhadas e auditoria. Publicacao/retencao exigirao evoluir essas regras, nao presumir soft delete geral.
+- Compose usa thor_pesquisador_; Kubernetes/OKD usa thor-pesquisador-. deploy/base e overlays dev, homolog, prod ja existem.
+- MinIO e opcional via perfil storage, com bucket privado inicializado por app.scripts.init_storage apenas em desenvolvimento. Producao deve usar S3 institucional/compativel, nao assumir que o MinIO local e um deploy de producao.
+- Configuracao S3 existente: S3_ENDPOINT_URL, S3_BUCKET, S3_REGION, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_FORCE_PATH_STYLE, S3_URL_EXPIRATION, UPLOAD_MAX_BYTES, UPLOAD_ALLOWED_MIME_TYPES. Secrets/ConfigMaps base ja incluem configuracao S3.
+- AppShell, login_pesquisador.png e app/thor-theme.css ja existem. Preservar paridade visual com o Gestor sem modificar o outro projeto.
+- Testes backend, contratos frontend e e2e imagens.smoke.cjs/registros-busca.smoke.cjs ja existem; reaproveitar e ampliar.
 
-Skills e padroes Thor a considerar:
-- Use `thor-crud-base` para qualquer tela administrativa final ainda pendente.
-- Use `thor-lazy-tree` para qualquer navegacao hierarquica consultiva ou administrativa.
-- Use `testar-com-docker` para smoke tests, suites automatizadas e validacoes de build.
-- Mantenha telas administrativas densas, previsiveis e alinhadas ao Thor Gestor.
+Instrucoes comuns:
+- Trabalhar apenas no thor_pesquisador. Ler codigo, migrations, READMEs e git status antes de editar; preservar alteracoes locais e nao usar um hash remoto fixo como fonte de verdade.
+- Reutilizar camadas, componentes, autenticacao, armazenamento, fila e contratos existentes. Nao recriar funcionalidades concluidas.
+- Usar thor-crud-base nas novas superficies CRUD; auditoria/historico sao listagem e detalhe somente leitura, nao CRUD destrutivo.
+- Usar thor-lazy-tree somente se surgir hierarquia real, com filhos sob demanda; nao criar arvore artificial como requisito desta fase.
+- Usar testar-com-docker para validacoes. Nao instalar dependencias no host quando ha fluxo Docker.
+- Nao fazer commit/push nem modificar fases anteriores sem solicitacao explicita.
 
-Escopo funcional:
-1. Refinar portal consultivo.
-2. Consolidar acessibilidade.
-3. Otimizar desempenho.
-4. Melhorar observabilidade.
-5. Preparar configuracao final de producao em Kubernetes/OKD.
-6. Criar documentacao operacional final.
-7. Criar checklist final de seguranca, backup, restore e rollback.
+Dependencias obrigatorias:
+- Antes de executar, verificar entregas efetivas da fase 4: RBAC, estados editoriais separados dos operacionais, snapshots/schema publicados, revogacao e projecao publica.
+- Verificar fase 5: auditoria integrada, request_id/logs estruturados, exportacoes limitadas em memoria, jobs recuperaveis e retencao controlada.
+- Essas entregas sao futuras em relacao a base verificada; nao presume-las prontas pelo nome do prompt.
+- Se incompletas, listar lacunas e tratar como dependencias, sem criar uma implementacao alternativa na fase 6.
 
-Portal consultivo:
-- Rota principal `/pesquisa`.
-- Listagem de instrumentos publicados.
-- Pagina do instrumento com descricao, campos pesquisaveis, filtros avancados, facetas, ordenacao, paginacao e resultados com titulo/resumo.
-- Pagina do registro com metadados organizados, imagens vinculadas, link externo/IIIF, citacao/referencia e botao de copiar link permanente.
-- Se houver navegação por estrutura arquivistica, carregar arvore por lazy load e buscar detalhes separadamente, conforme `thor-lazy-tree`.
-
-Links permanentes:
-- Criar URLs estaveis para instrumento publicado, registro publicado e imagem publica.
-- Evitar expor IDs internos sensiveis quando possivel.
-- Usar slug publico ou identificador persistente quando houver regra definida.
+Portal e experiencia:
+- Refinar rotas consultivas estabelecidas na fase 4, preferencialmente /consulta. /pesquisa permanece busca interna autenticada; nao converter indiscriminadamente sua API/indice em portal anonimo.
+- Manter /dashboard como entrada administrativa, AppShell e login institucional. Nenhuma landing page de marketing.
+- Instrumentos publicados, detalhes, filtros por campos publicos, facetas, ordenacao, paginas e registro/snapshot publicado com citacao/link permanente.
+- Os detalhes e galeria de registro JA existem. Reusar componentes e expandir acessibilidade/consulta publica, nao criar outro visualizador ou carregar binarios IIIF no storage.
+- Originais apenas sob demanda; miniaturas na listagem. Imagens RESTRITO/INTERNO nao aparecem em consulta anonima, nem por resumo/legenda/thumbnail.
+- Confirmar direitos e elegibilidade atual, mesmo em cache/snapshot antigo; revogacao de publicacao/campo/imagem nao pode depender de aguardar reindexacao.
+- Links permanentes para instrumento, registro e versao publicada, com redirecionamentos/alias quando necessario. UUID nao e segredo nem substitui autorizacao; nao mudar IDs/URLs existentes por estetica. Nunca usar URL assinada S3 como permalink.
+- Hierarquia apenas se houver modelo real, com thor-lazy-tree; nao carregar todos os nos ou inventar classificacao nesta fase.
+- Preservar comportamento de busca simples (termo aplicado, Enter, vazio restaura, cursor filtrado). Abrir filtros e buscar devem ser comandos distintos e previsiveis.
+- Preservar thor-theme.css, tipografia e escala compacta ja alinhadas ao Gestor. Mudancas no tema compartilhado exigem coordenacao; nao editar o outro projeto por iniciativa desta fase.
 
 Acessibilidade:
-- Usar HTML semantico.
-- Garantir navegacao por teclado.
-- Garantir foco visivel.
-- Garantir contraste adequado.
-- Adicionar labels acessiveis em filtros e formularios.
-- Evitar texto apenas por cor.
-- Testar estados vazios, erros e carregamento.
-- Garantir que botoes com icones tenham nome acessivel por texto visivel, `title` ou `aria-label`.
-- Garantir que tabelas tenham cabecalhos corretos e mensagens de vazio.
+- HTML semantico, labels, foco visivel, cabecalhos, nomes acessiveis de icones, mensagens de carregamento/erro/vazio e estado nao representado apenas por cor.
+- Testar teclado, ordem de foco, dialogs, Escape e restauracao de foco. A galeria ja usa dialog nativo: melhorar/testar, nao substituir por overlay sem gerenciamento de foco.
+- Estados ocupados e feedback acessivel para busca, upload, workflow e jobs.
+- Contraste, zoom e desktop/mobile sem textos/botoes sobrepostos ou overflow incoerente.
+- Validacao automatizada com ferramenta apropriada e verificacao manual de fluxos principais; nao afirmar conformidade completa apenas por um score.
 
-Experiencia visual:
-- Manter paleta, espacamento, sidebar/header e componentes alinhados ao Thor Gestor.
-- Telas administrativas e consultivas podem ser distintas, mas devem parecer parte do mesmo produto.
-- Evitar landing page de marketing; a experiencia principal deve ser pesquisa/dashboard.
-- Em mobile, garantir que cards, tabelas, filtros e botoes nao estourem o layout.
-- Evitar cards aninhados e hero sections em telas operacionais.
-
-Desempenho:
-- Paginar resultados.
-- Evitar carregar imagens grandes na listagem.
-- Usar thumbnails.
-- Cachear schema publico de instrumento quando apropriado.
-- Usar compressao HTTP em producao.
-- Otimizar chamadas de busca para nao recalcular facetas sem necessidade.
-- Considerar milhoes de registros como caso normal.
-- Usar Meilisearch para busca/facetas.
-- Usar MongoDB para leitura canonica paginada por cursor.
-- Evitar `skip` profundo no MongoDB.
-- Garantir indices MongoDB documentados e verificados por startup idempotente ou comando operacional.
-- Validar que nenhuma listagem administrativa ou publica carrega datasets completos.
+Desempenho e escala:
+- Listagens SQL usam limit/offset conforme CRUD existente; registros MongoDB usam cursor e lotes. Nao impor offset profundo aos registros nem paginar acervo inteiro no browser.
+- Medir com massas representativas isoladas: latencias, memoria, consultas SQL por pagina/lote, uso de MongoDB, tamanho de respostas e indexacao.
+- Manter consulta SQL em lote dos resumos de imagens, sem N+1 por registro, instrumento ou thumbnail.
+- Reusar ensure_mongo_indexes e indices ja existentes; validar planos reais e acrescentar indices para novos estados/publicacoes/jobs somente quando justificado.
+- Busca simples atual usa regex literal sobre texto_busca_basico; indice text existente nao garante acelerar essa regex. Medir custo e definir eventual evolucao para mecanismo adequado preservando contrato/campos permitidos, sem ignorar limites ou usar busca publica como fallback interno.
+- Revisar estrategia Meilisearch para limite de resultados/offset, facetas, tempo de reindexacao, retry e publicacao. Nao prometer escala de milhoes apenas porque a pagina tem limit.
+- Cache publico por versao/publicacao/politica de acesso, invalidacao e expiracao. Cache interno isolado por escopo; nunca compartilhar respostas autenticadas entre usuarios.
+- Preservar Cache-Control private/no-store do conteudo protegido; cache/CDN publico apenas para objetos explicitamente permitidos e estrategia de revogacao definida.
+- Dashboard e relatorios usam agregacoes/metricas persistidas quando necessario, nao scans completos em cada requisicao.
+- Jobs de indexacao/publicacao/exportacao/retencao continuam recuperaveis, em segundo plano, limitados em memoria e com concorrencia controlada.
 
 Observabilidade:
-- Adicionar logs estruturados no backend.
-- Adicionar correlacao por `request_id`.
-- Criar health detalhado interno para PostgreSQL, MongoDB, Meilisearch, Redis e object storage.
-- Expor metricas basicas de latencia, falhas de indexacao, tamanho da fila, registros indexados, jobs de exportacao e erros por endpoint.
-- Preparar endpoints e labels para Prometheus/OpenShift Monitoring.
-- Documentar consultas basicas de logs no OKD.
-- Dashboard administrativo deve exibir alertas operacionais basicos sem substituir monitoramento externo.
+- Ampliar logs estruturados e request_id da fase 5; propagar correlacao a eventos/workers sem registrar dados sensiveis.
+- Health atual ja existe. Separar liveness (processo) de readiness (dependencias essenciais) e diagnostico interno protegido.
+- Falha de S3 opcional nao derruba leitura/cadastro sem imagem; dependencia configurada e dependencia obrigatoria devem ter semantica explicita.
+- Metricas de latencia/erros por rota, filas, idade de jobs, retries, progresso, falhas/atraso de indexacao e storage; evitar labels com CPF, usuario, registro_id ou alta cardinalidade.
+- Endpoints operacionais protegidos/restritos na rede, contrato com Prometheus/OpenShift Monitoring e alertas de fila parada, job preso, revogacao pendente e falhas.
+- Dashboard complementa monitoramento externo, sem expor diagnostico administrativo ao publico.
 
-Producao Kubernetes/OKD:
-- Consolidar `deploy/` com overlays dev, homolog e prod.
-- Separar variaveis de desenvolvimento e producao.
-- Documentar HTTPS obrigatorio para gov.br.
-- Documentar dominio oficial necessario para credencial de producao gov.br.
-- Configurar CORS restrito e cookies HttpOnly, Secure e SameSite adequado.
-- Remover credenciais de desenvolvimento de homolog/prod.
-- Usar Route do OpenShift para frontend e, se necessario, backend.
-- Usar TLS edge ou reencrypt conforme padrao institucional.
-- Garantir callback gov.br com URL HTTPS publica estavel.
-- Garantir compatibilidade com Security Context Constraints: sem root, sem privileged, sem hostPath, sem capacidades Linux desnecessarias e escrita apenas em volumes permitidos.
-- Definir requests e limits para todos os containers.
-- Definir replicas minimas para frontend e backend.
-- Avaliar HPA para frontend, backend e workers.
-- Usar Secrets para gov.br, bancos, Redis, Meilisearch e object storage.
-- Usar ConfigMaps para configuracoes nao sensiveis.
-- Usar PVC somente para servicos stateful implantados no cluster.
-- Preferir bancos e object storage gerenciados em producao quando disponiveis.
-- Criar NetworkPolicies quando o cluster exigir segmentacao.
-- Documentar migrations Alembic por Job pre-deploy, comando operacional ou etapa controlada no pipeline.
-- Documentar verificacao/criacao de indices MongoDB por Job pre-deploy, comando operacional ou rotina idempotente no startup.
-- Manter nomes de recursos com prefixo `thor-pesquisador-`.
+Seguranca e dependencias:
+- Auditar permissoes/RBAC e escopos de todas as rotas, inclusive busca, facetas, historico, imagens/miniaturas, download e jobs.
+- Revisar cookies, expiracao/revogacao de sessao, CORS restrito, CSRF em mutacoes, redirecionamentos, limites de upload/requisicao, timeout e rate limit adequado.
+- Revisar dependencias backend/frontend e imagens de container, inclusive alertas npm observados nos builds; corrigir com atualizacao compativel e testes. Nao usar npm audit fix --force indiscriminadamente.
+- Preservar validacao real de MIME/checksum/thumbnail, armazenamento privado e endpoints mediados. Referencias externas/IIIF dependem de permissoes/CORS do provedor; nao prometer protecao de URL publica de terceiros.
+- Remover secrets de desenvolvimento de homolog/prod, desativar dev-login/auth_disabled_for_tests em producao, impedir bootstrap administrativo inseguro e minimizar logs pessoais.
+- Documentar riscos/residuos e revisao institucional, sem afirmar conformidade legal automatica.
 
-Backup e restore:
-- Documentar backup de PostgreSQL, MongoDB, object storage/imagens e arquivos de exportacao.
-- Explicar que Meilisearch e reconstituivel por reindexacao.
-- Documentar restore testado para PostgreSQL, MongoDB e object storage.
-- Documentar atualizacao de imagem e rollback no OKD.
-- Incluir procedimento de reindexacao pos-restore.
+Docker/OKD:
+- Consolidar deploy/base e overlays dev, homolog, prod ja existentes, sem recriar manifests como se nao houvesse deploy.
+- Nomes thor_pesquisador_ no Compose e thor-pesquisador- no OKD. MinIO do perfil storage e ferramenta local de desenvolvimento; nao tornar sua release legada padrao de producao.
+- TLS, callback gov.br HTTPS estavel, CORS/cookies, Secrets/ConfigMaps e rotacao de credenciais por ambiente.
+- Verificar NEXT_PUBLIC_API_BASE_URL no build standalone: runtime env isolada nao deve ser presumida suficiente para alterar o endereco compilado no frontend.
+- UID arbitrario/SCC: sem root, privileged, hostPath ou capacidades desnecessarias; gravacao temporaria apenas onde permitida, sem armazenamento final local de uploads/exportacoes.
+- Requests/limits, probes e replicas ja presentes devem ser revisados. HPA, NetworkPolicies, graceful shutdown e concorrencia de workers/Jobs/CronJobs conforme infraestrutura real.
+- Bancos/storage gerenciados quando disponiveis; PVC somente para servicos stateful de fato implantados no cluster.
+- Migrations Alembic por procedimento controlado/Job pre-deploy; avaliar risco de cada replica executar upgrade no startup atual do Compose, nao copiar isso cegamente para producao.
+- Migracoes MongoDB/indices/backfills repetiveis, com checkpoint e rollout compativel entre versoes. Nao renumerar migrations existentes nem substituir dados para facilitar rollout.
+- Testar rollout em ambiente disponivel; renderizacao Kustomize e apenas validacao de manifests.
 
-Frontend:
-- Refinar layout consultivo.
-- Criar estados vazios profissionais.
-- Criar mensagens de erro claras.
-- Garantir responsividade em desktop e mobile.
-- Garantir acessibilidade minima verificavel.
-- Manter dashboard administrativo como pagina inicial autenticada.
-- Preservar o CRUD de instrumentos no padrao `thor-crud-base`.
+Backup, restauracao e continuidade:
+- PostgreSQL (usuarios, permissoes, metadados, auditoria, jobs), MongoDB (registros/snapshots), objetos originais/miniaturas e artefatos de exportacao.
+- Documentar consistencia entre bancos, referencias S3 e manifesto/checksums; testar restore em ambiente isolado, sem sobrescrever dados operacionais.
+- Meilisearch e derivado; reindexar interno/publico a partir das fontes corretas pos-restore.
+- Redis atual e fila nao duravel de negocio: documentar recuperacao/reconciliacao de jobs e eventos pendentes; backup de fila sozinho nao substitui estado autoritativo.
+- RPO/RTO acordados, runbook de indisponibilidade, recuperacao de multipart/jobs, atualizacao e rollback. Rollback de imagem nao desfaz automaticamente migration/backfill.
 
-Testes:
-- Testes e2e para busca publica.
-- Testes e2e para login e fluxo autenticado.
-- Testes de acessibilidade basicos.
-- Testes de permissao para conteudo restrito.
-- Testes de smoke do Docker Compose.
-- Testes de smoke em Kubernetes/OKD para rollout, health/readiness, login/callback e conexoes com PostgreSQL, MongoDB, Redis, Meilisearch e object storage.
-- Validacoes obrigatorias:
-  - `docker compose exec backend python -m pytest app/tests`
-  - `npm.cmd run test:functional` em `frontend`
-  - `docker compose build backend index_worker frontend`
-  - `kubectl kustomize deploy/base`
-  - `kubectl kustomize deploy/overlays/dev`
-  - `kubectl kustomize deploy/overlays/prod`
+Testes finais e documentacao:
+- E2e anonimo/autenticado/administrativo com backend real: consulta, facetas, workflow, revogacao, galeria, upload, exportacao, retencao e permissoes por escopo.
+- Reusar imagens.smoke.cjs e registros-busca.smoke.cjs, ampliando os cenarios; fixtures proprias e dados operacionais preservados.
+- Verificar acessibilidade, responsividade, estados vazios/erro, carga representativa, memoria limitada, consulta em lote e comportamento com dependencias indisponiveis.
+- Smoke Docker completo; smoke OKD de rollout/readiness/login/callback/conexoes se houver acesso. Declarar limites de ambiente e nao inventar verificacao em cluster.
+- Atualizar READMEs, guias gov.br, storage, indexacao/publicacao, exportacao/auditoria, workers/Jobs/CronJobs, retencao, backup/restore/rollback e configuracao de producao.
+- Manter licenca AGPL-3.0 e avisos existentes.
 
-Documentacao:
-- README de desenvolvimento.
-- README do backend.
-- README do frontend.
-- Guia de configuracao gov.br.
-- Guia de Docker Compose.
-- Guia de Kubernetes/OKD.
-- Guia de backup e restauracao.
-- Guia de operacao de indexacao.
-- Guia de exportacao e auditoria.
-- Guia de workers, Jobs e CronJobs.
-- Guia de variaveis, ConfigMaps e Secrets.
-- Guia de seguranca e LGPD/cuidados com dados pessoais.
-- Secao de licenciamento AGPL-3.0.
+Validacao e entrega:
+- Usar PostgreSQL e MongoDB exclusivos de testes, com DATABASE_URL, MONGODB_DATABASE e INDEXACAO_QUEUE_NAME isolados; migrar esse banco antes de executar python -m pytest app/tests em container.
+- Nao executar testes funcionais que limpam tabelas/colecoes contra os cadastros operacionais. Revisar esse cuidado tambem nos scripts de relatorio.
+- Rodar contratos frontend em container e build Docker de backend/index_worker/frontend quando alterados; incluir novos workers nos builds quando existirem.
+- Reexecutar os e2e existentes pertinentes, com API real. imagens.smoke.cjs requer bucket privado e perfil storage ou S3 externo; registros-busca.smoke.cjs nao requer storage. Usar dados proprios e limpeza controlada, nunca mocks da API como unica prova do fluxo.
+- Quando manifests mudarem, renderizar kubectl kustomize para deploy/base e overlays dev, homolog e prod. Renderizacao nao prova rollout; registrar validacao em cluster separadamente ou declarar que nao foi possivel.
+- Manter a stack completa acessivel apos validacao, nao subir somente frontend com API/bancos parados.
+- Atualizar README raiz/backend/frontend e documentacao operacional afetada. Relatar implementado, pendencias, riscos, comandos e resultados reais; nao declarar fases futuras concluidas.
 
-Entrega esperada:
-- Portal consultivo pronto para demonstracao institucional.
-- Configuracao de producao Kubernetes/OKD documentada.
-- Testes de smoke e e2e.
-- Checklist final de seguranca, acessibilidade e operacao.
-- READMEs atualizados.
+Criterios de aceite:
+- Portal e administracao existentes refinados, sem regressao de busca, imagens ou publicacao.
+- Seguranca/acessibilidade/desempenho comprovados nos limites medidos e pendencias explicitadas.
+- Operacao de producao, monitoramento, restore e rollback documentados/testados onde houver ambiente; nao declarar prontidao institucional sem evidencias.

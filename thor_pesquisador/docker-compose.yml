@@ -1,4 +1,19 @@
 services:
+  minio:
+    container_name: thor_pesquisador_minio
+    build:
+      context: ./deploy/dev/minio
+    profiles: ["storage"]
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-thor-minio}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-thor-minio-dev-only}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - thor_pesquisador_minio:/data
+
   postgres:
     container_name: thor_pesquisador_postgres
     image: postgres:16-alpine
@@ -71,6 +86,14 @@ services:
       meilisearch_url: http://meilisearch:7700
       meilisearch_api_key: dev-master-key-123
       indexacao_batch_size: "500"
+      s3_endpoint_url: ${S3_ENDPOINT_URL:-http://minio:9000}
+      s3_bucket: ${S3_BUCKET:-thor-pesquisador-imagens}
+      s3_region: ${S3_REGION:-us-east-1}
+      s3_access_key_id: ${S3_ACCESS_KEY_ID:-thor-minio}
+      s3_secret_access_key: ${S3_SECRET_ACCESS_KEY:-thor-minio-dev-only}
+      s3_force_path_style: "true"
+      upload_max_bytes: "20971520"
+      upload_allowed_mime_types: '["image/jpeg","image/png","image/tiff","image/webp"]'
     ports:
       - "8000:8000"
     command: >
@@ -118,6 +141,7 @@ services:
       - "3000:3000"
 
 volumes:
+  thor_pesquisador_minio:
   thor_pesquisador_postgres:
   thor_pesquisador_mongo:
   thor_pesquisador_meili:

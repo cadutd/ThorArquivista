@@ -25,6 +25,12 @@ configMapGenerator:
       - INDEXACAO_QUEUE_NAME=thor_pesquisador:indexacao
       - MEILISEARCH_URL=http://thor-pesquisador-meilisearch:7700
       - INDEXACAO_BATCH_SIZE=500
+      - S3_ENDPOINT_URL=https://s3.example.local
+      - S3_BUCKET=thor-pesquisador-imagens
+      - S3_REGION=us-east-1
+      - S3_FORCE_PATH_STYLE=true
+      - UPLOAD_MAX_BYTES=20971520
+      - UPLOAD_ALLOWED_MIME_TYPES=["image/jpeg","image/png","image/tiff","image/webp"]
 secretGenerator:
   - name: thor-pesquisador-secrets
     literals:
@@ -34,5 +40,7 @@ secretGenerator:
       - GOVBR_CLIENT_ID=change-me
       - GOVBR_CLIENT_SECRET=change-me
       - APP_SESSION_SECRET=change-me
+      - S3_ACCESS_KEY_ID=change-me
+      - S3_SECRET_ACCESS_KEY=change-me
 generatorOptions:
   disableNameSuffixHash: true

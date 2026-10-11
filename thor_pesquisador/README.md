@@ -14,11 +14,19 @@ O projeto e independente do `thor_gestor_de_arquivos_digitais`, mas mantem a mes
 - Configuracao de campos dinamicos por instrumento.
 - CRUD/listagem de registros dinamicos persistidos no MongoDB.
 - Busca simples baseada em `texto_busca_basico`.
+- Busca de registros com termo aplicado e cursor preservados em Carregar mais; Enter submete e campo vazio restaura a listagem.
 - Busca avancada com Meilisearch como indice derivado.
 - Redis e `index_worker` para eventos de indexacao e reindexacao por instrumento.
+- CRUD de imagens por URL, upload S3, IIIF e repositorio externo, com vinculos compartilhados, galeria sob demanda e auditoria.
 - Docker Compose funcional.
 - Manifests Kustomize iniciais para Kubernetes/OKD.
 - Licenca AGPL-3.0, igual ao Thor Gestor.
+
+As fases 1 a 3 estao implementadas. As fases 4 a 6 sao planejamento:
+workflow editorial, snapshots publicados, RBAC geral, portal consultivo,
+exportacoes e retencao ainda nao foram implementados. `/pesquisa` e busca
+interna autenticada; visibilidade/status de instrumento nao substituem
+autorizacao por escopo ou publicacao versionada.
 
 ## Arquitetura
 
@@ -120,11 +128,13 @@ Convencao de nomes:
 
 ## Testes
 
-Com os containers ativos:
+Para backend, prepare bancos PostgreSQL/MongoDB exclusivos de testes e execute
+os comandos de [Testes Isolados](backend/README.md#testes-isolados).
+Nao rode a suite funcional contra os cadastros operacionais: ela limpa dados.
+Contratos frontend podem ser executados em container, na raiz deste projeto:
 
 ```bash
-docker compose exec backend python -m pytest app/tests
-npm --prefix frontend run test:functional
+docker run --rm -v ./frontend:/app:ro -w /app node:22-alpine sh -c "node --test tests/functional/*.test.mjs"
 ```
 
 Build isolado do frontend:
@@ -193,7 +203,9 @@ O projeto segue a estrutura do Thor Gestor:
 - teste funcional de contrato frontend em `frontend/tests/functional`;
 - relatorios em `test-reports/`.
 
-Execute:
+O script de relatorios abaixo usa a configuracao do backend em execucao.
+Execute somente em uma stack exclusiva de testes; nao na stack com cadastros
+que deseja preservar:
 
 ```powershell
 .\scripts\run-tests-with-reports.ps1
@@ -212,10 +224,123 @@ Os prompts em `prompts/roadmap/` orientam a evolucao:
 
 - Fase 1: MVP base com gov.br, instrumentos, registros, MongoDB e dashboard.
 - Fase 2: busca avancada com Meilisearch, Redis, worker, facetas e reindexacao. Implementada.
-- Fase 3: imagens opcionais por URL, upload, IIIF e object storage.
-- Fase 4: publicacao, revisao, versionamento e area consultiva.
-- Fase 5: auditoria, exportacao, logs, relatorios e retencao.
-- Fase 6: portal consultivo, acessibilidade, desempenho, observabilidade e operacao OKD.
+- Fase 3: imagens opcionais por URL, upload, IIIF e object storage. Implementada.
+- Fase 4 (planejada): RBAC por escopo, revisao, publicacao versionada e consulta publica inicial, preservando ATIVO/INATIVO/EXCLUIDO como estados operacionais de registros.
+- Fase 5 (planejada; depende da 4): ampliar auditoria de imagens/editorial sem duplicacao, exportacoes recuperaveis, logs, relatorios e retencao controlada.
+- Fase 6 (planejada; depende da 4 e 5): refinar portal e consolidar acessibilidade, seguranca, desempenho, observabilidade, backup/restore e operacao OKD.
+
+Os prompts das fases 4 a 6 foram revisados com a base local de 2026-10-11.
+Eles reaproveitam imagens, S3, galeria, indexacao e testes existentes, sem
+presumir que as entregas futuras ja estejam prontas.
+
+## Busca de Registros
+
+Na listagem de registros, digite o termo e envie por Buscar ou Enter.
+A busca considera campos marcados com `aparece_busca`; novas buscas reiniciam
+o cursor e Carregar mais preserva o termo enviado, mesmo se o texto for editado
+sem novo envio. O estado de carregamento e explicito e respostas antigas sao
+ignoradas para evitar sobrescrever resultados.
+
+Campo vazio restaura a listagem geral; o botao nao abre um dialog de filtros.
+Se o instrumento tem apenas um registro, a tabela pode permanecer igual.
+Filtros avancados, facetas e ordenacao estao na rota interna `/pesquisa`.
+
+O teste `npm run test:e2e:registros-busca` cobre clique, Enter, termo aplicado,
+cursor filtrado, ausencia de resultados e limpeza da busca com API real.
+
+## Imagens de Documentos (Fase 3)
+
+Imagens sao opcionais: os registros continuam canonicos no MongoDB. PostgreSQL
+guarda metadados em `imagens_documento`, vinculos em `registro_imagens` e
+historico em `auditoria_imagens`. A migration `20261003_000003` adiciona
+essas estruturas sem converter ou remover registros existentes.
+
+O menu Imagens oferece listagem paginada, busca, filtros por referencia/acesso,
+criacao, visualizacao, edicao e exclusao. Nos detalhes de um registro, a aba
+Imagens carrega os vinculos apenas quando aberta. Permite selecionar imagens
+existentes, criar imagens, editar legendas, ordenar e escolher a principal.
+Miniaturas sao carregadas primeiro; o original ou manifest IIIF e aberto sob demanda.
+
+Uma imagem pode pertencer a varios registros. A exclusao de uma imagem vinculada
+retorna conflito; excluir um registro ou instrumento limpa seus vinculos, preservando
+imagens compartilhadas e auditoria. As operacoes de upload, cadastro, alteracao,
+vinculo, desvinculo, ordenacao e exclusao registram o usuario autenticado.
+
+### Armazenamento Local
+
+MinIO e opcional. Para habilitar upload no ambiente de desenvolvimento:
+
+```bash
+docker compose --profile storage up -d --build
+docker compose exec backend python -m app.scripts.init_storage
+docker compose exec backend alembic -c alembic.ini upgrade head
+```
+
+O inicializador cria um bucket privado e idempotente; nao libera acesso publico
+e recusa execucao em producao. MinIO fica em `127.0.0.1:9000` (S3) e
+`127.0.0.1:9001` (console), com credenciais locais padrao
+`thor-minio` / `thor-minio-dev-only`. Altere-as fora de uma maquina isolada.
+O Dockerfile em `deploy/dev/minio/` compila a
+[release oficial fixada](https://github.com/minio/minio/releases/tag/RELEASE.2025-10-15T17-29-55Z);
+esse componente e apenas para desenvolvimento, nao uma recomendacao de deploy
+de uma versao legada em producao.
+
+Para S3 externo, configure `S3_ENDPOINT_URL`, `S3_BUCKET`, `S3_REGION`,
+`S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` e `S3_FORCE_PATH_STYLE`.
+Em OKD, endpoint/bucket ficam no ConfigMap e credenciais no Secret; substitua
+os exemplos antes do rollout. Use bucket privado e credenciais com privilegios
+minimos de leitura, gravacao e exclusao dos objetos da aplicacao.
+Nao ha armazenamento final de uploads no filesystem do pod.
+
+Uploads aceitam JPEG, PNG, TIFF e WebP, por padrao ate 20 MiB
+(`UPLOAD_MAX_BYTES`, `UPLOAD_ALLOWED_MIME_TYPES`). O backend confere
+o conteudo real, calcula SHA-256, dimensoes e miniatura, e rejeita SVG e
+arquivos invalidos. O envio e limitado e processado em memoria.
+
+### Acesso e Indexacao
+
+Nesta fase, alteracao e exclusao sao restritas ao criador da imagem.
+`RESTRITO` exige o criador; `INTERNO` exige sessao; `PUBLICO` permite
+consulta anonima do conteudo. O CRUD de metadados exige autenticacao.
+Nao foi introduzido um sistema paralelo de perfis/RBAC.
+Originais e miniaturas de upload passam pelo endpoint autorizado de conteudo,
+sem expor chaves S3. Respostas privadas usam `Cache-Control: private, no-store`.
+Referencias externas dependem tambem das permissoes e CORS do provedor;
+a aplicacao nao torna privada uma URL publica de terceiros.
+
+O indice deriva `possui_imagens`, `total_imagens` e
+`imagem_principal_thumbnail`, sem binarios ou URLs S3 temporarias.
+A projecao persistida inclui somente imagens publicas; resultados autenticados
+sao enriquecidos com as imagens acessiveis ao usuario. A consulta de resumos
+e feita em lote, evitando uma consulta por registro. Falhas Redis nao desfazem
+o cadastro canonico; reindexe para reparar uma projecao defasada:
+
+```bash
+docker compose exec backend python -m app.scripts.reindexar_instrumentos
+```
+
+### API e Validacao
+
+- `GET/POST /api/v1/imagens`
+- `POST /api/v1/imagens/upload` (multipart)
+- `GET/PUT/DELETE /api/v1/imagens/{id}`
+- `GET /api/v1/imagens/{id}/conteudo?thumbnail=true`
+- `GET/POST /api/v1/instrumentos/{id}/registros/{registro_id}/imagens`
+- `PATCH /api/v1/instrumentos/{id}/registros/{registro_id}/imagens/reordenar`
+- `PATCH/DELETE /api/v1/instrumentos/{id}/registros/{registro_id}/imagens/{imagem_id}`
+
+Testes cobrem validacao, acesso, CRUD, compartilhamento, exclusao bloqueada,
+auditoria, ordenacao, upload, compensacao de falhas e indexacao em lote.
+Execute a suite backend em bancos PostgreSQL/MongoDB exclusivos de testes:
+os testes funcionais limpam dados. Nao aponte a suite para bancos de producao
+ou cadastros que deseja preservar.
+
+O teste de navegador `frontend/tests/e2e/imagens.smoke.cjs` usa a API e S3
+reais; somente o manifest IIIF externo e simulado. Confira os comandos no
+[README frontend](frontend/README.md).
+
+Os builds recentes reportaram alertas de dependencias npm. Eles continuam
+pendentes de revisao; nao foi aplicado `npm audit fix --force`.
 
 ## Licenca
 

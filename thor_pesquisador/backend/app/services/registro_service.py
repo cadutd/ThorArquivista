@@ -91,6 +91,8 @@ def obter_registro(db: Session, instrumento_id: uuid.UUID, registro_id: str, col
 def atualizar_registro(db: Session, instrumento_id: uuid.UUID, registro_id: str, payload: RegistroUpdate, usuario_id: uuid.UUID | None, collection: Collection | None = None) -> RegistroOut:
     _instrumento, campos = _schema(db, instrumento_id)
     _validar(campos, payload.dados)
+    if payload.status == StatusRegistro.EXCLUIDO:
+        db.scalar(select(Instrumento).where(Instrumento.id == instrumento_id).with_for_update())
     now = datetime.now(UTC)
     result = _collection(collection).find_one_and_update(
         {"_id": registro_id, "instrumento_id": str(instrumento_id)},
@@ -107,18 +109,26 @@ def atualizar_registro(db: Session, instrumento_id: uuid.UUID, registro_id: str,
     )
     if not result:
         raise HTTPException(status_code=404, detail="Registro nao encontrado.")
+    if payload.status == StatusRegistro.EXCLUIDO:
+        from app.services.imagem_service import limpar_vinculos
+        limpar_vinculos(db, instrumento_id, registro_id, usuario_id)
+        db.commit()
     enqueue_registro(instrumento_id, registro_id)
     return _to_out(result)
 
 
-def excluir_registro(db: Session, instrumento_id: uuid.UUID, registro_id: str, collection: Collection | None = None) -> None:
+def excluir_registro(db: Session, instrumento_id: uuid.UUID, registro_id: str, collection: Collection | None = None, usuario_id=None) -> None:
     _require_instrumento(db, instrumento_id)
+    db.scalar(select(Instrumento).where(Instrumento.id == instrumento_id).with_for_update())
     result = _collection(collection).update_one(
         {"_id": registro_id, "instrumento_id": str(instrumento_id)},
         {"$set": {"status": StatusRegistro.EXCLUIDO.value, "atualizado_em": datetime.now(UTC)}},
     )
     if result.matched_count == 0:
         raise HTTPException(status_code=404, detail="Registro nao encontrado.")
+    from app.services.imagem_service import limpar_vinculos
+    limpar_vinculos(db, instrumento_id, registro_id, usuario_id)
+    db.commit()
     enqueue_registro(instrumento_id, registro_id, acao="delete")
 
 

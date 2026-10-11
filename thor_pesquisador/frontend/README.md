@@ -42,7 +42,7 @@ Via Docker Compose:
 
 ```bash
 docker compose build frontend
-docker compose up -d frontend
+docker compose up -d
 ```
 
 Teste funcional de contrato, executado localmente como no Thor Gestor:
@@ -73,6 +73,19 @@ O CRUD de instrumentos segue o padrao Thor CRUD Base:
 - formulario reutilizavel com campos obrigatorios, erros de campo e estado `Salvando...`;
 - exclusao com confirmacao explicita antes de chamar a API.
 
+## Busca Simples de Registros
+
+A busca simples na listagem de registros aplica o termo ao enviar pelo botao
+Buscar ou pela tecla Enter. Carregar mais preserva esse termo e o cursor;
+editar o texto sem enviar nao altera os resultados ja pesquisados.
+Enviar o campo vazio restaura a listagem geral. O teste
+`npm run test:e2e:registros-busca` valida esses fluxos com a API real,
+criando e removendo apenas dados proprios; requer login de desenvolvimento.
+
+Campo vazio nao abre filtros: recarrega a listagem. Com apenas um registro,
+a tabela pode continuar igual. O botao mostra o estado de carregamento;
+respostas antigas nao sobrescrevem uma consulta mais recente.
+
 ## Busca Avancada
 
 A rota `/pesquisa` consome:
@@ -87,6 +100,9 @@ Os filtros e ordenacoes sao gerados a partir das propriedades dos campos dinamic
 - `facetavel`
 - `ordenavel`
 
+Essa rota e interna e autenticada. Portal consultivo e workflow editorial
+sao entregas futuras da fase 4; nao foram implementados nesta atualizacao.
+
 ## Configuracao
 
 A URL publica da API e definida por:
@@ -96,10 +112,60 @@ NEXT_PUBLIC_API_BASE_URL
 ```
 
 Em build standalone, o Dockerfile copia `public/` para garantir que imagens e assets estaticos sejam servidos pelo container.
+A URL publica da API e compilada no build; alterar somente a variavel de
+runtime nao substitui o rebuild com o argumento correto.
 
 ## Kubernetes/OKD
 
 O container deve rodar sem root e com UID arbitrario. Ajuste `PUBLIC_APP_URL`, CORS no backend e Route/Ingress conforme o ambiente.
+
+## Imagens (Fase 3)
+
+O menu Imagens abre `/imagens`, com busca, filtros por tipo/acesso e
+paginacao no servidor, acima e abaixo da tabela. Acoes usam icones com
+nomes acessiveis e tooltip. Rotas completas:
+
+- `/imagens/novo`.
+- `/imagens/{id}`.
+- `/imagens/{id}/editar`.
+- `/instrumentos/{id}/registros/{registroId}`: metadados e aba Imagens.
+
+O formulario compartilhado aceita URL, manifest IIIF, repositorio externo
+ou arquivo para upload S3. Metadados adicionais usam JSON. O backend valida
+o MIME real e tamanho; a interface apresenta erros sem descartar o formulario.
+
+A galeria carrega apenas ao abrir a aba Imagens. O seletor de imagens existentes
+usa busca e paginacao da API, sem carregar o acervo inteiro.
+Cada vinculo permite legenda, principal, ordenacao e remocao confirmada.
+Uma imagem pode ser reutilizada entre registros. Imagens maiores e manifests
+IIIF sao buscados apenas ao abrir a previa; binarios IIIF nao sao duplicados.
+Os dialogs usam foco modal nativo e fechamento por Escape.
+
+Miniaturas de upload usam o endpoint autenticado, com cookies da sessao.
+A busca mostra resumo e miniatura disponivel, sem carregar a galeria.
+Permissoes sao aplicadas pelo backend; alterar/excluir exige o criador da imagem.
+IIIF e URLs externas precisam permitir acesso e CORS no provedor.
+
+### Validacao de Navegador
+
+Para contratos, execute `npm run test:functional`. Para o fluxo completo,
+inicie toda a stack com armazenamento privado, conforme o README raiz.
+Com dependencias frontend e Chromium do Playwright disponiveis:
+
+```bash
+cd frontend
+npx playwright install chromium
+npm run test:e2e:imagens
+npm run test:e2e:registros-busca
+```
+
+O script usa `BASE_URL` (padrao localhost:3000) e `API_URL` (padrao
+localhost:8000/api/v1), cria dados proprios e remove-os ao concluir.
+Requer login de desenvolvimento e bucket configurado.
+O teste de registros requer apenas a API ativa, sem bucket ou MinIO.
+Valida API/S3 reais, upload, acesso protegido, edicao, URL/IIIF, legenda,
+capa, ordem, compartilhamento e exclusao bloqueada. Somente o manifest IIIF
+externo e simulado. Capturas desktop/mobile ficam no diretorio temporario do SO.
 
 ## Licenca
 

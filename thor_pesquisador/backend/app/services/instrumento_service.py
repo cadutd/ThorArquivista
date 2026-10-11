@@ -49,11 +49,13 @@ def atualizar_instrumento(db: Session, instrumento_id: uuid.UUID, payload: Instr
     return instrumento
 
 
-def excluir_instrumento(db: Session, instrumento_id: uuid.UUID) -> None:
-    instrumento = db.get(Instrumento, instrumento_id)
+def excluir_instrumento(db: Session, instrumento_id: uuid.UUID, usuario_id=None) -> None:
+    instrumento = db.scalar(select(Instrumento).where(Instrumento.id == instrumento_id).with_for_update())
     if not instrumento:
         raise HTTPException(status_code=404, detail="Instrumento nao encontrado.")
     registros_collection().delete_many({"instrumento_id": str(instrumento_id)})
+    from app.services.imagem_service import limpar_vinculos
+    limpar_vinculos(db, instrumento_id, usuario_id=usuario_id)
     db.delete(instrumento)
     db.commit()
 

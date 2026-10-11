@@ -92,10 +92,10 @@ export function listRegistros(id: string, cursor?: string | null) {
   return request<CursorPage<Registro>>(`/instrumentos/${id}/registros?${search}`);
 }
 
-export function searchRegistros(id: string, q: string) {
+export function searchRegistros(id: string, q: string, cursor?: string | null) {
   return request<CursorPage<Registro>>(`/instrumentos/${id}/buscar`, {
     method: "POST",
-    body: JSON.stringify({ q, page_size: 50 })
+    body: JSON.stringify({ q, page_size: 50, cursor: cursor ?? null })
   });
 }
 

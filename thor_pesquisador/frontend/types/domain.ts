@@ -85,6 +85,9 @@ export type DashboardStats = {
 };
 
 export type BuscaAvancadaItem = {
+  possui_imagens?: boolean;
+  total_imagens?: number;
+  imagem_principal_thumbnail?: string | null;
   id: string;
   instrumento_id: string;
   schema_version: number;

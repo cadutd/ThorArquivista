@@ -9,6 +9,8 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "test:e2e:imagens": "node tests/e2e/imagens.smoke.cjs",
+    "test:e2e:registros-busca": "node tests/e2e/registros-busca.smoke.cjs",
     "test:functional": "node --test tests/functional/*.test.mjs",
     "test:functional:report": "node -e \"require('node:fs').mkdirSync('../test-reports/frontend', { recursive: true })\" && node --test --test-reporter=junit --test-reporter-destination=../test-reports/frontend/junit.xml tests/functional/*.test.mjs"
   },
@@ -19,6 +21,7 @@
     "react-dom": "19.0.1"
   },
   "devDependencies": {
+    "@playwright/test": "1.60.0",
     "@types/node": "22.10.2",
     "@types/react": "19.0.2",
     "@types/react-dom": "19.0.2",

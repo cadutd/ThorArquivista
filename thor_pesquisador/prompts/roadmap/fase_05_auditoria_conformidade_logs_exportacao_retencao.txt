@@ -1,169 +1,116 @@
-Voce e o Codex trabalhando no projeto `thor_pesquisador`.
+Voce e o Codex trabalhando no projeto thor_pesquisador.
 
 Objetivo da fase 5:
-Adicionar auditoria, conformidade, logs de acesso, exportacao de dados, relatorios administrativos e politicas basicas de retencao, mantendo escala para milhoes de registros e operacao em Docker Compose/OKD.
+Ampliar auditoria existente, exportacoes, relatorios, logs consultivos e retencao, preservando historico e direitos de acesso. Nao criar novamente auditoria de imagens, storage ou jobs de indexacao.
 
-Estado atual esperado:
-- Nucleo administrativo, dashboard, gov.br, instrumentos, campos e registros dinamicos ja existem.
-- CRUD de instrumentos segue `thor-crud-base`.
-- MongoDB continua como fonte canonica dos registros dinamicos.
-- PostgreSQL guarda governanca, usuarios, sessoes, permissoes, workflows e auditoria.
-- Meilisearch/Redis/worker ja existem para busca e indexacao.
-- Imagens opcionais e publicacao ja existem.
-- O deploy usa nomes padronizados: `thor_pesquisador_` no Docker Compose e `thor-pesquisador-` no Kubernetes/OKD.
-- A identidade visual deve continuar alinhada ao Thor Gestor.
+Base verificada em 2026-10-11 (nao confundir com entregas futuras):
+- As fases 1, 2 e 3 estao implementadas no checkout local. Nao presumir que todas as alteracoes ja foram commitadas ou enviadas ao remoto.
+- FastAPI, SQLAlchemy, Pydantic, Alembic e PostgreSQL para dados relacionais; instrumento_registros no MongoDB continua como fonte canonica dos registros dinamicos.
+- gov.br/dev-login e sessoes locais ja existem. current_user valida sessao, mas ainda nao existe RBAC geral nem autorizacao por instrumento.
+- StatusInstrumento atual: RASCUNHO, PUBLICADO, ARQUIVADO. StatusRegistro atual: ATIVO, INATIVO, EXCLUIDO. EM_REVISAO e demais estados editoriais de registros ainda nao existem.
+- /dashboard e a pagina inicial autenticada; /pesquisa e busca INTERNA autenticada, nao um portal publico.
+- Meilisearch e projecao derivada; Redis e index_worker processam indexacao e reindexacao com indexacao_jobs, lotes e checkpoint. O worker atual nao e um executor generico de exportacao/publicacao.
+- A listagem de registros usa page_size/next_cursor/has_more. Busca simples envia POST /api/v1/instrumentos/{id}/buscar e preserva termo aplicado e cursor ao carregar mais; Enter submete e termo vazio restaura a listagem. Nao substituir por paginacao local ou perder esse comportamento.
+- CRUD de imagens pronto: UPLOAD, URL, IIIF e REPOSITORIO_EXTERNO; imagens_documento, registro_imagens e auditoria_imagens no PostgreSQL; migration 20261003_000003_imagens.py.
+- Galeria na aba Imagens dos detalhes do registro, carregada sob demanda: miniaturas, previa grande, legenda, principal, ordem, vinculo compartilhado e desvinculo confirmado. Exclusao de imagem vinculada retorna 409.
+- Atualmente PUBLICO permite conteudo anonimo, INTERNO exige sessao, RESTRITO exige criador. Editar/excluir imagem exige criador. Essas regras sao aplicadas no backend e nao representam RBAC completo.
+- Originais e miniaturas de upload usam GET /api/v1/imagens/{id}/conteudo, com thumbnail=true para miniatura e streaming autorizado. ArmazenamentoS3 ja oferece salvar_upload, obter_objeto, obter_url_acesso, remover_objeto e calcular_checksum.
+- Upload valida MIME real, tamanho, dimensoes, SHA-256 e gera miniatura. Nao ha armazenamento final no filesystem do pod.
+- A projecao interna persiste somente resumo de imagens PUBLICO: possui_imagens, total_imagens, imagem_principal_thumbnail. A busca autenticada enriquece a pagina em uma consulta SQL por lote com as imagens acessiveis. Isso NAO torna o indice interno seguro para consulta publica de registros.
+- Auditoria de imagens ja registra criacao, upload, alteracao, vinculo, alteracao de vinculo, desvinculo, ordem e exclusao, com usuario autenticado e historico preservado.
+- Excluir instrumento atualmente remove registros do MongoDB e vinculos SQL; excluir registro e logico. Ambos preservam imagens compartilhadas e auditoria. Publicacao/retencao exigirao evoluir essas regras, nao presumir soft delete geral.
+- Compose usa thor_pesquisador_; Kubernetes/OKD usa thor-pesquisador-. deploy/base e overlays dev, homolog, prod ja existem.
+- MinIO e opcional via perfil storage, com bucket privado inicializado por app.scripts.init_storage apenas em desenvolvimento. Producao deve usar S3 institucional/compativel, nao assumir que o MinIO local e um deploy de producao.
+- Configuracao S3 existente: S3_ENDPOINT_URL, S3_BUCKET, S3_REGION, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_FORCE_PATH_STYLE, S3_URL_EXPIRATION, UPLOAD_MAX_BYTES, UPLOAD_ALLOWED_MIME_TYPES. Secrets/ConfigMaps base ja incluem configuracao S3.
+- AppShell, login_pesquisador.png e app/thor-theme.css ja existem. Preservar paridade visual com o Gestor sem modificar o outro projeto.
+- Testes backend, contratos frontend e e2e imagens.smoke.cjs/registros-busca.smoke.cjs ja existem; reaproveitar e ampliar.
 
-Skills e padroes Thor a considerar:
-- Use `thor-crud-base` para CRUDs de auditoria consultavel, exportacoes, politicas de retencao e relatorios administrativos.
-- Use `thor-lazy-tree` se houver navegacao hierarquica em relatorios, classificacao, estrutura arquivistica ou filtros por arvore.
-- Use `testar-com-docker` para validacao final.
-- Preserve a arquitetura atual de backend: modelos, schemas, servicos, rotas, testes e README.
+Instrucoes comuns:
+- Trabalhar apenas no thor_pesquisador. Ler codigo, migrations, READMEs e git status antes de editar; preservar alteracoes locais e nao usar um hash remoto fixo como fonte de verdade.
+- Reutilizar camadas, componentes, autenticacao, armazenamento, fila e contratos existentes. Nao recriar funcionalidades concluidas.
+- Usar thor-crud-base nas novas superficies CRUD; auditoria/historico sao listagem e detalhe somente leitura, nao CRUD destrutivo.
+- Usar thor-lazy-tree somente se surgir hierarquia real, com filhos sob demanda; nao criar arvore artificial como requisito desta fase.
+- Usar testar-com-docker para validacoes. Nao instalar dependencias no host quando ha fluxo Docker.
+- Nao fazer commit/push nem modificar fases anteriores sem solicitacao explicita.
 
-Arquitetura de dados:
-- Auditoria, exportacoes, usuarios, permissoes e configuracoes de retencao ficam no PostgreSQL.
-- Exportacoes de registros leem MongoDB por cursor e em lotes.
-- Exportacoes de instrumentos com milhoes de registros nao podem carregar tudo em memoria.
-- Arquivos de exportacao devem ir para object storage, nunca para filesystem efemero do pod.
-- Em Kubernetes/OKD, exportacoes e limpezas devem rodar em worker ou CronJob com progresso persistido.
-- Reutilize Redis/worker quando fizer sentido, mas separe filas logicamente por nome/configuracao.
+Dependencia obrigatoria:
+- Concluir/verificar fase 4 antes desta fase: RBAC por escopo, workflow, snapshots/schema publicados, historico editorial, consulta publica e projecao publica separada.
+- Esses itens ainda NAO existem na base verificada acima. Nao registrar publicacao/exportacao como ja implementadas no README atual.
+- Se a fase 4 estiver incompleta, identificar o bloqueio e nao exportar dados como publicos com base apenas em status/visibilidade legados.
 
-Escopo funcional:
-1. Auditoria de eventos de negocio.
-2. Logs de acesso consultivo.
-3. Exportacao de instrumentos e registros.
-4. Relatorios administrativos.
-5. Politicas basicas de retencao e descarte logico.
-6. Painel operacional no dashboard.
-7. Documentacao operacional para workers, CronJobs, object storage e conformidade.
+Arquitetura e auditoria:
+1. Reusar auditoria_imagens e o historico editorial criado na fase 4. Nao emitir dois eventos para a mesma operacao nem substituir IDs, autores e datas dos eventos antigos.
+2. Definir um servico/contrato de auditoria de negocio e consulta unificada; manter tabelas de dominio ou migrar historico de forma explicita, idempotente e verificavel. Escolher a abordagem apos ler a implementacao, nao impor tabela paralela duplicada.
+3. Eventos gerais devem conter id, usuario_id/agente, acao, entidade_tipo/id, instrumento_id, registro_id, versao/operacao relacionada, instante e request_id. antes/depois/detalhe devem ser limitados e higienizados.
+4. Auditar login/logout, instrumentos/campos/registros, workflow, imagens/vinculos/ordem/direitos, permissoes, reindexacao, exportacao e retencao. Integrar os pontos existentes em vez de acrescentar wrappers que dupliquem o mesmo evento.
+5. Historico e append-only: listagem paginada e detalhe somente leitura. Nao disponibilizar editar/excluir eventos por CRUD comum. Retencao de acesso tecnico nao implica descarte de historico editorial/de negocio.
+6. Actor autenticado deve vir da sessao atual. Jobs preservam solicitante e identificam separadamente agente executor/operacao de origem; nao preencher indiscriminadamente com sistema.
+7. Identificadores de historico sobrevivem a exclusao e nao sofrem cascade. Testar migracao e consulta das auditorias antigas de imagem.
+8. Auditoria autoritativa deve ser persistida com a operacao governada ou protocolo recuperavel entre bancos, nunca depender unicamente de Redis.
+9. Criar request_id e logs estruturados compartilhados agora; fase 6 amplia observabilidade, nao reimplementa esse contrato.
+10. Nao registrar tokens, cookies, credenciais S3, CPF puro ou conteudo integral sensivel. Identificadores pessoais pseudonimizados, se realmente necessarios, usam segredo/rotacao e politica documentada; um hash simples de CPF nao garante anonimato. Nao afirmar conformidade legal automatica.
 
-Auditoria:
-Criar modelo `auditoria_eventos` com:
-- id;
-- usuario_id;
-- usuario_cpf_hash;
-- acao;
-- entidade_tipo;
-- entidade_id;
-- instrumento_id;
-- registro_id;
-- antes_json;
-- depois_json;
-- ip;
-- user_agent;
-- request_id;
-- criado_em.
+Exportacoes:
+- Reutilizar ArmazenamentoS3 e variaveis/Secrets existentes. Acrescentar streaming/multipart se necessario; salvar_upload atual recebe bytes e nao e suficiente para um arquivo de milhoes de registros em memoria.
+- Formatos: CSV, JSON incremental com schema/registros e pacote de publicacao com referencias de imagens. Nao duplicar binarios por padrao.
+- Exportacao administrativa le fonte canonica dentro do escopo autorizado; exportacao publica le snapshots publicados e schema publico da fase 4, jamais mistura dados internos/rascunhos.
+- Imagens exportadas como referencias obedecem direitos atuais e escopo. Nao colocar object_key, credenciais ou URLs assinadas temporarias dentro do arquivo persistido.
+- Job PostgreSQL com solicitante, instrumento, formato, escopo/versao de schema, parametros, checkpoint, progresso, resultado no storage, checksum, expiracao, erro sanitizado e timestamps.
+- Estados: PENDENTE, PROCESSANDO, CONCLUIDA, FALHOU; definir matriz de transicoes, repeticao/retentativa e cancelamento/expiracao se suportados. Resultado incompleto nunca e disponivel como concluido.
+- Worker dedicado ou roteamento com filas logicas separadas da indexacao. Nao presumir que app.worker atual processa exportacoes, nem deixar um exportacao longa bloquear index_worker.
+- Processar MongoDB por cursor/lote, nao skip profundo. Filtros indexados, memoria limitada, consultas de vinculos em lote.
+- Definir consistencia da exportacao durante edicoes: snapshots/versao de corte, registro dessa escolha no manifesto; nao prometer snapshot atomico entre SQL/Mongo/S3.
+- Checkpoint e retomada devem evitar linhas duplicadas/ausentes e objetos multipart abandonados; retry idempotente e reconciliacao.
+- Falha de fila nao deve perder job confirmado. Persistir status pendente reenfileiravel e mecanismo de recuperacao.
+- CSV deve escapar estrutura e neutralizar formulas iniciadas por =, +, -, @ em campos textuais; JSON preserva tipos, datas e limites.
+- Download autorizado em cada acesso, reavaliando permissao/revogacao. URL assinada, se escolhida, com validade curta, endpoint publicamente acessivel configurado e limite de revogacao documentado; pode reutilizar streaming mediado.
 
-Eventos auditaveis:
-- login;
-- logout;
-- criacao/alteracao/arquivamento/publicacao de instrumento;
-- criacao/alteracao/reordenacao de campo;
-- criacao/alteracao/publicacao/arquivamento/exclusao logica de registro;
-- upload de imagem;
-- vinculo/desvinculo de imagem;
-- alteracao de permissoes;
-- reindexacao;
-- exportacao de dados;
-- alteracao de retencao.
+API e telas:
+- POST /api/v1/instrumentos/{id}/exportacoes.
+- GET /api/v1/exportacoes e /exportacoes/{id}.
+- GET /api/v1/exportacoes/{id}/download.
+- DELETE /api/v1/exportacoes/{id}: contrato de cancelamento/descarte do artefato, sem apagar historico nem permitir corrida com worker.
+- Endpoints de auditoria somente GET, paginados e filtrados por periodo/acao/usuario/entidade/instrumento.
+- Retencao e configuracoes seguem CRUD completo com paginas completas, campos obrigatorios, ativacao/desativacao, permissoes e confirmacao.
+- Exportacoes: solicitar, listar, acompanhar, baixar, consultar erro e descartar/cancelar conforme estado. Usar componentes CRUD/paginacao existentes, nao recodificar uma segunda tabela com comportamento diferente.
+- Relatorios agregados: instrumentos por estado, registros por instrumento, publicacoes por periodo, alteracoes por usuario autorizado, imagens sem vinculo, falhas de indexacao, exportacoes e jobs.
+- Dashboard amplia jobs/alertas ja existentes sem carregar todo acervo nem calcular contagens com N+1 por instrumento.
+- Auditoria, exportacoes e politicas de retencao possuem permissoes por acao/escopo usando fase 4, sem criar uma segunda autenticacao.
 
-CRUDs e telas administrativas:
-- Auditoria: listagem paginada com filtros por periodo, usuario, acao, entidade e instrumento; detalhe somente leitura.
-- Exportacoes: criar, listar, acompanhar status, baixar resultado e consultar erro.
-- Politicas de retencao: CRUD completo seguindo `thor-crud-base`.
-- Relatorios: telas operacionais densas, com filtros e sem landing page.
+Logs consultivos e retencao:
+- Logs de acesso publicados sao opcionais e configuraveis, minimizados, com retencao propria; nao registrar acesso ao binario/miniatura como publicacao editorial.
+- Politicas separadas para logs tecnicos, acesso consultivo, exportacoes/artefatos expirados, sessoes expiradas e registros EXCLUIDO.
+- Historico editorial/de negocio e snapshots vigentes nao sao eliminados por uma politica generica de logs.
+- Expiracao de uma exportacao bloqueia download e permite limpeza idempotente do objeto, preservando comprovante e evento de auditoria.
+- Descarte definitivo de registro exige autorizacao/politica explicita, verificacao de snapshot/retencao/bloqueio, periodo de seguranca e modo simulacao com relatorio.
+- Coordenar limpeza de registro MongoDB, registro_imagens, projecoes interna/publica e historico sem apagar imagens compartilhadas. Imagem sem vinculo nao e lixo automatico.
+- Nao usar excluir_instrumento atual como implementacao generica de retencao: ele remove fisicamente documentos; aplicar as protecoes editoriais da fase 4.
+- Politicas/execucoes em lotes com checkpoint, exclusao logica quando adequada, lock/lease ou concorrencia controlada, retentativa e auditoria. CronJobs usam concurrencyPolicy e nao sobrepoem limpezas.
+- Nao apagar historico para limpar auditoria de sua propria exclusao.
 
-Logs de acesso consultivo:
-- Registrar acesso a registros publicados quando habilitado por configuracao.
-- Nao armazenar dados sensiveis desnecessarios.
-- Permitir anonimizar ou hashear CPF quando adequado.
-- Aplicar retencao configuravel.
+Docker/OKD:
+- Evoluir manifests/Compose para worker de exportacao e CronJob de retencao, com recursos, secrets, filas e observacao de falhas.
+- Reutilizar storage privado existente; nao criar outro bucket publico ou filesystem final no pod.
+- Documentar preparacao, simulacao, execucao, retries, coleta de logs, cancelamento e recuperacao de jobs. Configuracao de desenvolvimento nao deve chegar a homolog/prod.
 
-Exportacao:
-Criar exportacoes:
-1. CSV de registros de um instrumento.
-2. JSON completo de instrumento com schema e registros.
-3. Pacote de publicacao com metadados, registros e referencias de imagens.
+Testes especificos:
+- Historico de imagens antigo preservado; uma operacao gera um evento por contrato; auditoria sem secrets/CPF puro; leitura autorizada e eventos nao editaveis.
+- Estados de jobs, todas as transicoes, falha de fila/DB/S3, retomada, duplicacao, concorrencia, cancelamento durante execucao e expiracao.
+- CSV/JSON com paginas/lotes, referencias compartilhadas, tipos, escaping/formulas e consistencia durante edicoes.
+- Downloads anonimos, usuario sem escopo, permissao revogada, exportacao expirada/incompleta; ausencia de dados internos e binarios restritos em exportacao publica.
+- Retencao em modo simulacao, bloqueios, periodo limite, snapshots vigentes, historico preservado, imagens compartilhadas e limpeza idempotente.
+- E2e de solicitar/acompanhamento/download e listagem de auditoria; preservar testes anteriores.
 
-Endpoints:
-- `POST /api/v1/instrumentos/{id}/exportacoes`
-- `GET /api/v1/exportacoes`
-- `GET /api/v1/exportacoes/{id}`
-- `GET /api/v1/exportacoes/{id}/download`
-- `DELETE /api/v1/exportacoes/{id}`
+Validacao e entrega:
+- Usar PostgreSQL e MongoDB exclusivos de testes, com DATABASE_URL, MONGODB_DATABASE e INDEXACAO_QUEUE_NAME isolados; migrar esse banco antes de executar python -m pytest app/tests em container.
+- Nao executar testes funcionais que limpam tabelas/colecoes contra os cadastros operacionais. Revisar esse cuidado tambem nos scripts de relatorio.
+- Rodar contratos frontend em container e build Docker de backend/index_worker/frontend quando alterados; incluir novos workers nos builds quando existirem.
+- Reexecutar os e2e existentes pertinentes, com API real. imagens.smoke.cjs requer bucket privado e perfil storage ou S3 externo; registros-busca.smoke.cjs nao requer storage. Usar dados proprios e limpeza controlada, nunca mocks da API como unica prova do fluxo.
+- Quando manifests mudarem, renderizar kubectl kustomize para deploy/base e overlays dev, homolog e prod. Renderizacao nao prova rollout; registrar validacao em cluster separadamente ou declarar que nao foi possivel.
+- Manter a stack completa acessivel apos validacao, nao subir somente frontend com API/bancos parados.
+- Atualizar README raiz/backend/frontend e documentacao operacional afetada. Relatar implementado, pendencias, riscos, comandos e resultados reais; nao declarar fases futuras concluidas.
 
-Worker:
-- Exportacoes grandes devem ser processadas em segundo plano.
-- Exportacoes devem usar streaming ou escrita incremental em objeto.
-- O worker deve gravar progresso por cursor MongoDB/checkpoint.
-- O tamanho do lote deve ser configuravel.
-- Criar filas separadas para indexacao e exportacao ou roteamento equivalente.
-- Para rotinas periodicas de retencao, criar CronJob Kubernetes/OKD.
-- Status: PENDENTE, PROCESSANDO, CONCLUIDA, FALHOU.
-
-Relatorios:
-- total de instrumentos por status;
-- total de registros por instrumento;
-- registros publicados por periodo;
-- registros alterados por usuario;
-- imagens sem vinculo;
-- falhas de indexacao;
-- ultimas exportacoes;
-- jobs pendentes/falhos.
-
-Dashboard:
-Atualizar `/dashboard` para incluir resumo de auditoria recente, exportacoes recentes, jobs falhos, indicadores de retencao e alertas operacionais basicos.
-
-Retencao:
-- Configurar retencao para logs de acesso, exportacoes, sessoes expiradas e registros excluidos logicamente.
-- Limpeza de MongoDB deve ser feita em lotes com filtros indexados.
-- CronJobs devem usar `concurrencyPolicy` adequada.
-- Nunca apagar dados sem registrar auditoria e sem teste cobrindo a regra.
-
-Seguranca:
-- Evitar expor CPF puro em listagens administrativas.
-- Usar hash para identificadores sensiveis em auditoria quando possivel.
-- Exportacoes devem respeitar permissao do solicitante.
-- Registrar auditoria de quem exportou o que.
-- Proteger downloads por sessao, permissao e, quando aplicavel, URL assinada com expiracao.
-- Garantir que dados nao publicados nao entram em exportacao publica.
-
-Frontend:
-1. Manter identidade visual existente.
-2. Criar area "Auditoria" com filtros por periodo, usuario, acao, entidade e instrumento.
-3. Criar area "Exportacoes" no padrao CRUD Thor.
-4. Criar painel de relatorios operacionais.
-5. Criar tela de configuracoes de retencao.
-6. Usar tabelas paginadas no servidor; nao carregar tudo em memoria.
-
-Kubernetes/OKD:
-- Atualizar manifests para worker de exportacao ou filas separadas.
-- Criar CronJob de retencao.
-- Configurar Secrets de object storage se ainda nao existirem.
-- Definir requests/limits e probes quando aplicavel.
-- Documentar comandos `oc` para acompanhar jobs, logs e falhas.
-- Manter convencao de nomes `thor-pesquisador-`.
-
-Testes e validacao:
-- Auditoria para alteracoes relevantes.
-- Permissao para exportacao.
-- Limpeza de exportacoes expiradas.
-- Garantia de que dados nao publicados nao entram em exportacao publica.
-- Execucao de jobs em lote com checkpoint.
-- Teste funcional frontend de contrato para novas areas.
-- Validar com:
-  - `docker compose exec backend python -m pytest app/tests`
-  - `npm.cmd run test:functional` em `frontend`
-  - `docker compose build frontend`
-  - `kubectl kustomize deploy/base`, `deploy/overlays/dev` e `deploy/overlays/prod` quando manifests mudarem.
-
-README:
-Atualizar documentacao com auditoria, exportacoes, politicas de retencao, operacao de workers/CronJobs, conformidade, dados pessoais e comandos Docker/OKD.
-
-Entrega esperada:
-- Auditoria funcional.
-- Exportacao CSV e JSON.
-- Relatorios administrativos.
-- Politicas basicas de retencao.
-- Dashboard operacional ampliado.
-- Manifests Kubernetes/OKD atualizados.
-- READMEs atualizados.
+Criterios de aceite:
+- Auditoria geral integrada ao historico de imagens/editorial sem duplicacoes ou destruicao.
+- Exportacoes seguras, recuperaveis e limitadas em memoria.
+- Retencao controlada e rastreavel, relatorios paginados/agregados e documentacao operacional.

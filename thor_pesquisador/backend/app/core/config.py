@@ -31,6 +31,15 @@ class Settings(BaseSettings):
     meilisearch_url: str = "http://meilisearch:7700"
     meilisearch_api_key: str = "dev-master-key"
     indexacao_batch_size: int = 500
+    s3_endpoint_url: str = ""
+    s3_bucket: str = ""
+    s3_region: str = "us-east-1"
+    s3_access_key_id: str = ""
+    s3_secret_access_key: str = ""
+    s3_force_path_style: bool = True
+    s3_url_expiration: int = Field(default=300, ge=1, le=3600)
+    upload_max_bytes: int = Field(default=20 * 1024 * 1024, ge=1)
+    upload_allowed_mime_types: list[str] = Field(default_factory=lambda: ["image/jpeg", "image/png", "image/tiff", "image/webp"])
 
 
 settings = Settings()

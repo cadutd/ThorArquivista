@@ -1,4 +1,7 @@
 alembic==1.14.0
+boto3==1.43.108
+Pillow==12.3.0
+python-multipart==0.0.22
 fastapi==0.115.6
 httpx==0.28.1
 itsdangerous==2.2.0
