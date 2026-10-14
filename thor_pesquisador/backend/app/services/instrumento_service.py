@@ -12,12 +12,15 @@ from app.models.instrumento import Instrumento, InstrumentoCampo
 from app.schemas.instrumento import InstrumentoCreate, InstrumentoUpdate
 from app.schemas.instrumento_campo import InstrumentoCampoCreate, InstrumentoCampoUpdate
 from app.services.indexacao_service import enqueue_indexacao
+from app.services.permissao_service import require, filtro_escopo
+from app.models.editorial import EventoEditorial, EditorialRegistro
+from app.services.editorial_service import invalidar_publicacao, auditar_edicao, TRANSICOES
 
 
 def listar_instrumentos(db: Session, limit: int, offset: int, q: str | None = None) -> tuple[list[Instrumento], int]:
     safe_limit = min(max(limit, 1), 100)
     safe_offset = max(offset, 0)
-    query = select(Instrumento)
+    query = select(Instrumento).where(filtro_escopo(db, Instrumento.id))
     if q:
         pattern = f"%{q.strip()}%"
         query = query.where(or_(Instrumento.nome.ilike(pattern), Instrumento.descricao.ilike(pattern)))
@@ -27,10 +30,14 @@ def listar_instrumentos(db: Session, limit: int, offset: int, q: str | None = No
 
 
 def obter_instrumento(db: Session, instrumento_id: uuid.UUID) -> Instrumento | None:
+    require(db, "instrumentos_consultar", instrumento_id)
     return db.scalar(select(Instrumento).options(selectinload(Instrumento.campos)).where(Instrumento.id == instrumento_id))
 
 
 def criar_instrumento(db: Session, payload: InstrumentoCreate, usuario_id: uuid.UUID | None) -> Instrumento:
+    require(db, "instrumentos_incluir")
+    if payload.status.value != "RASCUNHO":
+        raise HTTPException(409, "Novos instrumentos devem iniciar como rascunho.")
     instrumento = Instrumento(**payload.model_dump(mode="json"), criado_por=usuario_id)
     db.add(instrumento)
     db.commit()
@@ -39,20 +46,41 @@ def criar_instrumento(db: Session, payload: InstrumentoCreate, usuario_id: uuid.
 
 
 def atualizar_instrumento(db: Session, instrumento_id: uuid.UUID, payload: InstrumentoUpdate) -> Instrumento:
-    instrumento = db.get(Instrumento, instrumento_id)
+    require(db, "instrumentos_editar", instrumento_id)
+    instrumento = db.scalar(select(Instrumento).where(Instrumento.id == instrumento_id).with_for_update())
     if not instrumento:
         raise HTTPException(status_code=404, detail="Instrumento nao encontrado.")
-    for field, value in payload.model_dump(exclude_unset=True, mode="json").items():
+    values = payload.model_dump(exclude_unset=True, mode="json")
+    if instrumento.status == "ARQUIVADO":
+        raise HTTPException(409, "Reabra o instrumento pelo fluxo editorial antes de editar.")
+    expected = values.pop("versao_editorial", None)
+    if expected is not None and expected != instrumento.versao_editorial:
+        raise HTTPException(409, "Versao alterada. Recarregue o instrumento.")
+    if (instrumento.status in {"EM_REVISAO", "APROVADO", "PUBLICADO"} or instrumento.publicacao_id) and expected is None:
+        raise HTTPException(409, "Informe a versao editorial para editar este instrumento.")
+    if "status" in values and values.pop("status") != instrumento.status:
+        raise HTTPException(409, "Use o fluxo editorial para alterar o status.")
+    anterior = instrumento.status
+    instrumento.versao_editorial += 1
+    instrumento.status = "RASCUNHO"
+    invalidar_publicacao(db, instrumento)
+    for field, value in values.items():
         setattr(instrumento, field, value)
+    auditar_edicao(db, instrumento_id, None, "editar", anterior, "RASCUNHO", instrumento.versao_editorial)
     db.commit()
     db.refresh(instrumento)
     return instrumento
 
 
 def excluir_instrumento(db: Session, instrumento_id: uuid.UUID, usuario_id=None) -> None:
+    require(db, "instrumentos_excluir", instrumento_id)
     instrumento = db.scalar(select(Instrumento).where(Instrumento.id == instrumento_id).with_for_update())
     if not instrumento:
         raise HTTPException(status_code=404, detail="Instrumento nao encontrado.")
+    if instrumento.publicacao_id or db.scalar(select(EventoEditorial.id).where(
+            EventoEditorial.instrumento_id == instrumento_id, EventoEditorial.acao.in_(TRANSICOES)).limit(1)):
+        raise HTTPException(409, "Instrumento com historico editorial deve ser arquivado.")
+    db.query(EditorialRegistro).filter(EditorialRegistro.instrumento_id == instrumento_id).delete()
     registros_collection().delete_many({"instrumento_id": str(instrumento_id)})
     from app.services.imagem_service import limpar_vinculos
     limpar_vinculos(db, instrumento_id, usuario_id=usuario_id)
@@ -61,12 +89,13 @@ def excluir_instrumento(db: Session, instrumento_id: uuid.UUID, usuario_id=None)
 
 
 def listar_campos(db: Session, instrumento_id: uuid.UUID) -> list[InstrumentoCampo]:
+    require(db, "campos_consultar", instrumento_id)
     _require_instrumento(db, instrumento_id)
     return list(db.scalars(select(InstrumentoCampo).where(InstrumentoCampo.instrumento_id == instrumento_id).order_by(InstrumentoCampo.ordem.asc())))
 
 
 def criar_campo(db: Session, instrumento_id: uuid.UUID, payload: InstrumentoCampoCreate) -> InstrumentoCampo:
-    _require_instrumento(db, instrumento_id)
+    _editar_schema(db, instrumento_id, "campos_incluir")
     campo = InstrumentoCampo(instrumento_id=instrumento_id, **payload.model_dump(mode="json"))
     db.add(campo)
     try:
@@ -80,6 +109,7 @@ def criar_campo(db: Session, instrumento_id: uuid.UUID, payload: InstrumentoCamp
 
 
 def atualizar_campo(db: Session, instrumento_id: uuid.UUID, campo_id: uuid.UUID, payload: InstrumentoCampoUpdate) -> InstrumentoCampo:
+    _editar_schema(db, instrumento_id, "campos_editar")
     campo = db.scalar(select(InstrumentoCampo).where(InstrumentoCampo.id == campo_id, InstrumentoCampo.instrumento_id == instrumento_id))
     if not campo:
         raise HTTPException(status_code=404, detail="Campo nao encontrado.")
@@ -96,12 +126,27 @@ def atualizar_campo(db: Session, instrumento_id: uuid.UUID, campo_id: uuid.UUID,
 
 
 def excluir_campo(db: Session, instrumento_id: uuid.UUID, campo_id: uuid.UUID) -> None:
+    _editar_schema(db, instrumento_id, "campos_excluir")
     campo = db.scalar(select(InstrumentoCampo).where(InstrumentoCampo.id == campo_id, InstrumentoCampo.instrumento_id == instrumento_id))
     if not campo:
         raise HTTPException(status_code=404, detail="Campo nao encontrado.")
     db.delete(campo)
     db.commit()
     enqueue_indexacao({"tipo": "schema", "instrumento_id": str(instrumento_id)})
+
+
+def _editar_schema(db, instrumento_id, acao):
+    require(db, acao, instrumento_id)
+    instrumento = db.scalar(select(Instrumento).where(Instrumento.id == instrumento_id).with_for_update())
+    if not instrumento:
+        raise HTTPException(404, "Instrumento nao encontrado.")
+    anterior = instrumento.status
+    instrumento.status = "RASCUNHO"
+    instrumento.versao_editorial += 1
+    instrumento.schema_version += 1
+    invalidar_publicacao(db, instrumento)
+    auditar_edicao(db, instrumento_id, None, "editar_schema", anterior, "RASCUNHO", instrumento.versao_editorial)
+    return instrumento
 
 
 def _require_instrumento(db: Session, instrumento_id: uuid.UUID) -> Instrumento:

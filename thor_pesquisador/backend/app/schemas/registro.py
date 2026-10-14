@@ -18,10 +18,13 @@ class RegistroCreate(RegistroBase):
 
 
 class RegistroUpdate(RegistroBase):
-    pass
+    versao: int | None = Field(default=None, ge=1)
 
 
 class RegistroOut(RegistroBase):
+    status_editorial: str = "RASCUNHO"
+    versao: int = 1
+    versao_publicada: int | None = None
     id: str
     instrumento_id: str
     schema_version: int

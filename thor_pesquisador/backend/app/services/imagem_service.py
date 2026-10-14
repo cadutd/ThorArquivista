@@ -1,19 +1,24 @@
 from __future__ import annotations
 
 import uuid
-from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy import delete, exists, func, or_, select, update
 from fastapi import HTTPException
 from pydantic import ValidationError
 
 from app.models.imagem import AuditoriaImagem, ImagemDocumento, RegistroImagem
 from app.models.instrumento import Instrumento
+from app.models.editorial import PublicacaoImagem
 from app.schemas.imagem import ImagemCreate, ImagemOut, TipoReferencia
 from app.services.armazenamento_service import armazenamento, validar_imagem
 from app.services.indexacao_service import enqueue_registro
 from app.services.registro_service import obter_registro
+from app.services.permissao_service import require, require_imagens
+from app.services.permissao_service import filtro_escopo, permissoes
 
 
-def visiveis(usuario):
+def visiveis(usuario, db=None):
+    if db is not None and "*" in permissoes(db, usuario=usuario):
+        return True
     return or_(ImagemDocumento.direitos_acesso != "RESTRITO", ImagemDocumento.criado_por == usuario.id)
 
 
@@ -26,8 +31,14 @@ def obter(db, imagem_id, usuario, editar=False, lock=False):
         raise HTTPException(404, "Imagem nao encontrada.")
     if (editar or imagem.direitos_acesso != "PUBLICO") and not usuario:
         raise HTTPException(401, "Autenticacao requerida.")
-    if usuario and ((imagem.direitos_acesso == "RESTRITO" or editar) and imagem.criado_por != usuario.id):
+    if usuario and ((imagem.direitos_acesso == "RESTRITO" or editar) and imagem.criado_por != usuario.id) and "*" not in permissoes(db, usuario=usuario):
         raise HTTPException(403, "Sem permissao para esta imagem.")
+    if usuario and not editar and imagem.direitos_acesso != "PUBLICO" and imagem.criado_por != usuario.id:
+        db.info["usuario"] = usuario
+        accessible = db.scalar(select(RegistroImagem.imagem_id).where(RegistroImagem.imagem_id == imagem_id,
+            filtro_escopo(db, RegistroImagem.instrumento_id, "imagens_consultar")).limit(1))
+        if not accessible and "imagens_consultar" not in permissoes(db) and "*" not in permissoes(db):
+            raise HTTPException(403, "Sem permissao para esta imagem.")
     return imagem
 
 
@@ -42,7 +53,12 @@ def saida(imagem):
 
 
 def listar(db, usuario, limit, offset, q=None, tipo=None, direitos=None):
-    query = select(ImagemDocumento).where(visiveis(usuario))
+    require_imagens(db, usuario, "imagens_consultar")
+    scoped = exists(select(RegistroImagem.imagem_id).where(RegistroImagem.imagem_id == ImagemDocumento.id,
+        filtro_escopo(db, RegistroImagem.instrumento_id, "imagens_consultar")))
+    query = select(ImagemDocumento).where(visiveis(usuario, db),
+        or_(ImagemDocumento.direitos_acesso == "PUBLICO", ImagemDocumento.criado_por == usuario.id, scoped)
+        if "*" not in permissoes(db) and "imagens_consultar" not in permissoes(db) else True)
     if q:
         query = query.where(or_(ImagemDocumento.titulo.ilike(f"%{q.strip()}%"), ImagemDocumento.descricao.ilike(f"%{q.strip()}%")))
     if tipo:
@@ -55,11 +71,20 @@ def listar(db, usuario, limit, offset, q=None, tipo=None, direitos=None):
 
 
 def auditar(db, acao, usuario_id, imagem_id=None, instrumento_id=None, registro_id=None, **detalhe):
+    if acao in {"VINCULO", "ATUALIZACAO_VINCULO", "REORDENACAO", "DESVINCULO"}:
+        from app.db.mongo import registros_collection
+        from app.services.editorial_service import controle
+        doc = registros_collection().find_one({"_id": registro_id, "instrumento_id": str(instrumento_id)})
+        row = controle(db, instrumento_id, registro_id, doc)
+        row.versao = doc.get("_revision", 1) + 1
+        registros_collection().update_one({"_id": registro_id, "instrumento_id": str(instrumento_id)},
+                                         {"$set": {"_revision": row.versao}})
     db.add(AuditoriaImagem(acao=acao, usuario_id=usuario_id, imagem_id=imagem_id,
                            instrumento_id=instrumento_id, registro_id=registro_id, detalhe=detalhe))
 
 
 def criar(db, payload, usuario):
+    require_imagens(db, usuario, "imagens_incluir")
     imagem = ImagemDocumento(**payload.model_dump(mode="json"), criado_por=usuario.id)
     db.add(imagem)
     db.flush()
@@ -70,6 +95,7 @@ def criar(db, payload, usuario):
 
 
 def upload(db, titulo, direitos, descricao, conteudo, mime_type, usuario, metadados=None):
+    require_imagens(db, usuario, "imagens_incluir")
     largura, altura, thumbnail = validar_imagem(conteudo, mime_type)
     imagem_id = uuid.uuid4()
     key, thumb_key = f"imagens/{imagem_id}/original", f"imagens/{imagem_id}/thumbnail.jpg"
@@ -112,6 +138,7 @@ def notificar(vinculos):
 
 
 def atualizar(db, imagem_id, payload, usuario):
+    require_imagens(db, usuario, "imagens_editar")
     imagem = obter(db, imagem_id, usuario, editar=True, lock=True)
     data = payload.model_dump(mode="json")
     if not imagem.object_key:
@@ -126,6 +153,11 @@ def atualizar(db, imagem_id, payload, usuario):
     for field, value in data.items():
         setattr(imagem, field, value)
     links = vinculados(db, imagem_id)
+    from app.services.editorial_service import invalidar_publicacao
+    historical = select(PublicacaoImagem.instrumento_id).where(PublicacaoImagem.imagem_id == imagem_id)
+    for instrumento in db.scalars(select(Instrumento).where(or_(
+        Instrumento.id.in_({v.instrumento_id for v in links}), Instrumento.id.in_(historical))).order_by(Instrumento.id).with_for_update()):
+        invalidar_publicacao(db, instrumento)
     auditar(db, "ATUALIZACAO", usuario.id, imagem_id, direitos=imagem.direitos_acesso)
     db.commit()
     db.refresh(imagem)
@@ -134,9 +166,13 @@ def atualizar(db, imagem_id, payload, usuario):
 
 
 def excluir(db, imagem_id, usuario):
+    require_imagens(db, usuario, "imagens_excluir")
     imagem = obter(db, imagem_id, usuario, editar=True, lock=True)
     if vinculados(db, imagem_id):
         raise HTTPException(409, "Imagem vinculada a registros. Remova os vinculos antes de excluir.")
+    from app.db.mongo import snapshots_collection
+    if snapshots_collection().find_one({"imagens.imagem_id": str(imagem_id)}, {"_id": 1}):
+        raise HTTPException(409, "Imagem pertence ao historico publicado e nao pode ser excluida.")
     if imagem.object_key:
         armazenamento.remover_objeto(imagem.object_key)
         if imagem.thumbnail_key:
@@ -146,19 +182,28 @@ def excluir(db, imagem_id, usuario):
     db.commit()
 
 
-def registro(db, instrumento_id, registro_id, lock=False):
+def registro(db, instrumento_id, registro_id, lock=False, acao="galerias_consultar"):
+    require(db, acao, instrumento_id)
     if lock:
         db.scalar(select(Instrumento).where(Instrumento.id == instrumento_id).with_for_update())
-    result = obter_registro(db, instrumento_id, registro_id)
+    result = obter_registro(db, instrumento_id, registro_id, consultar=False)
     if result.status == "EXCLUIDO":
         raise HTTPException(404, "Registro excluido.")
+    if lock:
+        # Gallery edits cannot silently change content already sent for approval.
+        from app.db.mongo import registros_collection
+        from app.services.editorial_service import controle
+        doc = registros_collection().find_one({"_id": registro_id, "instrumento_id": str(instrumento_id)})
+        row = controle(db, instrumento_id, registro_id, doc)
+        if row.status_editorial != "RASCUNHO":
+            raise HTTPException(409, "Crie um rascunho do registro antes de alterar a galeria.")
     return result
 
 
 def listar_vinculos(db, instrumento_id, registro_id, usuario, limit, offset):
     registro(db, instrumento_id, registro_id)
     query = select(RegistroImagem, ImagemDocumento).join(ImagemDocumento).where(
-        RegistroImagem.instrumento_id == instrumento_id, RegistroImagem.registro_id == registro_id, visiveis(usuario))
+        RegistroImagem.instrumento_id == instrumento_id, RegistroImagem.registro_id == registro_id, visiveis(usuario, db))
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
     rows = db.execute(query.order_by(RegistroImagem.ordem, RegistroImagem.imagem_id).limit(limit).offset(offset))
     return {"items": [vinculo_saida(v, i) for v, i in rows], "total": total, "limit": limit, "offset": offset}
@@ -170,7 +215,7 @@ def vinculo_saida(v, imagem):
 
 
 def vincular(db, instrumento_id, registro_id, payload, usuario):
-    registro(db, instrumento_id, registro_id, lock=True)
+    registro(db, instrumento_id, registro_id, lock=True, acao="galerias_incluir")
     imagem = obter(db, payload.imagem_id, usuario, lock=True)
     key = (instrumento_id, registro_id, payload.imagem_id)
     if db.get(RegistroImagem, key):
@@ -194,7 +239,7 @@ def limpar_principal(db, instrumento_id, registro_id):
 
 
 def editar_vinculo(db, instrumento_id, registro_id, imagem_id, payload, usuario):
-    registro(db, instrumento_id, registro_id, lock=True)
+    registro(db, instrumento_id, registro_id, lock=True, acao="galerias_editar")
     imagem = obter(db, imagem_id, usuario)
     v = db.get(RegistroImagem, (instrumento_id, registro_id, imagem_id))
     if not v:
@@ -212,7 +257,7 @@ def editar_vinculo(db, instrumento_id, registro_id, imagem_id, payload, usuario)
 
 
 def reordenar(db, instrumento_id, registro_id, payload, usuario):
-    registro(db, instrumento_id, registro_id, lock=True)
+    registro(db, instrumento_id, registro_id, lock=True, acao="galerias_editar")
     ids = [i.imagem_id for i in payload.items]
     ordens = [i.ordem for i in payload.items]
     if len(set(ids)) != len(ids) or len(set(ordens)) != len(ordens):
@@ -235,7 +280,7 @@ def reordenar(db, instrumento_id, registro_id, payload, usuario):
 
 
 def desvincular(db, instrumento_id, registro_id, imagem_id, usuario):
-    registro(db, instrumento_id, registro_id, lock=True)
+    registro(db, instrumento_id, registro_id, lock=True, acao="galerias_excluir")
     obter(db, imagem_id, usuario)
     v = db.get(RegistroImagem, (instrumento_id, registro_id, imagem_id))
     if not v:
@@ -260,7 +305,7 @@ def resumos(db, instrumento_id, registro_ids, usuario=None):
     # One SQL query per MongoDB batch; restricted images never enter the search projection.
     query = select(RegistroImagem, ImagemDocumento).join(ImagemDocumento).where(
         RegistroImagem.instrumento_id == instrumento_id, RegistroImagem.registro_id.in_(registro_ids),
-        visiveis(usuario) if usuario else ImagemDocumento.direitos_acesso == "PUBLICO").order_by(RegistroImagem.principal.desc(), RegistroImagem.ordem, RegistroImagem.imagem_id)
+        visiveis(usuario, db) if usuario else ImagemDocumento.direitos_acesso == "PUBLICO").order_by(RegistroImagem.principal.desc(), RegistroImagem.ordem, RegistroImagem.imagem_id)
     result = {}
     for v, i in db.execute(query):
         resumo = result.setdefault(v.registro_id, {"possui_imagens": True, "total_imagens": 0, "imagem_principal_thumbnail":

@@ -14,6 +14,8 @@ class TipoInstrumento(StrEnum):
 
 class StatusInstrumento(StrEnum):
     RASCUNHO = "RASCUNHO"
+    EM_REVISAO = "EM_REVISAO"
+    APROVADO = "APROVADO"
     PUBLICADO = "PUBLICADO"
     ARQUIVADO = "ARQUIVADO"
 
@@ -42,6 +44,7 @@ class StatusRegistro(StrEnum):
 
 
 class TipoIndexacaoJob(StrEnum):
+    PUBLICACAO = "PUBLICACAO"
     REGISTRO = "REGISTRO"
     REINDEXACAO = "REINDEXACAO"
     SCHEMA = "SCHEMA"

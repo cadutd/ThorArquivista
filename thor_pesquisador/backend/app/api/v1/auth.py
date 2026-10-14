@@ -1,4 +1,5 @@
 from __future__ import annotations
+import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import RedirectResponse
@@ -16,7 +17,7 @@ from app.services.auth_service import (
     delete_session,
     exchange_code_for_claims,
     random_urlsafe,
-    upsert_usuario_from_claims,
+    usuario_from_claims,
 )
 
 router = APIRouter()
@@ -45,9 +46,12 @@ async def govbr_callback(
     if not expected_state or expected_state != state or not verifier:
         raise HTTPException(status_code=400, detail="Estado de autenticacao invalido.")
     claims = await exchange_code_for_claims(code, verifier)
-    usuario = upsert_usuario_from_claims(db, claims)
+    expected_nonce = request.cookies.get("thor_auth_nonce")
+    if not expected_nonce or not isinstance(claims.get("nonce"), str) or not secrets.compare_digest(expected_nonce, claims["nonce"]):
+        raise HTTPException(401, "Nonce de autenticacao invalido.")
+    usuario = usuario_from_claims(db, claims)
     raw_session = create_session(db, usuario)
-    response = RedirectResponse(f"{settings.public_app_url}/instrumentos")
+    response = RedirectResponse(f"{settings.public_app_url}/dashboard")
     _set_session_cookie(response, raw_session)
     response.delete_cookie("thor_auth_state")
     response.delete_cookie("thor_auth_nonce")
@@ -57,7 +61,7 @@ async def govbr_callback(
 
 @router.post("/dev-login", response_model=UsuarioOut)
 def dev_login(response: Response, db: Session = Depends(db_dep)) -> UsuarioOut:
-    if not settings.govbr_dev_login:
+    if not settings.govbr_dev_login or settings.app_env not in {"dev", "test"}:
         raise HTTPException(status_code=404, detail="Login de desenvolvimento desabilitado.")
     raw_session = create_dev_user_session(db)
     _set_session_cookie(response, raw_session)

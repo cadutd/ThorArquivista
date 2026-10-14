@@ -100,8 +100,8 @@ Os filtros e ordenacoes sao gerados a partir das propriedades dos campos dinamic
 - `facetavel`
 - `ordenavel`
 
-Essa rota e interna e autenticada. Portal consultivo e workflow editorial
-sao entregas futuras da fase 4; nao foram implementados nesta atualizacao.
+Essa rota permanece interna, autenticada e autorizada por escopo. A fase 4
+acrescenta `/consulta` como superficie publica separada, sem comandos administrativos.
 
 ## Configuracao
 
@@ -143,13 +143,14 @@ Os dialogs usam foco modal nativo e fechamento por Escape.
 
 Miniaturas de upload usam o endpoint autenticado, com cookies da sessao.
 A busca mostra resumo e miniatura disponivel, sem carregar a galeria.
-Permissoes sao aplicadas pelo backend; alterar/excluir exige o criador da imagem.
+Permissoes sao aplicadas pelo backend; alterar/excluir exige permissao explicita
+e autoria, salvo ADMIN. Vinculos tambem respeitam o estado editorial do registro.
 IIIF e URLs externas precisam permitir acesso e CORS no provedor.
 
 ### Validacao de Navegador
 
-Para contratos, execute `npm run test:functional`. Para o fluxo completo,
-inicie toda a stack com armazenamento privado, conforme o README raiz.
+Para contratos, execute `npm run test:functional` em container. Para o fluxo completo,
+inicie `docker-compose.test.yml` com perfil `e2e` e armazenamento privado.
 Com dependencias frontend e Chromium do Playwright disponiveis:
 
 ```bash
@@ -161,11 +162,94 @@ npm run test:e2e:registros-busca
 
 O script usa `BASE_URL` (padrao localhost:3000) e `API_URL` (padrao
 localhost:8000/api/v1), cria dados proprios e remove-os ao concluir.
-Requer login de desenvolvimento e bucket configurado.
+Defina BASE_URL=http://localhost:3001 e API_URL=http://localhost:8001/api/v1
+para usar exclusivamente a stack isolada. Requer login local e bucket configurado.
 O teste de registros requer apenas a API ativa, sem bucket ou MinIO.
 Valida API/S3 reais, upload, acesso protegido, edicao, URL/IIIF, legenda,
 capa, ordem, compartilhamento e exclusao bloqueada. Somente o manifest IIIF
 externo e simulado. Capturas desktop/mobile ficam no diretorio temporario do SO.
+
+## Editorial, Acessos e Consulta (Fase 4)
+
+- `/revisao`: fila paginada por escopo.
+- `/acessos`: CRUD autorizado por operacao de papeis globais ou por instrumento, com seletores
+  pesquisaveis, paginas completas e acoes com tooltips.
+- Detalhes de instrumento/registro: estado, comandos editoriais, justificativa,
+  historico paginado e versoes publicadas consultadas sob demanda.
+- `/instrumentos/{id}/registros/{registroId}/editar`: formulario compartilhado;
+  editar uma publicacao cria rascunho e preserva o snapshot vigente.
+- `/consulta`: catalogo paginado, busca anonima, filtros e detalhes do snapshot.
+  A galeria reutiliza RegistroImagens e MediaPreview, sem botoes de alteracao.
+
+O PermissionProvider carrega permissoes globais/por escopo; botoes respeitam
+estado e permissao, mas a autorizacao efetiva permanece no backend.
+Dashboard continua sendo a primeira tela autenticada, com pendencias e
+publicacoes recentes agregadas no PostgreSQL.
+
+Para e2e, use exclusivamente a stack `docker-compose.test.yml` com perfil
+`e2e`, frontend 3001 e API 8001. O fluxo editorial exige `THOR_E2E_ISOLATED=true`.
+Com Chromium e Playwright ja disponiveis:
+
+```bash
+BASE_URL=http://localhost:3001 API_URL=http://localhost:8001/api/v1 THOR_E2E_ISOLATED=true node tests/e2e/editorial.smoke.cjs
+BASE_URL=http://localhost:3001 API_URL=http://localhost:8001/api/v1 npm run test:e2e:registros-busca
+BASE_URL=http://localhost:3001 API_URL=http://localhost:8001/api/v1 npm run test:e2e:imagens
+```
+
+[Operacao da fase 4](../docs/fase_04_operacao.md) descreve inicializacao,
+isolamento de testes, matriz de acesso e limitacoes operacionais.
+
+## Administracao
+
+Menu agrupado como no Gestor, sem Eventos ou Administracao Geral:
+`/usuarios`, `/perfis`, `/permissoes` e `/acessos`. O menu tem acesso pelo cabecalho
+no celular. Usuarios possuem visualizacao em popup (nome e icone Visualizar),
+criacao em `/usuarios/novo` e edicao em `/usuarios/{id}/editar`.
+O formulario inclui nome, usuario, CPF, e-mail, perfil, ativo e observacoes;
+concessoes adicionais por instrumento usam a pagina propria
+`/usuarios/{id}/acessos`, acessada por Perfis e escopos. A edicao contem somente
+o formulario, sem busca, tabela ou paginacao de concessoes abaixo.
+O popup usa duas colunas, campos com borda, observacoes separadas e acoes
+alinhadas a direita; a edicao usa formulario de duas colunas como no Gestor.
+Exclusao confirmada ocorre no popup e preserva o historico no backend. Perfis usam
+formulario compartilhado com permissoes por checkbox e situacao.
+Perfis usam popup no mesmo padrao dos usuarios: campos com borda, descricao
+separada, permissoes associadas e acoes a direita. Criacao e edicao usam
+paginas proprias com formulario de duas colunas, sem a busca abaixo.
+ADMIN e protegido; a indicacao de perfil de sistema permanece somente leitura.
+Permissoes possuem catalogo pesquisavel e popup no mesmo padrao visual,
+somente leitura: nao ha inclusao, edicao, exclusao ou botoes dessas acoes.
+Listagens usam filtros recolhidos, paginacao dupla e acoes com tooltips.
+
+`administracao.smoke.cjs` valida o modulo com API real na stack isolada.
+`usuarios.smoke.cjs` valida cadastro, CPF invalido, popup, edicao em pagina
+propria, desativacao, reativacao e exclusao em desktop/mobile.
+`perfis-permissoes.smoke.cjs` valida CRUD de perfis, ADMIN protegido,
+popups desktop/mobile e ausencia de mutacoes no catalogo de permissoes.
+Consulte [Administracao](../docs/administracao_acessos.md).
+
+As listagens usam links azuis na primeira coluna. A barra paginada reproduz
+Unidades de Acondicionamento do Gestor: contagem, Primeira/Anterior, paginas
+numeradas com destaque da atual e reticencias, Proxima/Ultima e seletor ao final.
+Instrumentos, administracao, imagens e galerias reutilizam CrudPagination.
+Registros dinamicos preservam pagina por cursor e Carregar mais filtrado.
+
+## Permissoes por Operacao
+
+Os oito CRUDs (instrumentos, campos, registros, imagens, galerias, usuarios,
+perfis e concessoes) usam codigos independentes para Consultar, Incluir,
+Editar e Excluir, inclusive na administracao. Menus e botoes respeitam esses
+codigos; a autorizacao efetiva permanece no backend, com escopos por instrumento
+e protecao contra escalada de privilegios na delegacao administrativa.
+
+A migration `20261013_000009` preserva os perfis e acessos atuais e substitui
+os agrupamentos antigos por permissoes granulares. O catalogo de Permissoes
+permanece somente leitura. Consulte a matriz e as regras de rollback em
+[Administracao de Acessos](../docs/administracao_acessos.md).
+
+Validacao: 165 testes backend e 35 contratos frontend, executados no Docker
+isolado. O teste `frontend/tests/e2e/permissoes-crud.smoke.cjs` cobre a
+interface com usuario nao administrador e verificacoes desktop/mobile.
 
 ## Licenca
 

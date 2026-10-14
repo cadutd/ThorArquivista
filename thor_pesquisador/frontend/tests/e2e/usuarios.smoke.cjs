@@ -1,0 +1,143 @@
+const assert = require("node:assert/strict");
+const path = require("node:path");
+const os = require("node:os");
+const {chromium} = require(process.env.PLAYWRIGHT_MODULE || "@playwright/test");
+const base = process.env.BASE_URL, api = process.env.API_URL;
+assert.ok(base && api && process.env.THOR_E2E_ISOLATED === "true", "Use exclusivamente a stack isolada.");
+function cpfTeste() {
+  let cpf = String(Math.floor(Math.random() * 1000000000)).padStart(9,"0");
+  for(const length of [9,10]) {
+    let sum = 0;
+    for(let i=0;i<length;i++) sum += Number(cpf[i]) * (length + 1 - i);
+    const digit = sum * 10 % 11;
+    cpf += String(digit === 10 ? 0 : digit);
+  }
+  return cpf;
+}
+(async () => {
+  const browser = await chromium.launch({headless:true});
+  const context = await browser.newContext({viewport:{width:1440,height:900}});
+  const page = await context.newPage();
+  const errors = [];
+  page.on("pageerror",e => errors.push(e.message));
+  const username = "e2e_usuario_" + Date.now();
+  let user;
+  async function json(response) {assert.ok(response.ok(),await response.text());return response.json();}
+  async function search() {
+    await page.getByLabel("Busca simples",{exact:true}).fill(username);
+    const result = page.waitForResponse(r => r.url().includes("/usuarios?") && r.url().includes("q=" + username));
+    await page.getByLabel("Busca simples",{exact:true}).press("Enter");
+    await json(await result);
+    await page.getByRole("row").filter({hasText:username}).waitFor();
+  }
+  try {
+    await page.goto(base + "/login");
+    await page.getByRole("button",{name:"Entrar em desenvolvimento"}).click();
+    await page.waitForURL("**/dashboard");
+    await page.goto(base + "/usuarios");
+    await page.getByRole("link",{name:"Novo usuario",exact:true}).click();
+    await page.getByLabel("Nome *",{exact:true}).fill("Usuario cadastrado pelo navegador");
+    await page.getByLabel("Usuario *",{exact:true}).fill(username);
+    await page.getByLabel("E-mail *",{exact:true}).fill(username + "@example.org");
+    await page.getByLabel("CPF *",{exact:true}).fill("00000000000");
+    await page.getByLabel(/^Perfil/).selectOption("CONSULTA_INTERNA");
+    await page.getByLabel("Observacoes",{exact:true}).fill("Nota administrativa\nSegunda linha");
+    const invalid = page.waitForResponse(r => r.url() === api + "/usuarios" && r.request().method() === "POST");
+    await page.getByRole("button",{name:"Salvar usuario",exact:true}).click();
+    assert.equal((await invalid).status(),422);
+    await page.getByRole("alert").filter({hasText:"CPF invalido"}).waitFor();
+    assert.equal(await page.getByLabel("CPF *",{exact:true}).getAttribute("aria-invalid"),"true");
+    await page.getByLabel("CPF *",{exact:true}).fill(cpfTeste());
+    const created = page.waitForResponse(r => r.url() === api + "/usuarios" && r.request().method() === "POST");
+    await page.getByRole("button",{name:"Salvar usuario",exact:true}).click();
+    user = await json(await created);
+    await page.waitForURL("**/usuarios");
+    await search();
+    const row = page.getByRole("row").filter({hasText:username});
+    const link = row.locator(".crud-record-link");
+    const color = await link.evaluate(el => getComputedStyle(el).color);
+    const channels = color.match(/\d+/g).map(Number);
+    assert.ok(channels[2] > channels[0] && channels[2] > channels[1],color);
+    const listUrl = page.url();
+    await link.click();
+    const popup = page.getByRole("dialog",{name:"Visualizar usuario",exact:true});
+    await popup.getByText(user.cpf,{exact:true}).waitFor();
+    assert.ok((await popup.boundingBox()).width <= 768);
+    assert.equal(await popup.locator(".usuario-details").evaluate(el => getComputedStyle(el).gridTemplateColumns.split(" ").length),2);
+    assert.equal(await popup.locator(".detail-item").first().evaluate(el => getComputedStyle(el).borderTopStyle),"solid");
+    assert.equal(await popup.locator("dt").first().evaluate(el => getComputedStyle(el).textTransform),"uppercase");
+    assert.equal(await popup.locator(".usuario-popup-actions").evaluate(el => getComputedStyle(el).justifyContent),"flex-end");
+    const destructive = await popup.getByRole("button",{name:"Excluir",exact:true}).evaluate(el => getComputedStyle(el).backgroundColor);
+    const deleteChannels = destructive.match(/\d+/g).map(Number);
+    assert.ok(deleteChannels[0] > deleteChannels[1] && deleteChannels[0] > deleteChannels[2],destructive);
+    assert.equal(page.url(),listUrl);
+    assert.ok((await popup.innerText()).includes("Nota administrativa"));
+    await page.screenshot({path:path.join(os.tmpdir(),"thor-usuarios-popup-desktop.png")});
+    await page.mouse.click(16,16);
+    await popup.waitFor({state:"hidden"});
+    await row.getByRole("button",{name:"Visualizar",exact:true}).click();
+    await popup.waitFor();
+    await page.keyboard.press("Escape");
+    await row.getByRole("button",{name:"Visualizar",exact:true}).click();
+    await popup.getByRole("link",{name:"Editar",exact:true}).click();
+    await page.waitForURL("**/usuarios/" + user.id + "/editar");
+    await page.getByRole("heading",{name:"Editar usuario",exact:true}).waitFor();
+    assert.equal(await page.getByRole("heading",{name:"Editar usuario",exact:true}).evaluate(el => getComputedStyle(el).fontSize),"24px");
+    assert.equal(await page.getByRole("dialog").count(),0);
+    assert.equal(await page.getByRole("table").count(),0);
+    assert.equal(await page.locator(".crud-search-form").count(),0);
+    assert.equal(await page.locator(".crud-pagination").count(),0);
+    assert.equal(await page.getByRole("textbox",{name:"Buscar perfil",exact:true}).count(),0);
+    while(await page.locator('select[name="perfil_codigo"] option[value="REVISOR"]').count() === 0) {
+      const count = await page.locator('select[name="perfil_codigo"] option').count();
+      await page.getByRole("button",{name:"Mais perfis",exact:true}).click();
+      await page.waitForFunction(previous => document.querySelectorAll('select[name="perfil_codigo"] option').length > previous,count);
+    }
+    await page.getByLabel(/^Perfil/).selectOption("REVISOR");
+    assert.equal(await page.locator(".usuario-form-grid").evaluate(el => getComputedStyle(el).gridTemplateColumns.split(" ").length),2);
+    await page.screenshot({path:path.join(os.tmpdir(),"thor-usuarios-editar-desktop.png")});
+    await page.getByLabel("Nome *",{exact:true}).fill("Usuario atualizado");
+    await page.getByRole("checkbox",{name:"Usuario ativo",exact:true}).uncheck();
+    const updated = page.waitForResponse(r => r.url() === api + "/usuarios/" + user.id && r.request().method() === "PUT");
+    await page.getByRole("button",{name:"Salvar alteracoes",exact:true}).click();
+    const saved = await json(await updated);
+    assert.equal(saved.ativo,false);
+    assert.equal(saved.perfil_codigo,"REVISOR");
+    await page.waitForURL("**/usuarios");
+    await search();
+    await page.setViewportSize({width:390,height:844});
+    await page.screenshot({path:path.join(os.tmpdir(),"thor-usuarios-lista-mobile.png")});
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+    await page.getByRole("row").filter({hasText:username}).getByRole("button",{name:"Visualizar",exact:true}).click();
+    await popup.getByText("Usuario atualizado",{exact:true}).waitFor();
+    assert.ok(await popup.evaluate(el => el.scrollWidth <= el.clientWidth));
+    assert.equal(await popup.locator(".usuario-details").evaluate(el => getComputedStyle(el).gridTemplateColumns.split(" ").length),1);
+    await page.screenshot({path:path.join(os.tmpdir(),"thor-usuarios-popup-mobile.png")});
+    await popup.getByRole("link",{name:"Editar",exact:true}).click();
+    await page.getByRole("checkbox",{name:"Usuario ativo",exact:true}).check();
+    assert.equal(await page.locator(".usuario-form-grid").evaluate(el => getComputedStyle(el).gridTemplateColumns.split(" ").length),1);
+    await page.screenshot({path:path.join(os.tmpdir(),"thor-usuarios-editar-mobile.png")});
+    const reactivated = page.waitForResponse(r => r.url() === api + "/usuarios/" + user.id && r.request().method() === "PUT");
+    await page.getByRole("button",{name:"Salvar alteracoes",exact:true}).click();
+    assert.equal((await json(await reactivated)).ativo,true);
+    await page.waitForURL("**/usuarios");
+    await search();
+    await page.getByRole("row").filter({hasText:username}).getByRole("button",{name:"Visualizar",exact:true}).click();
+    await popup.getByText("Usuario atualizado",{exact:true}).waitFor();
+    page.once("dialog",d => d.accept());
+    const deleted = page.waitForResponse(r => r.url() === api + "/usuarios/" + user.id && r.request().method() === "DELETE");
+    await popup.getByRole("button",{name:"Excluir",exact:true}).click();
+    await json(await deleted);
+    await popup.waitFor({state:"hidden"});
+    await page.getByRole("row").filter({hasText:username}).waitFor({state:"hidden"});
+    assert.equal((await context.request.get(api + "/usuarios/" + user.id)).status(),404);
+    assert.deepEqual(errors,[]);
+    console.log("Usuarios: cadastro, CPF invalido, popup, edicao propria, desativacao, reativacao e exclusao aprovados em desktop/mobile.");
+  } catch(e) {
+    await page.screenshot({path:path.join(os.tmpdir(),"thor-usuarios-falha.png")}).catch(() => {});
+    throw e;
+  } finally {
+    if(user) await context.request.delete(api + "/usuarios/" + user.id).catch(() => {});
+    await browser.close();
+  }
+})().catch(e => {console.error(e);process.exit(1);});

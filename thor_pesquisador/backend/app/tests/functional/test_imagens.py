@@ -128,9 +128,15 @@ def test_acesso_restrito_e_anonimo(context):
         db.add(other)
         db.commit()
         token = create_session(db, other)
+        other_id = other.id
     other_client = TestClient(create_app())
     other_client.cookies.set(settings.session_cookie_name, token)
     assert other_client.get("/api/v1/imagens/" + restricted["id"]).status_code == 403
+    assert other_client.get("/api/v1/imagens/" + internal["id"]).status_code == 403
+    from app.models.editorial import AcessoInstrumento
+    with SessionLocal() as db:
+        db.add(AcessoInstrumento(usuario_id=other_id, papel="CONSULTA_INTERNA"))
+        db.commit()
     assert other_client.get("/api/v1/imagens/" + internal["id"]).status_code == 200
     assert other_client.delete("/api/v1/imagens/" + public["id"]).status_code == 403
     assert restricted["id"] not in {i["id"] for i in other_client.get("/api/v1/imagens").json()["items"]}

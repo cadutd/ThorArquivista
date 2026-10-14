@@ -84,10 +84,10 @@ function Write-HumanReports {
     $allCases += Get-JUnitCases -Path $FrontendPath -Layer "Frontend"
 
     $total = $allCases.Count
-    $passed = ($allCases | Where-Object Status -eq "PASSOU").Count
-    $failed = ($allCases | Where-Object Status -eq "FALHOU").Count
-    $errors = ($allCases | Where-Object Status -eq "ERRO").Count
-    $skipped = ($allCases | Where-Object Status -eq "IGNORADO").Count
+    $passed = @($allCases | Where-Object Status -eq "PASSOU").Count
+    $failed = @($allCases | Where-Object Status -eq "FALHOU").Count
+    $errors = @($allCases | Where-Object Status -eq "ERRO").Count
+    $skipped = @($allCases | Where-Object Status -eq "IGNORADO").Count
 
     $summaryPath = Join-Path $OutputRoot "summary.md"
     $htmlPath = Join-Path $OutputRoot "summary.html"
@@ -174,11 +174,15 @@ New-Item -ItemType Directory -Force -Path $frontendReports | Out-Null
 
 Push-Location $root
 try {
-    docker compose exec backend sh -c "mkdir -p /tmp/thor-pesquisador-test-reports && python -m pytest -q --junitxml=/tmp/thor-pesquisador-test-reports/junit.xml"
+    docker compose -f docker-compose.test.yml up -d --build backend storage_init
+    if ($LASTEXITCODE -ne 0) { throw "Falha ao iniciar a stack isolada." }
+    docker compose -f docker-compose.test.yml --profile e2e stop index_worker
+    if ($LASTEXITCODE -ne 0) { throw "Falha ao suspender o worker exclusivo de testes." }
+    docker compose -f docker-compose.test.yml exec -T backend python -m pytest -q -p no:cacheprovider --junitxml=/tmp/thor-pesquisador-tests.xml app/tests
     if ($LASTEXITCODE -ne 0) {
         throw "Testes backend falharam com codigo $LASTEXITCODE."
     }
-    docker compose cp backend:/tmp/thor-pesquisador-test-reports/junit.xml $backendReportPath
+    docker compose -f docker-compose.test.yml cp backend:/tmp/thor-pesquisador-tests.xml $backendReportPath
     if ($LASTEXITCODE -ne 0) {
         throw "Copia do relatorio backend falhou com codigo $LASTEXITCODE."
     }
@@ -188,9 +192,9 @@ finally {
     Pop-Location
 }
 
-Push-Location (Join-Path $root "frontend")
+Push-Location $root
 try {
-    npm.cmd run test:functional:report
+    docker compose -f docker-compose.test.yml --profile checks run --rm -v "${frontendReports}:/reports" contracts sh -c "node --test --test-reporter=junit --test-reporter-destination=/reports/junit.xml tests/functional/*.test.mjs"
     if ($LASTEXITCODE -ne 0) {
         throw "Testes frontend falharam com codigo $LASTEXITCODE."
     }

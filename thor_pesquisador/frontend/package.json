@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test:e2e:imagens": "node tests/e2e/imagens.smoke.cjs",
     "test:e2e:registros-busca": "node tests/e2e/registros-busca.smoke.cjs",
+    "test:e2e:editorial": "node tests/e2e/editorial.smoke.cjs",
     "test:functional": "node --test tests/functional/*.test.mjs",
     "test:functional:report": "node -e \"require('node:fs').mkdirSync('../test-reports/frontend', { recursive: true })\" && node --test --test-reporter=junit --test-reporter-destination=../test-reports/frontend/junit.xml tests/functional/*.test.mjs"
   },

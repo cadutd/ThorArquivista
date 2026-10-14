@@ -1,0 +1,98 @@
+name: thor_pesquisador_fase4_test
+x-backend: &backend
+  build: ./backend
+  volumes:
+    - ./backend:/app:ro
+  environment: &test-environment
+    app_env: test
+    database_url: postgresql+psycopg://thor:thor@postgres:5432/thor_pesquisador_fase4_test
+    mongodb_url: mongodb://mongo:27017
+    mongodb_database: thor_pesquisador_fase4_test
+    cors_origins: '["http://localhost:3001"]'
+    public_app_url: http://localhost:3001
+    govbr_dev_login: "true"
+    dev_admin_enabled: "true"
+    app_session_secret: isolated-tests-only
+    redis_url: redis://redis:6379/0
+    indexacao_queue_name: thor_pesquisador:fase4_test:indexacao
+    meilisearch_url: http://meilisearch:7700
+    meilisearch_api_key: isolated-tests-master-key
+    s3_endpoint_url: http://minio:9000
+    s3_bucket: thor-pesquisador-fase4-test
+    s3_access_key_id: thor-test-minio
+    s3_secret_access_key: thor-test-minio-only
+  depends_on:
+    postgres:
+      condition: service_healthy
+    mongo:
+      condition: service_started
+    redis:
+      condition: service_started
+    meilisearch:
+      condition: service_started
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: thor
+      POSTGRES_PASSWORD: thor
+      POSTGRES_DB: thor_pesquisador_fase4_test
+    volumes: [postgres_test:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U thor -d thor_pesquisador_fase4_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  mongo:
+    image: mongo:7
+    volumes: [mongo_test:/data/db]
+  redis:
+    image: redis:7-alpine
+  meilisearch:
+    image: getmeili/meilisearch:v1.11
+    environment:
+      MEILI_ENV: development
+      MEILI_MASTER_KEY: isolated-tests-master-key
+    volumes: [meili_test:/meili_data]
+  minio:
+    build: ./deploy/dev/minio
+    command: server /data
+    environment:
+      MINIO_ROOT_USER: thor-test-minio
+      MINIO_ROOT_PASSWORD: thor-test-minio-only
+    volumes: [minio_test:/data]
+  storage_init:
+    <<: *backend
+    depends_on:
+      minio:
+        condition: service_started
+    command: python -m app.scripts.init_storage
+  backend:
+    <<: *backend
+    ports: ["127.0.0.1:8001:8000"]
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+  index_worker:
+    <<: *backend
+    profiles: [e2e]
+    command: python -m app.worker
+  frontend:
+    profiles: [e2e]
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:8001/api/v1
+    ports: ["127.0.0.1:3001:3000"]
+    depends_on: [backend]
+  contracts:
+    image: node:22-alpine
+    profiles: [checks]
+    working_dir: /app
+    volumes: ["./frontend:/app:ro"]
+    command: npm run test:functional
+
+volumes:
+  postgres_test:
+  mongo_test:
+  meili_test:
+  minio_test:

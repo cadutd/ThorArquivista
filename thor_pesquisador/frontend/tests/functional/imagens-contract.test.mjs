@@ -38,7 +38,8 @@ test("formulario valida titulo, metadados e campos condicionais",()=>{
 });
 test("galeria so carrega na aba e fornece capa, legenda, reordenacao e desvinculo",()=>{
  assert.match(detail,/tab==="imagens"\?<RegistroImagens/);
- assert.match(gallery,/listVinculos\(instrumentoId,registroId,offset\)/);
+ assert.match(gallery,/listVinculos\(instrumentoId,registroId,offset,pageSize\)/);
+ assert.match(gallery,/CrudPagination/);
  assert.match(gallery,/window.confirm/);
  assert.match(gallery,/Salvar legenda/);
  assert.match(gallery,/Marcar como principal/);

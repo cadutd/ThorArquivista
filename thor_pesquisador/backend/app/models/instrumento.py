@@ -20,6 +20,10 @@ class Instrumento(Base):
     status: Mapped[str] = mapped_column(String(40), nullable=False, default="RASCUNHO", server_default="RASCUNHO")
     visibilidade: Mapped[str] = mapped_column(String(40), nullable=False, default="INTERNO", server_default="INTERNO")
     schema_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    versao_editorial: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
+    publicacao_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
+    geracao_publica: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    geracao_indexada: Mapped[int] = mapped_column(Integer, nullable=False, default=-1, server_default="-1")
     criado_por: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("usuarios.id"))
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     atualizado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
@@ -44,6 +48,7 @@ class InstrumentoCampo(Base):
     aparece_cadastro: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     aparece_listagem: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
     aparece_busca: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    exibir_publico: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     filtro_avancado: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     facetavel: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     ordenavel: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
@@ -55,6 +60,8 @@ class InstrumentoCampo(Base):
 
 class IndexacaoJob(Base):
     __tablename__ = "indexacao_jobs"
+    __table_args__ = (UniqueConstraint("instrumento_id", "geracao_publica", name="uq_job_publico_geracao"),)
+    geracao_publica: Mapped[int | None] = mapped_column(Integer)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     instrumento_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("instrumentos.id", ondelete="CASCADE"), nullable=False, index=True)

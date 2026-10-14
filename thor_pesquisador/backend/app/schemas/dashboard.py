@@ -14,3 +14,5 @@ class DashboardStats(BaseModel):
     instrumentos_por_tipo: list[dict[str, int | str]]
     indexacao_jobs_recentes: list[dict[str, str | int | None]] = []
     indexacao_jobs_falhos: int = 0
+    pendencias_editoriais: int = 0
+    publicacoes_recentes: list[dict] = []

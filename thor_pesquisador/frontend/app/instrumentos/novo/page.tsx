@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Permission } from "@/components/permission";
 import { AppShell } from "@/components/app-shell";
 import { InstrumentoForm } from "@/components/instrumento-form";
 import { createInstrumento } from "@/lib/api";
@@ -27,7 +28,7 @@ export default function NovoInstrumentoPage() {
   }
 
   return (
-    <AppShell>
+    <AppShell><Permission acao="instrumentos_incluir" >
       <div className="stack">
         <div className="row">
           <div className="page-heading">
@@ -38,6 +39,6 @@ export default function NovoInstrumentoPage() {
         </div>
         <InstrumentoForm onSubmit={submit} saving={saving} error={error} submitLabel="Salvar instrumento" />
       </div>
-    </AppShell>
+    </Permission></AppShell>
   );
 }

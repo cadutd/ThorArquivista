@@ -38,7 +38,7 @@ export const updateImagem = (id: string, payload: Omit<ImagemPayload, "tipo_refe
 export const deleteImagem = (id: string) => imageRequest<void>("/imagens/"+id, {method:"DELETE"});
 export const uploadImagem = (data: FormData) => imageRequest<Imagem>("/imagens/upload", {method:"POST",body:data});
 const prefix = (i: string, r: string) => "/instrumentos/"+i+"/registros/"+encodeURIComponent(r)+"/imagens";
-export const listVinculos = (i: string, r: string, offset=0) => imageRequest<Page<VinculoImagem>>(prefix(i,r)+"?limit=20&offset="+offset);
+export const listVinculos = (i: string, r: string, offset=0, limit=20) => imageRequest<Page<VinculoImagem>>(prefix(i,r)+"?limit="+limit+"&offset="+offset);
 export const vincularImagem = (i: string, r: string, imagem_id: string) => imageRequest<VinculoImagem>(prefix(i,r), {method:"POST",body:JSON.stringify({imagem_id})});
 export const editarVinculo = (i: string, r: string, id: string, payload: {legenda?:string|null;principal?:boolean}) => imageRequest<VinculoImagem>(prefix(i,r)+"/"+id, {method:"PATCH",body:JSON.stringify(payload)});
 export const reordenarImagens = (i: string, r: string, items: {imagem_id:string;ordem:number}[]) => imageRequest<void>(prefix(i,r)+"/reordenar", {method:"PATCH",body:JSON.stringify({items})});

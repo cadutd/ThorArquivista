@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -14,8 +14,13 @@ class Usuario(Base):
     __tablename__ = "usuarios"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    govbr_sub: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
-    cpf: Mapped[str | None] = mapped_column(String(20), index=True)
+    govbr_sub: Mapped[str | None] = mapped_column(String(64), unique=True)
+    cpf: Mapped[str | None] = mapped_column(String(20), unique=True, index=True)
+    username: Mapped[str] = mapped_column(String(150), unique=True, nullable=False,
+                                        default=lambda: "usuario_" + uuid.uuid4().hex)
+    ativo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true", index=True)
+    observacoes: Mapped[str | None] = mapped_column(Text)
+    excluido_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     nome: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str | None] = mapped_column(String(255))
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)

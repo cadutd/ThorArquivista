@@ -13,6 +13,7 @@ from app.models.user import Usuario
 from app.schemas.imagem import DireitosAcesso, ImagemCreate, ImagemOut, ImagemPage, ImagemUpdate, ReordenarIn, TipoReferencia, VinculoCreate, VinculoOut, VinculoPage, VinculoUpdate
 from app.services import imagem_service as service
 from app.services.armazenamento_service import armazenamento
+from app.services.permissao_service import require_imagens
 from app.services.auth_service import get_usuario_by_session
 
 router = APIRouter()
@@ -53,6 +54,7 @@ async def upload(arquivo: UploadFile = File(...), titulo: str = Form(..., min_le
 
 @router.get("/imagens/{imagem_id}", response_model=ImagemOut)
 def obter(imagem_id: uuid.UUID, db: Session = Depends(db_dep), usuario: Usuario = Depends(current_user)):
+    require_imagens(db, usuario, "imagens_consultar")
     return service.saida(service.obter(db, imagem_id, usuario))
 
 

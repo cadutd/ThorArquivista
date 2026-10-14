@@ -21,6 +21,7 @@ class InstrumentoCampoBase(BaseModel):
     aparece_cadastro: bool = True
     aparece_listagem: bool = True
     aparece_busca: bool = True
+    exibir_publico: bool = False
     filtro_avancado: bool = False
     facetavel: bool = False
     ordenavel: bool = False
@@ -31,6 +32,7 @@ class InstrumentoCampoCreate(InstrumentoCampoBase):
 
 
 class InstrumentoCampoUpdate(BaseModel):
+    exibir_publico: bool | None = None
     nome: str | None = Field(default=None, min_length=1, max_length=255)
     chave: str | None = Field(default=None, min_length=1, max_length=100, pattern=r"^[a-zA-Z][a-zA-Z0-9_]*$")
     tipo: TipoCampo | None = None

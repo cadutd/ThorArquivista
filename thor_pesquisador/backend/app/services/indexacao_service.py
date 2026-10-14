@@ -42,6 +42,8 @@ def enqueue_registro(instrumento_id: uuid.UUID | str, registro_id: str, acao: st
 
 
 def criar_job_reindexacao(db: Session, instrumento_id: uuid.UUID) -> IndexacaoJob:
+    from app.services.permissao_service import require
+    require(db, "reindexar", instrumento_id)
     if not db.get(Instrumento, instrumento_id):
         raise HTTPException(status_code=404, detail="Instrumento nao encontrado.")
     total = registros_collection().count_documents({"instrumento_id": str(instrumento_id), "status": {"$ne": StatusRegistro.EXCLUIDO.value}})
@@ -61,11 +63,14 @@ def criar_job_reindexacao(db: Session, instrumento_id: uuid.UUID) -> IndexacaoJo
 
 
 def jobs_recentes(db: Session, limit: int = 5) -> list[IndexacaoJob]:
-    return list(db.scalars(select(IndexacaoJob).order_by(desc(IndexacaoJob.criado_em)).limit(limit)))
+    from app.services.permissao_service import filtro_escopo
+    return list(db.scalars(select(IndexacaoJob).where(filtro_escopo(db, IndexacaoJob.instrumento_id)).order_by(desc(IndexacaoJob.criado_em)).limit(limit)))
 
 
 def contar_jobs_falhos(db: Session) -> int:
-    return int(db.query(IndexacaoJob).filter(IndexacaoJob.status == StatusIndexacaoJob.FALHOU.value).count())
+    from app.services.permissao_service import filtro_escopo
+    return int(db.query(IndexacaoJob).filter(filtro_escopo(db, IndexacaoJob.instrumento_id),
+        IndexacaoJob.status == StatusIndexacaoJob.FALHOU.value).count())
 
 
 def documento_indexavel(campos: list[InstrumentoCampo], doc: dict[str, Any]) -> dict[str, Any]:
@@ -89,6 +94,8 @@ def documento_indexavel(campos: list[InstrumentoCampo], doc: dict[str, Any]) -> 
 
 
 def buscar_avancado(db: Session, instrumento_id: uuid.UUID, payload: BuscaAvancadaIn, usuario=None) -> dict[str, Any]:
+    from app.services.permissao_service import require
+    require(db, "pesquisa_consultar", instrumento_id)
     campos = _campos(db, instrumento_id)
     filtro = _build_filter(campos, payload.filters)
     sort = _build_sort(campos, payload.sort)
@@ -133,6 +140,8 @@ def buscar_avancado(db: Session, instrumento_id: uuid.UUID, payload: BuscaAvanca
 
 
 def facetas(db: Session, instrumento_id: uuid.UUID) -> dict[str, Any]:
+    from app.services.permissao_service import require
+    require(db, "pesquisa_consultar", instrumento_id)
     campos = [campo for campo in _campos(db, instrumento_id) if campo.facetavel]
     if not campos:
         return {"instrumento_id": instrumento_id, "facetas": {}}
@@ -173,6 +182,10 @@ def processar_mensagem(raw: str) -> None:
 
 
 def run_worker_once(timeout: int = 5) -> bool:
+    from app.services.publicacao_service import processar_pendente
+    with SessionLocal() as db:
+        if processar_pendente(db):
+            return True
     item = redis_client().blpop(settings.indexacao_queue_name, timeout=timeout)
     if not item:
         return False

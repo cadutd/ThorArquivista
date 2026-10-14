@@ -5,6 +5,7 @@ import { Eye, Search } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { Permission } from "@/components/permission";
 import { getSchema, listRegistros, searchRegistros } from "@/lib/api";
 import type { InstrumentoCampo, Registro } from "@/types/domain";
 
@@ -78,11 +79,11 @@ export default function RegistrosPage() {
         </div>
         <div className="actions">
           <Link className="button secondary" href="/instrumentos">Voltar</Link>
-          <Link className="button" href={`/instrumentos/${id}/registros/novo`}>Novo registro</Link>
+          <Permission acao="registros_incluir" instrumentoId={id}><Link className="button" href={`/instrumentos/${id}/registros/novo`}>Novo registro</Link></Permission>
         </div>
       </div>
       <section className="panel stack">
-        <form className="row" onSubmit={buscar}>
+        <form className="row crud-search-form" onSubmit={buscar}>
           <input className="input" name="q" aria-label="Busca simples" style={{ maxWidth: 420 }} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Busca simples" />
           <button className="button" type="submit" disabled={loading}><Search size={18} />{loading ? "Buscando..." : "Buscar"}</button>
         </form>
@@ -91,7 +92,7 @@ export default function RegistrosPage() {
         <table className="table" aria-busy={loading}>
           <thead>
             <tr>
-              {listagem.map((campo) => <th key={campo.id}>{campo.nome}</th>)}
+              {listagem.length ? listagem.map((campo) => <th key={campo.id}>{campo.nome}</th>) : <th>Registro</th>}
               <th>Status</th>
               <th>Acoes</th>
             </tr>
@@ -99,12 +100,15 @@ export default function RegistrosPage() {
           <tbody>
             {items.map((item) => (
               <tr key={item.id}>
-                {listagem.map((campo) => <td key={campo.id}>{formatValue(item.dados[campo.chave])}</td>)}
+                {listagem.length ? listagem.map((campo, index) => <td key={campo.id}>{index === 0 ?
+                  <Link className="crud-record-link" href={`/instrumentos/${id}/registros/${encodeURIComponent(item.id)}`}>{formatValue(item.dados[campo.chave])}</Link> :
+                  formatValue(item.dados[campo.chave])}</td>) :
+                  <td><Link className="crud-record-link" href={`/instrumentos/${id}/registros/${encodeURIComponent(item.id)}`}>{item.id}</Link></td>}
                 <td>{item.status}</td>
                 <td><Link className="icon-button" title="Visualizar registro" aria-label="Visualizar registro" href={`/instrumentos/${id}/registros/${encodeURIComponent(item.id)}`}><Eye size={16}/></Link></td>
               </tr>
             ))}
-            {!items.length ? <tr><td colSpan={listagem.length + 2} className="muted">{loading ? "Carregando..." : error ? "Listagem indisponivel." : "Nenhum registro encontrado."}</td></tr> : null}
+            {!items.length ? <tr><td colSpan={Math.max(1, listagem.length) + 2} className="muted">{loading ? "Carregando..." : error ? "Listagem indisponivel." : "Nenhum registro encontrado."}</td></tr> : null}
           </tbody>
         </table>
         </div>

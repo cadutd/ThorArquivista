@@ -3,6 +3,7 @@
 import { RefreshCw, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { Permission } from "@/components/permission";
 import Link from "next/link";
 import { mediaUrl } from "@/lib/imagens";
 import { buscarAvancado, getFacetas, getSchema, listInstrumentos, reindexarInstrumento } from "@/lib/api";
@@ -118,7 +119,7 @@ export default function PesquisaPage() {
 
           <div className="actions">
             <button className="button" type="submit"><Search size={16} /> Pesquisar</button>
-            <button className="button secondary" type="button" onClick={reindexar}><RefreshCw size={16} /> Reindexar instrumento</button>
+            <Permission acao="reindexar" instrumentoId={instrumentoId}><button className="button secondary" type="button" onClick={reindexar}><RefreshCw size={16} /> Reindexar instrumento</button></Permission>
           </div>
           {status ? <p className="muted">{status}</p> : null}
           {error ? <p className="error">{error}</p> : null}

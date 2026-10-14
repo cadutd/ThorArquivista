@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { Instrumento } from "@/types/domain";
 
 export type InstrumentoFormData = {
+  versao_editorial?: number;
   nome: string;
   tipo: Instrumento["tipo"];
   descricao: string;
@@ -52,9 +53,7 @@ export function InstrumentoForm({ initialValue, saving = false, error, submitLab
           </select>
         </Field>
         <Field label="Status" required error={fieldErrors.status}>
-          <select className="select" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as Instrumento["status"] })}>
-            {["RASCUNHO", "PUBLICADO", "ARQUIVADO"].map((item) => <option key={item}>{item}</option>)}
-          </select>
+          <input className="input" readOnly value={form.status} />
         </Field>
         <Field label="Visibilidade" required error={fieldErrors.visibilidade}>
           <select className="select" value={form.visibilidade} onChange={(e) => setForm({ ...form, visibilidade: e.target.value as Instrumento["visibilidade"] })}>

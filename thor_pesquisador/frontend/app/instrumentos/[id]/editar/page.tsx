@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Permission } from "@/components/permission";
 import { AppShell } from "@/components/app-shell";
 import { InstrumentoForm, type InstrumentoFormData } from "@/components/instrumento-form";
 import { getInstrumento, updateInstrumento } from "@/lib/api";
@@ -19,6 +20,7 @@ export default function EditarInstrumentoPage() {
     getInstrumento(id)
       .then((instrumento) => {
         setInitialValue({
+          versao_editorial: instrumento.versao_editorial,
           nome: instrumento.nome,
           tipo: instrumento.tipo,
           descricao: instrumento.descricao ?? "",
@@ -44,7 +46,7 @@ export default function EditarInstrumentoPage() {
   }
 
   return (
-    <AppShell>
+    <AppShell><Permission acao="instrumentos_editar" instrumentoId={id}>
       <div className="stack">
         <div className="row">
           <div className="page-heading">
@@ -59,6 +61,6 @@ export default function EditarInstrumentoPage() {
           <section className="panel">{error ? <p className="error">{error}</p> : <p className="muted">Carregando instrumento...</p>}</section>
         )}
       </div>
-    </AppShell>
+    </Permission></AppShell>
   );
 }

@@ -73,6 +73,7 @@ def test_build_sort_usa_apenas_campos_ordenaveis():
 
 
 def test_busca_avancada_retorna_vazio_quando_indice_nao_existe(monkeypatch):
+    monkeypatch.setattr("app.services.permissao_service.require", lambda *a, **kw: None)
     instrumento_id = uuid.uuid4()
     monkeypatch.setattr(indexacao_service, "_campos", lambda _db, _instrumento_id: [campo("titulo", "TEXTO_CURTO")])
     monkeypatch.setattr(indexacao_service, "_meili_request", _raise_meili_not_found)
@@ -85,6 +86,7 @@ def test_busca_avancada_retorna_vazio_quando_indice_nao_existe(monkeypatch):
 
 
 def test_facetas_retorna_vazio_quando_indice_nao_existe(monkeypatch):
+    monkeypatch.setattr("app.services.permissao_service.require", lambda *a, **kw: None)
     instrumento_id = uuid.uuid4()
     monkeypatch.setattr(indexacao_service, "_campos", lambda _db, _instrumento_id: [campo("serie", "LISTA_SIMPLES", facetavel=True)])
     monkeypatch.setattr(indexacao_service, "_meili_request", _raise_meili_not_found)

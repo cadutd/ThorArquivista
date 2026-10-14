@@ -50,8 +50,17 @@ export default function DashboardPage() {
           <MetricCard title="Registros ativos" value={stats?.registros_ativos ?? 0} icon={Search} />
           <MetricCard title="Registros inativos" value={stats?.registros_inativos ?? 0} icon={AlertTriangle} />
           <MetricCard title="Falhas de indexacao" value={stats?.indexacao_jobs_falhos ?? 0} icon={AlertTriangle} />
+          <MetricCard title="Pendencias editoriais" value={stats?.pendencias_editoriais ?? 0} icon={ListChecks} />
         </section>
 
+        <section className="stack">
+          <div className="row"><h2>Publicacoes recentes</h2><Link className="button secondary" href="/revisao">Fila de revisao</Link></div>
+          <div className="table-wrap"><table className="table"><thead><tr><th>Data</th><th>Usuario</th><th>Versao</th><th>Publicacao</th></tr></thead><tbody>
+            {(stats?.publicacoes_recentes ?? []).map((p, index) => <tr key={p.instrumento_id + index}><td>{new Date(p.data).toLocaleString("pt-BR")}</td>
+              <td>{p.agente}</td><td>{p.versao}</td><td><Link href={"/instrumentos/" + p.instrumento_id +
+                (p.registro_id ? "/registros/" + encodeURIComponent(p.registro_id) : "")}>{p.registro_id ? "Registro" : "Instrumento"}</Link></td></tr>)}
+          </tbody></table></div>
+        </section>
         <section className="card">
           <div className="card-content stack">
             <div className="row">

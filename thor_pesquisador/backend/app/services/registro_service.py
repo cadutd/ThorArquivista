@@ -17,14 +17,21 @@ from app.models.enums import StatusRegistro, TipoCampo
 from app.models.instrumento import Instrumento, InstrumentoCampo
 from app.schemas.registro import RegistroCreate, RegistroOut, RegistroPage, RegistroUpdate
 from app.services.indexacao_service import enqueue_registro
+from app.services.permissao_service import require
+from app.services.editorial_service import controle, invalidar_publicacao, auditar_edicao
+from app.models.editorial import EditorialRegistro
 
 
 def criar_registro(db: Session, instrumento_id: uuid.UUID, payload: RegistroCreate, usuario_id: uuid.UUID | None, collection: Collection | None = None) -> RegistroOut:
+    require(db, "registros_incluir", instrumento_id)
+    if payload.status and payload.status.value == "EXCLUIDO":
+        require(db, "registros_excluir", instrumento_id)
     instrumento, campos = _schema(db, instrumento_id)
     _validar(campos, payload.dados)
     now = datetime.now(UTC)
     documento = {
         "_id": str(uuid.uuid4()),
+        "_revision": 1,
         "instrumento_id": str(instrumento_id),
         "schema_version": instrumento.schema_version,
         "dados": payload.dados,
@@ -36,8 +43,10 @@ def criar_registro(db: Session, instrumento_id: uuid.UUID, payload: RegistroCrea
         "texto_busca_basico": _texto_busca(campos, payload.dados),
     }
     _collection(collection).insert_one(documento)
+    controle(db, instrumento_id, documento["_id"], documento)
+    db.commit()
     enqueue_registro(instrumento_id, documento["_id"])
-    return _to_out(documento)
+    return _to_out(documento, db)
 
 
 def listar_registros(db: Session, instrumento_id: uuid.UUID, page_size: int = 50, cursor: str | None = None, collection: Collection | None = None) -> RegistroPage:
@@ -51,7 +60,7 @@ def listar_registros(db: Session, instrumento_id: uuid.UUID, page_size: int = 50
     has_more = len(docs) > safe_size
     page_docs = docs[:safe_size]
     return RegistroPage(
-        items=[_to_out(doc) for doc in page_docs],
+        items=_pagina_out(db, instrumento_id, page_docs),
         page_size=safe_size,
         has_more=has_more,
         next_cursor=_encode_cursor(page_docs[-1]) if has_more and page_docs else None,
@@ -73,31 +82,57 @@ def buscar_registros(db: Session, instrumento_id: uuid.UUID, q: str, page_size: 
     has_more = len(docs) > safe_size
     page_docs = docs[:safe_size]
     return RegistroPage(
-        items=[_to_out(doc) for doc in page_docs],
+        items=_pagina_out(db, instrumento_id, page_docs),
         page_size=safe_size,
         has_more=has_more,
         next_cursor=_encode_cursor(page_docs[-1]) if has_more and page_docs else None,
     )
 
 
-def obter_registro(db: Session, instrumento_id: uuid.UUID, registro_id: str, collection: Collection | None = None) -> RegistroOut:
-    _require_instrumento(db, instrumento_id)
+def obter_registro(db: Session, instrumento_id: uuid.UUID, registro_id: str, collection: Collection | None = None, consultar=True) -> RegistroOut:
+    _require_instrumento(db, instrumento_id, consultar=consultar)
     doc = _collection(collection).find_one({"_id": registro_id, "instrumento_id": str(instrumento_id)})
     if not doc:
         raise HTTPException(status_code=404, detail="Registro nao encontrado.")
-    return _to_out(doc)
+    return _to_out(doc, db)
 
 
 def atualizar_registro(db: Session, instrumento_id: uuid.UUID, registro_id: str, payload: RegistroUpdate, usuario_id: uuid.UUID | None, collection: Collection | None = None) -> RegistroOut:
+    require(db, "registros_editar", instrumento_id)
+    if payload.status and payload.status.value == "EXCLUIDO":
+        require(db, "registros_excluir", instrumento_id)
     _instrumento, campos = _schema(db, instrumento_id)
     _validar(campos, payload.dados)
-    if payload.status == StatusRegistro.EXCLUIDO:
-        db.scalar(select(Instrumento).where(Instrumento.id == instrumento_id).with_for_update())
+    db.scalar(select(Instrumento).where(Instrumento.id == instrumento_id).with_for_update())
+    doc = _collection(collection).find_one({"_id": registro_id, "instrumento_id": str(instrumento_id)})
+    if not doc:
+        raise HTTPException(404, "Registro nao encontrado.")
+    row = controle(db, instrumento_id, registro_id, doc)
+    if row.status_operacional == "EXCLUIDO" or row.status_editorial == "ARQUIVADO":
+        raise HTTPException(409, "Registro excluido ou arquivado nao pode ser editado diretamente.")
+    actual = doc.get("_revision", 1)
+    if row.versao != actual:
+        raise HTTPException(409, "Registro necessita reconciliacao antes de editar.")
+    if payload.versao is not None and payload.versao != actual:
+        raise HTTPException(409, "Versao alterada. Recarregue o registro.")
+    if (row.status_editorial != "RASCUNHO" or row.snapshot_id) and payload.versao is None:
+        raise HTTPException(409, "Informe a versao ao editar registro com historico editorial.")
+    anterior = row.status_editorial
+    row.versao = actual + 1
+    row.status_editorial = "RASCUNHO"
+    row.status_operacional = payload.status.value
+    # Commit the revocation intent before touching Mongo. Failure cannot expose an inactive draft.
+    invalidar_publicacao(db, _instrumento)
+    operation = auditar_edicao(db, instrumento_id, registro_id, "iniciar_edicao", anterior, "RASCUNHO", row.versao,
+        {"etapa": "INTENCAO_PERSISTIDA", "status_operacional": row.status_operacional})
+    db.commit()
     now = datetime.now(UTC)
     result = _collection(collection).find_one_and_update(
-        {"_id": registro_id, "instrumento_id": str(instrumento_id)},
+        {"_id": registro_id, "instrumento_id": str(instrumento_id),
+         **({"_revision": actual} if "_revision" in doc else {"_revision": {"$exists": False}})},
         {
             "$set": {
+                "_revision": row.versao,
                 "dados": payload.dados,
                 "status": payload.status.value,
                 "atualizado_por": str(usuario_id) if usuario_id else None,
@@ -108,18 +143,34 @@ def atualizar_registro(db: Session, instrumento_id: uuid.UUID, registro_id: str,
         return_document=True,
     )
     if not result:
-        raise HTTPException(status_code=404, detail="Registro nao encontrado.")
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Registro alterado por outra operacao.")
     if payload.status == StatusRegistro.EXCLUIDO:
         from app.services.imagem_service import limpar_vinculos
         limpar_vinculos(db, instrumento_id, registro_id, usuario_id)
-        db.commit()
+    auditar_edicao(db, instrumento_id, registro_id, "concluir_edicao", "RASCUNHO", "RASCUNHO", row.versao,
+                   {"operacao_relacionada_id": str(operation), "etapa": "CONCLUIDA"})
+    db.commit()
     enqueue_registro(instrumento_id, registro_id)
-    return _to_out(result)
+    return _to_out(result, db)
 
 
 def excluir_registro(db: Session, instrumento_id: uuid.UUID, registro_id: str, collection: Collection | None = None, usuario_id=None) -> None:
-    _require_instrumento(db, instrumento_id)
+    require(db, "registros_excluir", instrumento_id)
+    _require_instrumento(db, instrumento_id, consultar=False)
     db.scalar(select(Instrumento).where(Instrumento.id == instrumento_id).with_for_update())
+    doc = _collection(collection).find_one({"_id": registro_id, "instrumento_id": str(instrumento_id)})
+    if not doc:
+        raise HTTPException(404, "Registro nao encontrado.")
+    row = controle(db, instrumento_id, registro_id, doc)
+    anterior = row.status_editorial
+    row.status_operacional = "EXCLUIDO"
+    row.status_editorial = "ARQUIVADO"
+    row.snapshot_id = None
+    invalidar_publicacao(db, db.get(Instrumento, instrumento_id))
+    auditar_edicao(db, instrumento_id, registro_id, "excluir_registro", anterior, "ARQUIVADO", row.versao,
+                   {"etapa": "REVOGACAO_PERSISTIDA"})
+    db.commit()
     result = _collection(collection).update_one(
         {"_id": registro_id, "instrumento_id": str(instrumento_id)},
         {"$set": {"status": StatusRegistro.EXCLUIDO.value, "atualizado_em": datetime.now(UTC)}},
@@ -133,12 +184,15 @@ def excluir_registro(db: Session, instrumento_id: uuid.UUID, registro_id: str, c
 
 
 def _schema(db: Session, instrumento_id: uuid.UUID) -> tuple[Instrumento, list[InstrumentoCampo]]:
-    instrumento = _require_instrumento(db, instrumento_id)
+    instrumento = _require_instrumento(db, instrumento_id, consultar=False)
+    db.refresh(instrumento, with_for_update=True)
     campos = list(db.scalars(select(InstrumentoCampo).where(InstrumentoCampo.instrumento_id == instrumento_id).order_by(InstrumentoCampo.ordem.asc())))
     return instrumento, campos
 
 
-def _require_instrumento(db: Session, instrumento_id: uuid.UUID) -> Instrumento:
+def _require_instrumento(db: Session, instrumento_id: uuid.UUID, consultar=True) -> Instrumento:
+    if consultar:
+        require(db, "registros_consultar", instrumento_id)
     instrumento = db.get(Instrumento, instrumento_id)
     if not instrumento:
         raise HTTPException(status_code=404, detail="Instrumento nao encontrado.")
@@ -194,13 +248,27 @@ def _collection(collection: Collection | None) -> Collection:
     return collection if collection is not None else registros_collection()
 
 
-def _to_out(doc: dict[str, Any]) -> RegistroOut:
+def _pagina_out(db, instrumento_id, docs):
+    rows = db.scalars(select(EditorialRegistro).where(EditorialRegistro.instrumento_id == instrumento_id,
+        EditorialRegistro.registro_id.in_([d["_id"] for d in docs]))).all()
+    by_id = {r.registro_id: r for r in rows}
+    return [_to_out(d, row=by_id.get(d["_id"])) for d in docs]
+
+
+def _to_out(doc: dict[str, Any], db=None, row=None) -> RegistroOut:
+    if db is not None:
+        row = db.scalar(select(EditorialRegistro).where(
+            EditorialRegistro.instrumento_id == uuid.UUID(doc["instrumento_id"]),
+            EditorialRegistro.registro_id == doc["_id"]))
     return RegistroOut(
         id=doc["_id"],
         instrumento_id=doc["instrumento_id"],
         schema_version=doc.get("schema_version", 1),
+        versao=row.versao if row else doc.get("_revision", 1),
+        status_editorial=row.status_editorial if row else "RASCUNHO",
+        versao_publicada=row.versao_publicada if row else None,
         dados=doc.get("dados", {}),
-        status=doc.get("status", StatusRegistro.ATIVO.value),
+        status=row.status_operacional if row else doc.get("status", StatusRegistro.ATIVO.value),
         criado_por=doc.get("criado_por"),
         atualizado_por=doc.get("atualizado_por"),
         criado_em=doc["criado_em"],

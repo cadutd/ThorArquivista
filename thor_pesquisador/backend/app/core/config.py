@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     govbr_client_secret: str = "change-me"
     govbr_redirect_uri: str = "http://localhost:8000/api/v1/auth/govbr/callback"
     govbr_dev_login: bool = True
+    dev_admin_enabled: bool = False
     auth_disabled_for_tests: bool = False
     redis_url: str = "redis://redis:6379/0"
     indexacao_queue_name: str = "thor_pesquisador:indexacao"

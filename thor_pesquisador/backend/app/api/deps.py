@@ -18,10 +18,12 @@ def current_user(
     session_token: str | None = Cookie(default=None, alias=settings.session_cookie_name),
 ) -> Usuario:
     if settings.auth_disabled_for_tests:
-        usuario = db.query(Usuario).first()
+        usuario = db.query(Usuario).filter(Usuario.ativo.is_(True), Usuario.excluido_em.is_(None)).first()
         if usuario:
+            db.info["usuario"] = usuario
             return usuario
     usuario = get_usuario_by_session(db, session_token)
     if not usuario:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Autenticacao requerida.")
+    db.info["usuario"] = usuario
     return usuario

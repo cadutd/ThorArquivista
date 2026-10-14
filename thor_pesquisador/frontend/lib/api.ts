@@ -11,7 +11,14 @@ import type {
   ReindexacaoJob
 } from "@/types/domain";
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+export class ApiError extends Error {
+  constructor(message:string, public status:number, public detail:unknown) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     credentials: "include",
@@ -22,7 +29,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!response.ok) {
     const detail = await response.json().catch(() => ({}));
-    throw new Error(detail.detail ?? "Falha na requisicao.");
+    const message = Array.isArray(detail.detail)
+      ? detail.detail.map((item: {loc?:string[];msg?:string}) => [item.loc?.slice(1).join("."),item.msg].filter(Boolean).join(": ")).join("; ")
+      : detail.detail;
+    throw new ApiError(message ?? "Falha na requisicao.",response.status,detail.detail);
   }
   if (response.status === 204) {
     return undefined as T;

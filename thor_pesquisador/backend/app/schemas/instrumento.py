@@ -22,6 +22,7 @@ class InstrumentoCreate(InstrumentoBase):
 
 
 class InstrumentoUpdate(BaseModel):
+    versao_editorial: int | None = Field(default=None, ge=1)
     nome: str | None = Field(default=None, min_length=1, max_length=255)
     tipo: TipoInstrumento | None = None
     descricao: str | None = None
@@ -34,6 +35,8 @@ class InstrumentoOut(InstrumentoBase):
 
     id: uuid.UUID
     schema_version: int
+    versao_editorial: int = 1
+    publicacao_id: uuid.UUID | None = None
     criado_em: datetime
     atualizado_em: datetime
 

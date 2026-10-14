@@ -5,6 +5,8 @@ import { ArrowLeft, Edit, FileText, SlidersHorizontal } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
+import { EditorialPanel } from "@/components/editorial-panel";
+import { Permission } from "@/components/permission";
 import { getInstrumento } from "@/lib/api";
 import type { Instrumento } from "@/types/domain";
 
@@ -32,7 +34,7 @@ export default function InstrumentoDetalhePage() {
           </div>
           <div className="actions">
             <Link className="button secondary" href="/instrumentos"><ArrowLeft size={16} /> Voltar</Link>
-            <Link className="button" href={`/instrumentos/${id}/editar`}><Edit size={16} /> Editar</Link>
+            <Permission acao="instrumentos_editar" instrumentoId={id}><Link className="button" href={`/instrumentos/${id}/editar`}><Edit size={16} /> Editar</Link></Permission>
           </div>
         </div>
         {error ? <section className="panel"><p className="error">{error}</p></section> : null}
@@ -48,6 +50,8 @@ export default function InstrumentoDetalhePage() {
               <Detail label="Atualizado em" value={formatDate(instrumento.atualizado_em)} />
             </div>
             <Detail label="Descricao" value={instrumento.descricao || "-"} />
+            <EditorialPanel instrumentoId={id} status={instrumento.status} versao={instrumento.versao_editorial}
+              onChange={() => getInstrumento(id).then(setInstrumento).catch(e => setError(e.message))} />
             <div className="actions">
               <Link className="button secondary" href={`/instrumentos/${id}/campos`}><SlidersHorizontal size={16} /> Campos</Link>
               <Link className="button secondary" href={`/instrumentos/${id}/registros`}><FileText size={16} /> Registros</Link>

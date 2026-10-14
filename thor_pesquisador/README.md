@@ -22,13 +22,19 @@ O projeto e independente do `thor_gestor_de_arquivos_digitais`, mas mantem a mes
 - Manifests Kustomize iniciais para Kubernetes/OKD.
 - Licenca AGPL-3.0, igual ao Thor Gestor.
 
-As fases 1 a 3 estao implementadas. As fases 4 a 6 sao planejamento:
-workflow editorial, snapshots publicados, RBAC geral, portal consultivo,
-exportacoes e retencao ainda nao foram implementados. `/pesquisa` e busca
-interna autenticada; visibilidade/status de instrumento nao substituem
-autorizacao por escopo ou publicacao versionada.
+As fases 1 a 4 estao implementadas. A fase 4 inclui RBAC por instrumento,
+revisao editorial, publicacao versionada, historico e consulta anonima em
+`/consulta`. `/pesquisa` continua sendo busca interna autorizada por escopo.
+Exportacoes, retencao ampla e consolidacao operacional ficam nas fases 5 e 6.
+Consulte [Operacao da fase 4](docs/fase_04_operacao.md) para provisionamento,
+migrations, reconciliacao e testes isolados.
 
 ## Arquitetura
+
+A administracao de acessos segue o menu do Gestor: Gestao de Usuarios, Perfis
+e Permissoes, sem Eventos ou Administracao Geral. Perfis sao cadastraveis e
+concessoes preservam os escopos por instrumento.
+[Operacao administrativa](docs/administracao_acessos.md).
 
 - `backend/`: API FastAPI, migrations Alembic, modelos PostgreSQL, servicos MongoDB e testes.
 - `frontend/`: Next.js standalone, `AppShell`, dashboard, login, instrumentos, campos, registros e pesquisa.
@@ -51,6 +57,7 @@ URLs:
 
 - Frontend: `http://localhost:3000`
 - Dashboard: `http://localhost:3000/dashboard`
+- Consulta publica: `http://localhost:3000/consulta`
 - Login: `http://localhost:3000/login`
 - Backend health: `http://localhost:8000/api/v1/health`
 - Meilisearch: `http://localhost:7700`
@@ -193,7 +200,8 @@ O CRUD principal de instrumentos segue o padrao `thor-crud-base`:
 - rota de detalhes somente leitura;
 - formulario reutilizavel com campos obrigatorios e estado de salvamento;
 - exclusao com confirmacao explicita;
-- ao excluir um instrumento, os registros dinamicos vinculados sao removidos do MongoDB para evitar documentos orfaos.
+- exclusao fisica apenas de rascunhos descartaveis; publicacoes/historico editorial bloqueiam a remocao e exigem arquivamento;
+- ao excluir um rascunho permitido, os registros dinamicos vinculados sao removidos do MongoDB.
 
 ## Testes Funcionais com Relatorio
 
@@ -203,9 +211,9 @@ O projeto segue a estrutura do Thor Gestor:
 - teste funcional de contrato frontend em `frontend/tests/functional`;
 - relatorios em `test-reports/`.
 
-O script de relatorios abaixo usa a configuracao do backend em execucao.
-Execute somente em uma stack exclusiva de testes; nao na stack com cadastros
-que deseja preservar:
+O script abaixo inicia `docker-compose.test.yml`, com bancos, fila e bucket
+exclusivos de testes. Ele nao utiliza o banco da stack operacional e suspende
+o worker de testes durante pytest:
 
 ```powershell
 .\scripts\run-tests-with-reports.ps1
@@ -225,7 +233,7 @@ Os prompts em `prompts/roadmap/` orientam a evolucao:
 - Fase 1: MVP base com gov.br, instrumentos, registros, MongoDB e dashboard.
 - Fase 2: busca avancada com Meilisearch, Redis, worker, facetas e reindexacao. Implementada.
 - Fase 3: imagens opcionais por URL, upload, IIIF e object storage. Implementada.
-- Fase 4 (planejada): RBAC por escopo, revisao, publicacao versionada e consulta publica inicial, preservando ATIVO/INATIVO/EXCLUIDO como estados operacionais de registros.
+- Fase 4: RBAC por escopo, revisao, publicacao versionada e consulta publica inicial, preservando ATIVO/INATIVO/EXCLUIDO como estados operacionais de registros. Implementada.
 - Fase 5 (planejada; depende da 4): ampliar auditoria de imagens/editorial sem duplicacao, exportacoes recuperaveis, logs, relatorios e retencao controlada.
 - Fase 6 (planejada; depende da 4 e 5): refinar portal e consolidar acessibilidade, seguranca, desempenho, observabilidade, backup/restore e operacao OKD.
 
@@ -299,10 +307,12 @@ arquivos invalidos. O envio e limitado e processado em memoria.
 
 ### Acesso e Indexacao
 
-Nesta fase, alteracao e exclusao sao restritas ao criador da imagem.
-`RESTRITO` exige o criador; `INTERNO` exige sessao; `PUBLICO` permite
-consulta anonima do conteudo. O CRUD de metadados exige autenticacao.
-Nao foi introduzido um sistema paralelo de perfis/RBAC.
+A fase 4 integra as imagens ao RBAC existente na aplicacao: mutacoes exigem
+permissao explicita e autoria, com excecao de ADMIN. `RESTRITO` preserva
+a protecao do criador (ou ADMIN); `INTERNO` exige autoria ou consulta
+autorizada por escopo. `PUBLICO` continua permitindo conteudo anonimo de
+imagem isolada, sem equivaler a publicacao editorial do registro.
+O portal apresenta somente campos e referencias de snapshots elegiveis.
 Originais e miniaturas de upload passam pelo endpoint autorizado de conteudo,
 sem expor chaves S3. Respostas privadas usam `Cache-Control: private, no-store`.
 Referencias externas dependem tambem das permissoes e CORS do provedor;
@@ -341,6 +351,40 @@ reais; somente o manifest IIIF externo e simulado. Confira os comandos no
 
 Os builds recentes reportaram alertas de dependencias npm. Eles continuam
 pendentes de revisao; nao foi aplicado `npm audit fix --force`.
+
+## Cadastro de Usuarios
+
+Administracao -> Gestao de Usuarios oferece cadastro, filtros e paginacao no
+padrao do Gestor. A primeira coluna e o botao Visualizar abrem um popup;
+criacao e edicao usam paginas proprias. O formulario inclui nome, usuario,
+CPF, e-mail, perfil, ativo e observacoes.
+
+Todo acesso gov.br exige usuario local previamente cadastrado e ativo.
+O CPF validado e unico vincula a identidade autenticada; o login nao cria
+usuarios nem sobrescreve nome/e-mail administrativos. Desativacao e exclusao
+logica revogam sessoes, preservando identidades e historico.
+
+A migration `20261012_000008` preserva IDs e concessoes existentes. Cadastros
+legados sem CPF valido ou com duplicidade ficam inativos para regularizacao.
+Consulte [Administracao de Acessos](docs/administracao_acessos.md), incluindo
+o cadastro inicial de administrador antes do primeiro login institucional.
+
+## Permissoes por Operacao
+
+Os oito CRUDs (instrumentos, campos, registros, imagens, galerias, usuarios,
+perfis e concessoes) usam codigos independentes para Consultar, Incluir,
+Editar e Excluir, inclusive na administracao. Menus e botoes respeitam esses
+codigos; a autorizacao efetiva permanece no backend, com escopos por instrumento
+e protecao contra escalada de privilegios na delegacao administrativa.
+
+A migration `20261013_000009` preserva os perfis e acessos atuais e substitui
+os agrupamentos antigos por permissoes granulares. O catalogo de Permissoes
+permanece somente leitura. Consulte a matriz e as regras de rollback em
+[Administracao de Acessos](docs/administracao_acessos.md).
+
+Validacao: 165 testes backend e 35 contratos frontend, executados no Docker
+isolado. O teste `frontend/tests/e2e/permissoes-crud.smoke.cjs` cobre a
+interface com usuario nao administrador e verificacoes desktop/mobile.
 
 ## Licenca
 

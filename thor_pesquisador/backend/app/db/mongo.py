@@ -19,7 +19,12 @@ def registros_collection() -> Collection:
     return get_mongo_client()[settings.mongodb_database]["instrumento_registros"]
 
 
+def snapshots_collection() -> Collection:
+    return get_mongo_client()[settings.mongodb_database]["registro_snapshots"]
+
+
 def ensure_mongo_indexes() -> None:
+    snapshots_collection().create_index([("instrumento_id", ASCENDING), ("registro_id", ASCENDING), ("versao", DESCENDING)])
     collection = registros_collection()
     collection.create_index(
         [("instrumento_id", ASCENDING), ("status", ASCENDING), ("criado_em", DESCENDING), ("_id", DESCENDING)],

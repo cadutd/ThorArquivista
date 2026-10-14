@@ -70,8 +70,7 @@ def test_crud_instrumento_por_funcao():
     assert any(item["id"] == instrumento_id for item in listed.json()["items"])
     assert found.status_code == 200
     assert dashboard.status_code == 200
-    assert updated.status_code == 200
-    assert updated.json()["status"] == "PUBLICADO"
+    assert updated.status_code == 409
     assert reindex.status_code == 202
     assert reindex.json()["status"] == "PENDENTE"
     assert dashboard_after_reindex.status_code == 200

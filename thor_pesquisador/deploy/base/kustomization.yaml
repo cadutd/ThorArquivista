@@ -21,6 +21,7 @@ configMapGenerator:
       - CORS_ORIGINS=["https://thor-pesquisador.apps.example.local"]
       - MONGODB_DATABASE=thor_pesquisador
       - GOVBR_DEV_LOGIN=false
+      - DEV_ADMIN_ENABLED=false
       - REDIS_URL=redis://thor-pesquisador-redis:6379/0
       - INDEXACAO_QUEUE_NAME=thor_pesquisador:indexacao
       - MEILISEARCH_URL=http://thor-pesquisador-meilisearch:7700

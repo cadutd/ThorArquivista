@@ -81,6 +81,7 @@ services:
       govbr_client_secret: change-me
       app_session_secret: dev-change-me
       govbr_dev_login: "true"
+      dev_admin_enabled: "true"
       redis_url: redis://redis:6379/0
       indexacao_queue_name: thor_pesquisador:indexacao
       meilisearch_url: http://meilisearch:7700

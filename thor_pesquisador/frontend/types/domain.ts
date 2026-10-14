@@ -17,7 +17,9 @@ export type Instrumento = {
   nome: string;
   tipo: "GUIA" | "INVENTARIO" | "CATALOGO" | "INDICE" | "BASE_TEMATICA" | "OUTRO";
   descricao?: string | null;
-  status: "RASCUNHO" | "PUBLICADO" | "ARQUIVADO";
+  status: "RASCUNHO" | "EM_REVISAO" | "APROVADO" | "PUBLICADO" | "ARQUIVADO";
+  versao_editorial: number;
+  publicacao_id?: string | null;
   visibilidade: "INTERNO" | "PUBLICO" | "RESTRITO";
   schema_version: number;
   criado_em: string;
@@ -48,6 +50,7 @@ export type InstrumentoCampo = {
   aparece_cadastro: boolean;
   aparece_listagem: boolean;
   aparece_busca: boolean;
+  exibir_publico?: boolean;
   filtro_avancado: boolean;
   facetavel: boolean;
   ordenavel: boolean;
@@ -59,11 +62,16 @@ export type Registro = {
   schema_version: number;
   dados: Record<string, unknown>;
   status: "ATIVO" | "INATIVO" | "EXCLUIDO";
+  status_editorial: Instrumento["status"];
+  versao: number;
+  versao_publicada?: number | null;
   criado_em: string;
   atualizado_em: string;
 };
 
 export type DashboardStats = {
+  pendencias_editoriais: number;
+  publicacoes_recentes: {instrumento_id: string; registro_id: string | null; agente: string; data: string; versao: number}[];
   total_instrumentos: number;
   instrumentos_publicados: number;
   instrumentos_rascunho: number;
