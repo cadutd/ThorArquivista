@@ -11,19 +11,19 @@ from app.services.editorial_service import controle, invalidar_publicacao
 from app.schemas.usuario import UsuarioIn
 from app.models.editorial import Papel
 from sqlalchemy.exc import IntegrityError
+from app.services.permissao_service import bloquear_administracao, ha_administrador
 
 
 def cadastrar_admin_inicial(db, payload):
-    existing = db.scalar(select(AcessoInstrumento.id).join(Usuario).join(Papel).where(
-        AcessoInstrumento.instrumento_id.is_(None), Papel.ativo.is_(True),
-        Papel.permissoes.contains(["*"]), Usuario.ativo.is_(True), Usuario.excluido_em.is_(None)).limit(1))
+    bloquear_administracao(db)
+    existing = ha_administrador(db)
     if existing:
         raise ValueError("Ja existe administrador ativo. Utilize o CRUD de usuarios.")
-    row = Usuario(**payload.model_dump(exclude={"perfil_codigo"}))
+    row = Usuario(**payload.model_dump())
     try:
         db.add(row)
         db.flush()
-        db.add(AcessoInstrumento(usuario_id=row.id, papel="ADMIN", origem="USUARIO"))
+        db.add(AcessoInstrumento(usuario_id=row.id, papel="ADMIN", origem="MANUAL"))
         db.commit()
     except IntegrityError as exc:
         db.rollback()
@@ -81,7 +81,7 @@ def main():
         if args.command == "register-admin":
             try:
                 payload = UsuarioIn(nome=args.nome, username=args.username, cpf=args.cpf,
-                                    email=args.email, perfil_codigo="ADMIN")
+                                    email=args.email)
                 cadastrar_admin_inicial(db, payload)
             except ValueError as exc:
                 raise SystemExit(str(exc)) from exc

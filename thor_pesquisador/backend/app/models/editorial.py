@@ -24,9 +24,7 @@ class AcessoInstrumento(Base):
               postgresql_where=text("instrumento_id IS NOT NULL")),
         Index("uq_acesso_global", "usuario_id", "papel", unique=True,
               postgresql_where=text("instrumento_id IS NULL")),
-        Index("uq_acesso_principal", "usuario_id", unique=True,
-              postgresql_where=text("origem = 'USUARIO'")),
-        CheckConstraint("origem IN ('MANUAL', 'USUARIO') AND (origem <> 'USUARIO' OR instrumento_id IS NULL)",
+        CheckConstraint("origem IN ('MANUAL', 'USUARIO')",
                         name="ck_acesso_origem"),
     )
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

@@ -73,6 +73,9 @@ assert.ok(base && api && process.env.THOR_E2E_ISOLATED === "true", "Use a stack 
     const anonymous = await browser.newContext({viewport:{width:1440,height:900}});
     const publicPage = await anonymous.newPage();
     await publicPage.goto(base + "/consulta");
+    await publicPage.waitForURL("**/login?next=*");
+    await publicPage.getByRole("button",{name:"Entrar em desenvolvimento",exact:true}).click();
+    await publicPage.waitForURL("**/consulta");
     await publicPage.getByRole("combobox").first().selectOption(instrument.id);
     await publicPage.getByRole("link",{name:"Documento publicado",exact:true}).waitFor();
     await publicPage.getByLabel("Buscar registros publicados").fill("Documento");
@@ -104,7 +107,7 @@ assert.ok(base && api && process.env.THOR_E2E_ISOLATED === "true", "Use a stack 
     assert.equal((await anonymous.request.get(publicPrefix + "/registros/" + record.id)).status(),404);
     await anonymous.close();
     assert.deepEqual(errors,[]);
-    console.log("PASS: revisao, aprovacao, publicacao, versoes, consulta anonima, galeria real, rascunho, republicacao, revogacao e responsividade.");
+    console.log("PASS: revisao, aprovacao, publicacao, versoes, consulta autenticada, galeria real, rascunho, republicacao, revogacao e responsividade.");
   } finally {
     if(instrument) {
       const latest = await context.request.get(api + "/instrumentos/" + instrument.id);

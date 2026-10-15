@@ -35,7 +35,7 @@ def test_migration_crud_preserva_perfis_usuarios_e_escopos(monkeypatch):
                 VALUES(:id,:user,'LEGADO_CRUD',:instrument,'MANUAL')"""),
                 {"id": grant_id, "user": user_id, "instrument": instrument_id})
             before = connection.execute(text("SELECT nome,permissoes FROM papeis")).all()
-        command.upgrade(config, "head")
+        command.upgrade(config, "20261013_000009")
         with engine.connect() as connection:
             after = dict(connection.execute(text("SELECT nome,permissoes FROM papeis")).all())
             assert set(after) == {code for code, _ in before}

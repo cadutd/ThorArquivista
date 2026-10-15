@@ -6,7 +6,7 @@ from app.models.user import Usuario
 from app.services.permissao_service import ROLE_PERMISSIONS, require
 
 from app.core.permissions import PERMISSIONS
-from app.services.permissao_service import validar_delegacao
+from app.services.permissao_service import validar_delegacao, bloquear_administracao, ha_administrador, preservar_administrador
 
 
 
@@ -35,6 +35,8 @@ def listar_perfis(db, q, ativo, limit, offset):
 
 
 def salvar_perfil(db, payload, codigo=None):
+    bloquear_administracao(db)
+    admin_antes = ha_administrador(db)
     require(db, "perfis_editar" if codigo else "perfis_incluir")
     if codigo == "ADMIN" or payload.codigo == "ADMIN":
         raise HTTPException(409, "O perfil ADMIN e protegido.")
@@ -52,6 +54,7 @@ def salvar_perfil(db, payload, codigo=None):
     if not codigo:
         db.add(row)
     try:
+        preservar_administrador(db, admin_antes)
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -60,15 +63,19 @@ def salvar_perfil(db, payload, codigo=None):
 
 
 def excluir_perfil(db, codigo):
+    bloquear_administracao(db)
+    admin_antes = ha_administrador(db)
     row = obter_perfil(db, codigo, "perfis_excluir")
     validar_delegacao(db, row.permissoes)
     if codigo == "ADMIN":
         raise HTTPException(409, "O perfil ADMIN e protegido.")
     if codigo in ROLE_PERMISSIONS or db.scalar(select(AcessoInstrumento.id).where(AcessoInstrumento.papel == codigo).limit(1)):
         row.ativo = False
+        preservar_administrador(db, admin_antes)
         db.commit()
         return {"status": "desativado"}
     db.delete(row)
+    preservar_administrador(db, admin_antes)
     db.commit()
     return {"status": "excluido"}
 
@@ -100,10 +107,8 @@ def listar_usuarios(db, q, limit, offset, papel=None, ativo=None, nome="", usern
             AcessoInstrumento.usuario_id == Usuario.id, AcessoInstrumento.papel == papel)))
     total = db.scalar(select(func.count()).select_from(query.subquery()))
     rows = list(db.scalars(query.order_by(Usuario.nome, Usuario.id).limit(limit).offset(offset)))
-    grants = db.execute(select(AcessoInstrumento.usuario_id, func.count()).where(
-        AcessoInstrumento.usuario_id.in_([u.id for u in rows])).group_by(AcessoInstrumento.usuario_id))
-    counts = dict(grants.all())
-    profiles = dict(db.execute(select(AcessoInstrumento.usuario_id, Papel.titulo).join(Papel).where(
-        AcessoInstrumento.usuario_id.in_([u.id for u in rows]), AcessoInstrumento.origem == "USUARIO")).all())
-    return {"items": [{**usuario_out(u), "perfil_nome":profiles.get(u.id), "total_acessos": counts.get(u.id, 0)} for u in rows],
+    from app.services.usuario_service import resumos_acessos
+    access = resumos_acessos(db, [u.id for u in rows])
+    return {"items": [{**usuario_out(u), **access[u.id],
+                      "tem_acesso": bool(u.ativo and access[u.id]["tem_acesso"])} for u in rows],
             "total": total, "limit": limit, "offset": offset}

@@ -178,9 +178,6 @@ def create_dev_user_session(db: Session) -> str:
         from app.models.editorial import AcessoInstrumento
         if not db.scalar(select(AcessoInstrumento).where(AcessoInstrumento.usuario_id == usuario.id,
                             AcessoInstrumento.papel == "ADMIN", AcessoInstrumento.instrumento_id.is_(None))):
-            principal = db.scalar(select(AcessoInstrumento).where(
-                AcessoInstrumento.usuario_id == usuario.id, AcessoInstrumento.origem == "USUARIO"))
-            db.add(AcessoInstrumento(usuario_id=usuario.id, papel="ADMIN",
-                                    origem="MANUAL" if principal else "USUARIO"))
+            db.add(AcessoInstrumento(usuario_id=usuario.id, papel="ADMIN"))
             db.commit()
     return create_session(db, usuario)

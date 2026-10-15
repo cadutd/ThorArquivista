@@ -2,7 +2,7 @@
 import { Permission } from "./permission";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Edit, Trash2, X } from "lucide-react";
+import { Edit, ShieldCheck, Trash2, X } from "lucide-react";
 import { ModalFrame } from "./modal-frame";
 import type { Usuario } from "./usuario-editor";
 import { me, request } from "@/lib/api";
@@ -28,7 +28,8 @@ export function UsuarioPopup({id,onClose,onDeleted}:{id:string;onClose:()=>void;
   }
   const fields = user ? [
     ["Nome",user.nome],["Usuario",user.username],["E-mail",user.email],
-    ["Perfil",user.perfil_nome || user.perfil_codigo],["Ativo",user.ativo ? "Sim" : "Nao"],
+    ["Perfis",user.perfis.map(p => p.nome + (p.ativo ? "" : " (inativo)")).join(", ") || "Nenhum"],
+    ["Acesso",user.tem_acesso ? "Concedido" : "Sem acesso concedido"],["Ativo",user.ativo ? "Sim" : "Nao"],
     ["CPF",user.cpf],["Vinculo gov.br",user.govbr_vinculado ? "Vinculado" : "Nao vinculado"],
     ["Criado em",new Date(user.criado_em).toLocaleString("pt-BR")],
     ["Atualizado em",new Date(user.atualizado_em).toLocaleString("pt-BR")],
@@ -41,7 +42,9 @@ export function UsuarioPopup({id,onClose,onDeleted}:{id:string;onClose:()=>void;
     {user && <><dl className="usuario-details">{fields.map(([label,value]) =>
       <div className="detail-item" key={label}><dt>{label}</dt><dd>{value || "-"}</dd></div>)}</dl>
       {user.observacoes && <section className="usuario-observacoes"><h3>Observacoes</h3><p>{user.observacoes}</p></section>}
-      <div className="actions usuario-popup-actions"><Permission acao="usuarios_editar"><Link className="button secondary" title="Editar usuario" href={"/usuarios/" + id + "/editar"}><Edit size={16}/>Editar</Link></Permission>
+      <div className="actions usuario-popup-actions"><Permission acao="acessos_consultar"><Link className="button secondary"
+        title="Concessoes de acesso" href={"/usuarios/" + id + "/acessos"}><ShieldCheck size={16}/>Concessoes de acesso</Link></Permission>
+        <Permission acao="usuarios_editar"><Link className="button secondary" title="Editar usuario" href={"/usuarios/" + id + "/editar"}><Edit size={16}/>Editar</Link></Permission>
         {!self && <Permission acao="usuarios_excluir"><button className="button usuario-delete" title="Excluir usuario" disabled={deleting} onClick={remove}>
           <Trash2 size={16}/>{deleting ? "Excluindo..." : "Excluir"}</button></Permission>}</div></>}
   </ModalFrame>;

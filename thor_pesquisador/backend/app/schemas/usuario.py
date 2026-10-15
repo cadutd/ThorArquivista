@@ -8,7 +8,6 @@ class UsuarioIn(BaseModel):
     username: str = Field(min_length=3, max_length=150, pattern=r"^[a-zA-Z0-9_.-]+$")
     cpf: str
     email: EmailStr = Field(max_length=255)
-    perfil_codigo: str = Field(min_length=1, max_length=40)
     ativo: bool = True
     observacoes: str | None = Field(default=None, max_length=4000)
 

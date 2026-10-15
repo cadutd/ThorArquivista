@@ -6,7 +6,7 @@ import { ChevronDown, Database, FileSearch, Gauge, Image, KeyRound, LogOut, Menu
 import { useState } from "react";
 import { ModalFrame } from "./modal-frame";
 import { logout } from "@/lib/api";
-import { AnyPermission, Permission, PermissionProvider } from "./permission";
+import { AccessBoundary, AnyPermission, Permission, PermissionProvider } from "./permission";
 
 const navigation = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge, acao:"dashboard_consultar" },
@@ -62,7 +62,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </button>
           </div>
         </header>
-        <main className="container">{children}</main>
+        <main className="container"><AccessBoundary publico={pathname === "/consulta" || pathname.startsWith("/consulta/")}>{children}</AccessBoundary></main>
       </div>
       {menuOpen && <ModalFrame title="Menu" onClose={() => setMenuOpen(false)}>
         <div className="row"><h2>Menu</h2><button autoFocus className="icon-button" title="Fechar menu" aria-label="Fechar menu"

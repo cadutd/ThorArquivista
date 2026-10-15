@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import current_user, db_dep
 from app.models.user import Usuario
+from app.models.enums import TipoInstrumento, StatusInstrumento
 from app.schemas.busca import BuscaAvancadaIn, BuscaAvancadaOut, FacetasOut, ReindexacaoOut
 from app.schemas.instrumento import InstrumentoCreate, InstrumentoOut, InstrumentoPage, InstrumentoSchema, InstrumentoUpdate
 from app.schemas.instrumento_campo import InstrumentoCampoCreate, InstrumentoCampoOut, InstrumentoCampoUpdate
@@ -22,10 +23,13 @@ def listar_instrumentos(
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     q: str | None = None,
+    nome: str = "",
+    tipo: TipoInstrumento | None = None,
+    status: StatusInstrumento | None = None,
     db: Session = Depends(db_dep),
     _usuario: Usuario = Depends(current_user),
 ) -> InstrumentoPage:
-    items, total = instrumento_service.listar_instrumentos(db, limit, offset, q)
+    items, total = instrumento_service.listar_instrumentos(db, limit, offset, q, nome, tipo.value if tipo else None, status.value if status else None)
     return InstrumentoPage(items=items, total=total, limit=limit, offset=offset)
 
 

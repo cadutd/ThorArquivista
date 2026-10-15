@@ -72,7 +72,7 @@ def requests_for(admin, actor, user, instrument, record, module):
             db.get(Usuario, uuid.UUID(target["id"])).govbr_sub = None
             db.commit()
         data = {"nome": "Usuario granular", "username": "u_" + uuid.uuid4().hex,
-                "cpf": cpf(), "email": "granular@example.org", "perfil_codigo": profile}
+                "cpf": cpf(), "email": "granular@example.org"}
         return [("GET", "/api/v1/usuarios/" + target["id"], None),
                 ("POST", "/api/v1/usuarios", data),
                 ("PUT", "/api/v1/usuarios/" + target["id"], data),
@@ -152,7 +152,7 @@ def test_administracao_delegada_nao_eleva_privilegios(ctx):
     admin_id = admin_users[0]["id"]
     assert actor.delete("/api/v1/usuarios/" + admin_id).status_code == 403
     assert actor.post("/api/v1/usuarios", json={"nome": "Escalada", "username": "e_" + uuid.uuid4().hex,
-        "cpf": cpf(), "email": "esc@example.org", "perfil_codigo": "ADMIN"}).status_code == 403
+        "cpf": cpf(), "email": "esc@example.org", "perfil_codigo": "ADMIN"}).status_code == 422
     assert actor.get("/api/v1/permissoes").status_code == 200
 
 

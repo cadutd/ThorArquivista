@@ -1,13 +1,13 @@
 "use client";
 import { createContext, useContext, useEffect, useState } from "react";
 import { request } from "@/lib/api";
-type Access = { permissoes: string[]; escopos: Record<string, string[]> };
-const Context = createContext<Access>({ permissoes: [], escopos: {} });
+type Access = { permissoes: string[]; escopos: Record<string, string[]>; ready:boolean; error:string };
+const Context = createContext<Access>({ permissoes: [], escopos: {}, ready:false, error:"" });
 export function PermissionProvider({ children }: { children: React.ReactNode }) {
-  const [access, setAccess] = useState<Access>({ permissoes: [], escopos: {} });
+  const [access, setAccess] = useState<Access>({ permissoes: [], escopos: {}, ready:false, error:"" });
   useEffect(() => {
     let current = true;
-    request<Access>("/auth/permissoes").then(a => { if(current) setAccess(a); }).catch(() => {});
+    request<Access>("/auth/permissoes").then(a => { if(current) setAccess({...a,ready:true,error:""}); }).catch(e => {if(current) setAccess({permissoes:[],escopos:{},ready:true,error:e.message});});
     return () => { current = false; };
   }, []);
   return <Context.Provider value={access}>{children}</Context.Provider>;
@@ -33,4 +33,15 @@ export function ImagePermission({ owner, acao="imagens_editar", children }: { ow
 export function AnyPermission({acoes,children}:{acoes:string[];children:React.ReactNode}) {
   const access = useContext(Context);
   return access.permissoes.includes("*") || acoes.some(a => access.permissoes.includes(a)) ? <>{children}</> : null;
+}
+
+export function AccessBoundary({children,publico=false}:{children:React.ReactNode;publico?:boolean}) {
+  const access = useContext(Context);
+  if(publico) return <>{children}</>;
+  if(!access.ready) return <p role="status">Carregando...</p>;
+  if(access.error) return <p className="error" role="alert">{access.error}</p>;
+  if(!access.permissoes.length && !Object.values(access.escopos).some(p => p.length))
+    return <section className="stack"><h1>Acesso nao concedido</h1>
+      <p role="status">Sua conta esta ativa, mas ainda nao possui permissoes de acesso.</p></section>;
+  return <>{children}</>;
 }

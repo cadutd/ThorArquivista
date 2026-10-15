@@ -17,13 +17,20 @@ from app.models.editorial import EventoEditorial, EditorialRegistro
 from app.services.editorial_service import invalidar_publicacao, auditar_edicao, TRANSICOES
 
 
-def listar_instrumentos(db: Session, limit: int, offset: int, q: str | None = None) -> tuple[list[Instrumento], int]:
+def listar_instrumentos(db: Session, limit: int, offset: int, q: str | None = None,
+                        nome: str = "", tipo: str | None = None, status: str | None = None) -> tuple[list[Instrumento], int]:
     safe_limit = min(max(limit, 1), 100)
     safe_offset = max(offset, 0)
     query = select(Instrumento).where(filtro_escopo(db, Instrumento.id))
     if q:
         pattern = f"%{q.strip()}%"
         query = query.where(or_(Instrumento.nome.ilike(pattern), Instrumento.descricao.ilike(pattern)))
+    if nome.strip():
+        query = query.where(Instrumento.nome.ilike("%" + nome.strip() + "%"))
+    if tipo:
+        query = query.where(Instrumento.tipo == tipo)
+    if status:
+        query = query.where(Instrumento.status == status)
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
     items = db.scalars(query.order_by(Instrumento.criado_em.desc(), Instrumento.id.desc()).limit(safe_limit).offset(safe_offset)).all()
     return list(items), total

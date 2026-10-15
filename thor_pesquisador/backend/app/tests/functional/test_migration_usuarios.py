@@ -50,7 +50,7 @@ def test_migration_preserva_ids_normaliza_cpf_e_isola_legados(monkeypatch):
             assert connection.scalar(text("SELECT origem FROM acessos_instrumento")) == "USUARIO"
         with Session(temporary) as db:
             data = UsuarioIn(nome="Administrador inicial",username="admin_inicial",cpf="11144477735",
-                             email="admin@example.org",perfil_codigo="ADMIN")
+                             email="admin@example.org")
             user = cadastrar_admin_inicial(db,data)
             assert user.govbr_sub is None and user.ativo
             with pytest.raises(ValueError,match="administrador ativo"):

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Archive, LogIn, ShieldCheck } from "lucide-react";
+import { safeReturnPath } from "@/lib/auth-navigation.mjs";
 import { devLogin, getGovbrStart } from "@/lib/api";
 
 export default function LoginPage() {
@@ -12,7 +13,8 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      const result = await getGovbrStart();
+      const next = safeReturnPath(new URLSearchParams(window.location.search).get("next"));
+      const result = await getGovbrStart(next);
       window.location.assign(result.authorization_url);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao iniciar login.");
@@ -26,7 +28,7 @@ export default function LoginPage() {
     setError("");
     try {
       await devLogin();
-      window.location.assign("/dashboard");
+      window.location.assign(safeReturnPath(new URLSearchParams(window.location.search).get("next")));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao entrar em modo desenvolvimento.");
     } finally {

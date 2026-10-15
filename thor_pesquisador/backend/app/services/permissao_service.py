@@ -1,7 +1,8 @@
 from fastapi import HTTPException
-from sqlalchemy import exists, or_, select
+from sqlalchemy import exists, func, or_, select
 from app.core.permissions import expand_legacy
 from app.models.editorial import AcessoInstrumento, Papel
+from app.models.user import Usuario
 
 ROLE_PERMISSIONS = {
     "ADMIN": ["*"],
@@ -82,3 +83,21 @@ def require_any_scope(db, acao):
     if not usuario:
         raise HTTPException(403, "Sem permissao para esta operacao.")
     require_imagens(db, usuario, acao)
+
+
+def bloquear_administracao(db):
+    # Serialize mutations so concurrent revocations cannot remove every admin.
+    db.execute(select(func.pg_advisory_xact_lock(866734120)))
+
+
+def ha_administrador(db):
+    return bool(db.scalar(select(AcessoInstrumento.id).join(Usuario).join(Papel).where(
+        AcessoInstrumento.instrumento_id.is_(None), Papel.ativo.is_(True),
+        Papel.permissoes.contains(["*"]), Usuario.ativo.is_(True),
+        Usuario.excluido_em.is_(None)).limit(1)))
+
+
+def preservar_administrador(db, existia):
+    db.flush()
+    if existia and not ha_administrador(db):
+        raise HTTPException(409, "Nao e permitido remover o ultimo administrador ativo.")

@@ -1,3 +1,4 @@
+import { notifySessionExpired } from "./auth-navigation.mjs";
 import { API_BASE_URL } from "./config";
 import type { Page, Registro } from "@/types/domain";
 
@@ -19,6 +20,7 @@ export async function imageRequest<T>(path: string, init?: RequestInit): Promise
     headers: init?.body instanceof FormData ? init.headers : { "Content-Type": "application/json", ...init?.headers },
   });
   if (!response.ok) {
+    if(response.status === 401) notifySessionExpired();
     const body = await response.json().catch(() => ({}));
     const detail = Array.isArray(body.detail) ? body.detail.map((e: {msg: string}) => e.msg).join("; ") : body.detail;
     throw new Error(detail || "Falha na requisicao.");

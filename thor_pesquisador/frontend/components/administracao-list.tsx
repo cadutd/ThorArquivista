@@ -14,7 +14,7 @@ type Kind = "usuarios" | "perfis" | "permissoes";
 type Row = {id?: string; codigo?: string; nome: string; ativo?: boolean; [key: string]: unknown};
 const titles = {usuarios:"Gestao de Usuarios", perfis:"Perfis", permissoes:"Permissoes"};
 const columns: Record<Kind, [string, string][]> = {
-  usuarios:[["nome","Nome"],["username","Usuario"],["email","E-mail"],["perfil_nome","Perfil"],["ativo","Ativo"]],
+  usuarios:[["nome","Nome"],["username","Usuario"],["email","E-mail"],["perfis","Perfis"],["tem_acesso","Acesso"],["ativo","Ativo"]],
   perfis:[["nome","Nome"],["codigo","Codigo"],["permissoes","Permissoes"],["ativo","Situacao"],["sistema","Sistema"]],
   permissoes:[["nome","Nome"],["codigo","Codigo"],["modulo","Modulo"],["funcao","Funcao"],["acao","Acao"]],
 };
@@ -89,6 +89,8 @@ export function AdministracaoList({tipo,usuarioInicial,perfilInicial}: {tipo: Ki
             <a className="crud-record-link" href={"#permissao-" + row.codigo} onClick={e => {e.preventDefault();setSelected(row);}}>{row.nome}</a> :
             <a className="crud-record-link" href={path} onClick={e => {e.preventDefault();setSelectedProfile(id);}}>{row.nome}</a> :
             key === "ativo" ? row.ativo ? "Ativo" : "Inativo" : key === "sistema" ? row.sistema ? "Sim" : "Nao" :
+            key === "perfis" ? Array.isArray(row.perfis) ? row.perfis.map(p => String(p.nome) + (p.ativo ? "" : " (inativo)")).join(", ") || "Nenhum" : "Nenhum" :
+            key === "tem_acesso" ? row.tem_acesso ? "Concedido" : "Sem acesso" :
             key === "permissoes" ? Array.isArray(row.permissoes) ? row.permissoes.length : 0 :
             key === "acao" ? actionLabels[String(row.acao)] || String(row.acao) : String(row[key] ?? "-")}
         </td>)}<td><div className="actions">

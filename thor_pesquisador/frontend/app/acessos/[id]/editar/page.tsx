@@ -1,4 +1,7 @@
-"use client";
-import { useParams } from "next/navigation";
 import { AcessoEditor } from "@/components/acesso-editor";
-export default function EditAccess() { const {id} = useParams<{id: string}>(); return <AcessoEditor id={id}/>; }
+export default async function EditAccess({params,searchParams}:{
+  params:Promise<{id:string}>;searchParams:Promise<{usuario?:string}>;
+}) {
+  const {id} = await params;const query = await searchParams;
+  return <AcessoEditor id={id} usuarioId={query.usuario}/>;
+}

@@ -1,3 +1,4 @@
+import { notifySessionExpired } from "./auth-navigation.mjs";
 import { API_BASE_URL } from "@/lib/config";
 import type {
   BuscaAvancadaResultado,
@@ -28,6 +29,7 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
     }
   });
   if (!response.ok) {
+    if(response.status === 401) notifySessionExpired();
     const detail = await response.json().catch(() => ({}));
     const message = Array.isArray(detail.detail)
       ? detail.detail.map((item: {loc?:string[];msg?:string}) => [item.loc?.slice(1).join("."),item.msg].filter(Boolean).join(": ")).join("; ")
@@ -44,8 +46,8 @@ export function devLogin() {
   return request("/auth/dev-login", { method: "POST" });
 }
 
-export function getGovbrStart() {
-  return request<{ authorization_url: string }>("/auth/govbr/start");
+export function getGovbrStart(next="/dashboard") {
+  return request<{ authorization_url: string }>("/auth/govbr/start?next=" + encodeURIComponent(next));
 }
 
 export function me() {

@@ -2,18 +2,18 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, ChevronDown, RefreshCw, Save, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Save, ShieldCheck } from "lucide-react";
 import { AppShell } from "./app-shell";
 import { Permission } from "./permission";
 import { ApiError, request } from "@/lib/api";
 
 export type Usuario = {
   id:string; nome:string; username:string; cpf:string | null; email:string | null; ativo:boolean;
-  observacoes:string | null; perfil_codigo:string | null; perfil_nome:string | null;
+  observacoes:string | null; perfis:{codigo:string;nome:string;ativo:boolean}[]; total_acessos:number; tem_acesso:boolean;
   govbr_vinculado:boolean; criado_em:string; atualizado_em:string;
 };
 type UsuarioFormData = {
-  nome:string; username:string; cpf:string; email:string; ativo:boolean; observacoes:string; perfil_codigo:string;
+  nome:string; username:string; cpf:string; email:string; ativo:boolean; observacoes:string;
 };
 type FieldErrors = Partial<Record<keyof UsuarioFormData,string>>;
 
@@ -23,6 +23,7 @@ export function UsuarioEditor({id}:{id?:string}) {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [saving, setSaving] = useState(false);
+  const [created, setCreated] = useState<Usuario>();
   useEffect(() => {
     setUser(undefined);setError("");setFieldErrors({});
     if(!id) return;
@@ -34,9 +35,9 @@ export function UsuarioEditor({id}:{id?:string}) {
   async function save(data: UsuarioFormData) {
     setSaving(true);setError("");setFieldErrors({});
     try {
-      await request(id ? "/usuarios/" + id : "/usuarios", {
+      const saved = await request<Usuario>(id ? "/usuarios/" + id : "/usuarios", {
         method:id ? "PUT" : "POST", body:JSON.stringify(data)});
-      router.push("/usuarios");
+      if(id) router.push("/usuarios");else setCreated(saved);
     } catch(e) {
       if(e instanceof ApiError && Array.isArray(e.detail)) {
         const errors:FieldErrors = {};
@@ -60,7 +61,11 @@ export function UsuarioEditor({id}:{id?:string}) {
       <header><h2>{id ? "Edicao" : "Cadastro"}</h2>{user && <p>{user.nome}</p>}</header>
       <div className="usuario-editor-content">
         {id && !user && !error && <p className="muted" role="status">Carregando usuario...</p>}
-        {(!id || user) && <UsuarioForm key={id || "novo"} initial={user} saving={saving} error={error}
+        {created && <div className="stack"><p role="status">Usuario cadastrado. Sem acesso concedido.</p>
+          <div className="actions"><Permission acao="acessos_incluir"><Link className="button" title="Conceder acesso"
+            href={"/acessos/novo?usuario=" + created.id}><ShieldCheck size={16}/>Conceder acesso</Link></Permission>
+            <Link className="button secondary" href="/usuarios">Voltar para usuarios</Link></div></div>}
+        {!created && (!id || user) && <UsuarioForm key={id || "novo"} initial={user} saving={saving} error={error}
           errors={fieldErrors} onFieldError={fieldError} onSubmit={save}/>}
         {id && !user && error && <p className="error" role="alert">{error}</p>}
       </div>
@@ -78,7 +83,6 @@ function UsuarioForm({initial,saving,onSubmit,error,errors,onFieldError}:{
   const [form, setForm] = useState<UsuarioFormData>({
     nome:initial?.nome || "", username:initial?.username || "", cpf:initial?.cpf || "",
     email:initial?.email || "", ativo:initial?.ativo ?? true, observacoes:initial?.observacoes || "",
-    perfil_codigo:initial?.perfil_codigo || "",
   });
   function field(key: keyof UsuarioFormData, value:string | boolean) {
     setForm(v => ({...v,[key]:value}));onFieldError(key,"");
@@ -105,8 +109,6 @@ function UsuarioForm({initial,saving,onSubmit,error,errors,onFieldError}:{
           <input className="input" required type="email" maxLength={255} {...accessibility("email")}
             value={form.email} onChange={e => field("email",e.target.value)}/>
         </UsuarioField>
-        <UsuarioPerfil value={form.perfil_codigo} initial={initial} error={errors.perfil_codigo}
-          onChange={v => field("perfil_codigo",v)}/>
         <UsuarioField label="CPF" required field="cpf" error={errors.cpf}>
           <input className="input" required inputMode="numeric" maxLength={14} {...accessibility("cpf")}
             readOnly={initial?.govbr_vinculado} value={form.cpf} onChange={e => field("cpf",e.target.value)}/>
@@ -120,7 +122,7 @@ function UsuarioForm({initial,saving,onSubmit,error,errors,onFieldError}:{
       </UsuarioField>
     </fieldset>
     {error && <p className="error" role="alert">{error}</p>}
-    <div className="actions"><button className="button" disabled={saving || !form.perfil_codigo}><Save size={16}/>
+    <div className="actions"><button className="button" disabled={saving}><Save size={16}/>
       {saving ? "Salvando..." : initial ? "Salvar alteracoes" : "Salvar usuario"}</button></div>
   </form>;
 }
@@ -131,41 +133,5 @@ function UsuarioField({label,required,field,error,children}:{
   return <div className="usuario-field"><label className="field"><span>{label}
     {required && <> <span className="usuario-required">*</span></>}</span>{children}</label>
     {error && <p className="error usuario-field-error" id={"usuario-error-" + field}>{error}</p>}
-  </div>;
-}
-
-function UsuarioPerfil({value,initial,error,onChange}:{
-  value:string;initial?:Usuario;error?:string;onChange:(value:string)=>void;
-}) {
-  const [items,setItems] = useState<{id:string;nome:string}[]>([]);
-  const [offset,setOffset] = useState(0);
-  const [total,setTotal] = useState(0);
-  const [loading,setLoading] = useState(true);
-  const [loadError,setLoadError] = useState("");
-  const [refresh,setRefresh] = useState(0);
-  useEffect(() => {
-    let current = true;setLoading(true);
-    request<{items:{id:string;nome:string}[];total:number}>("/perfis?ativo=true&limit=100&offset=" + offset)
-      .then(r => {if(current) {setItems(v => Array.from(new Map([...v,...r.items].map(p => [p.id,p])).values()));
-        setTotal(r.total);setLoadError("");}})
-      .catch(e => {if(current) setLoadError(e.message);})
-      .finally(() => {if(current) setLoading(false);});
-    return () => {current = false;};
-  },[offset,refresh]);
-  const options = initial?.perfil_codigo && !items.some(p => p.id === initial.perfil_codigo)
-    ? [{id:initial.perfil_codigo,nome:initial.perfil_nome || initial.perfil_codigo},...items] : items;
-  return <div><UsuarioField label="Perfil" required field="perfil_codigo" error={error}>
-    <select className="select" required name="perfil_codigo" value={value} aria-invalid={!!error}
-      aria-describedby={error ? "usuario-error-perfil_codigo" : undefined} disabled={loading && !options.length}
-      onChange={e => onChange(e.target.value)}>
-      <option value="">{loading ? "Carregando perfis..." : "Selecione um perfil"}</option>
-      {options.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
-    </select>
-  </UsuarioField>
-    {loadError && <div className="row"><p className="error" role="alert">{loadError}</p>
-      <button type="button" className="icon-button" title="Recarregar perfis" aria-label="Recarregar perfis"
-        disabled={loading} onClick={() => setRefresh(v => v + 1)}><RefreshCw size={16}/></button></div>}
-    {items.length < total && <button type="button" className="button secondary" disabled={loading || !!loadError}
-      onClick={() => setOffset(v => v + 100)}><ChevronDown size={16}/>Mais perfis</button>}
   </div>;
 }

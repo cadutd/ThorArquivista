@@ -1,4 +1,5 @@
 import "./globals.css";
+import { SessionGuard } from "@/components/session-guard";
 
 export const metadata = {
   title: "Thor Pesquisador",
@@ -8,7 +9,7 @@ export const metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body><SessionGuard>{children}</SessionGuard></body>
     </html>
   );
 }

@@ -23,7 +23,7 @@ def cpf_teste():
 def payload(**overrides):
     data = dict(nome="Usuario " + uuid.uuid4().hex, username="teste_" + uuid.uuid4().hex,
                 cpf=cpf_teste(), email=uuid.uuid4().hex + "@example.org",
-                perfil_codigo="CONSULTA_INTERNA", ativo=True, observacoes="Cadastro administrativo")
+                ativo=True, observacoes="Cadastro administrativo")
     data.update(overrides)
     return data
 
@@ -44,11 +44,14 @@ def autenticado(user_id):
 
 def test_crud_usuario_preserva_escopos_e_historico(ctx):
     admin, instrument_id, _ = ctx
-    data = payload(perfil_codigo="EDITOR")
+    data = payload()
     user = criar(admin, data)
     path = "/api/v1/usuarios/" + user["id"]
     assert not user["govbr_vinculado"] and user["cpf"] == data["cpf"]
     assert user["username"] == data["username"]
+    assert not user["tem_acesso"] and not user["perfis"] and user["total_acessos"] == 0
+    initial = admin.post("/api/v1/acessos",json={"usuario_id":user["id"],"papel":"EDITOR"})
+    assert initial.status_code == 201
     grant = admin.post("/api/v1/acessos", json={"usuario_id":user["id"],
         "papel":"EDITOR","instrumento_id":instrument_id})
     assert grant.status_code == 201
@@ -59,15 +62,18 @@ def test_crud_usuario_preserva_escopos_e_historico(ctx):
     assert admin.put("/api/v1/acessos/" + principal["id"],json={
         "usuario_id":user["id"],"papel":"EDITOR","instrumento_id":instrument_id}).status_code == 409
     client = autenticado(user["id"])
-    updated = {**data,"nome":"Atualizado " + uuid.uuid4().hex,"perfil_codigo":"REVISOR"}
+    updated = {**data,"nome":"Atualizado " + uuid.uuid4().hex}
     assert admin.put(path,json=updated).status_code == 200
+    assert "registros_editar" in client.get("/api/v1/auth/permissoes").json()["permissoes"]
+    assert admin.put("/api/v1/acessos/" + initial.json()["id"],json={
+        "usuario_id":user["id"],"papel":"REVISOR"}).status_code == 200
     permissions = client.get("/api/v1/auth/permissoes").json()
     assert "revisar" in permissions["permissoes"]
     assert "registros_editar" in permissions["escopos"][instrument_id]
     with SessionLocal() as db:
         assert db.get(AcessoInstrumento,uuid.UUID(extra.json()["id"])).origem == "MANUAL"
     filtered = admin.get("/api/v1/usuarios",params={"cpf":data["cpf"],"ativo":True,"limit":1}).json()
-    assert filtered["total"] == 1 and filtered["items"][0]["perfil_nome"]
+    assert filtered["total"] == 1 and filtered["items"][0]["perfis"]
     assert admin.get("/api/v1/usuarios",params={"username":data["username"],"offset":1}).json()["items"] == []
     assert admin.delete(path).status_code == 200
     assert admin.get(path).status_code == 404
@@ -176,19 +182,20 @@ def test_callback_valida_nonce_e_cadastro(ctx,monkeypatch):
     assert client.get(path.replace("state-correto","state-incorreto"),follow_redirects=False).status_code == 400
 
 
-def test_autoprotecao_e_perfil_principal_global(ctx):
+def test_autoprotecao_e_administrador_por_concessao(ctx):
     admin, _, _ = ctx
-    data = payload(username="admin_" + uuid.uuid4().hex,perfil_codigo="ADMIN")
+    data = payload(username="admin_" + uuid.uuid4().hex)
     user = criar(admin,data)
+    assert admin.post("/api/v1/acessos",json={"usuario_id":user["id"],"papel":"ADMIN"}).status_code == 201
     client = autenticado(user["id"])
     path = "/api/v1/usuarios/" + user["id"]
     assert client.delete(path).status_code == 409
     assert client.put(path,json={**data,"ativo":False}).status_code == 409
-    assert client.put(path,json={**data,"perfil_codigo":"EDITOR"}).status_code == 409
+    assert client.put(path,json={**data,"perfil_codigo":"EDITOR"}).status_code == 422
     grants = admin.get("/api/v1/acessos",params={"usuario_id":user["id"]}).json()["items"]
     assert client.delete("/api/v1/acessos/" + grants[0]["id"]).status_code == 409
     with SessionLocal() as db:
         from app.editorial_cli import cadastrar_admin_inicial
         from app.schemas.usuario import UsuarioIn
         with pytest.raises(ValueError,match="administrador ativo"):
-            cadastrar_admin_inicial(db,UsuarioIn(**payload(perfil_codigo="ADMIN")))
+            cadastrar_admin_inicial(db,UsuarioIn(**payload()))

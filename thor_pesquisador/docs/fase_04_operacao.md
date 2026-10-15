@@ -40,7 +40,8 @@ independentes em cada CRUD, inclusive Usuarios, Perfis e Concessoes. Nenhum
 perfil padrao nao administrativo recebeu novas permissoes administrativas.
 Consulte a [matriz granular e regras de delegacao](administracao_acessos.md).
 Usuarios devem ser cadastrados antes do login gov.br; o CPF vincula a
-identidade. O perfil escolhido no cadastro e uma concessao global explicita.
+identidade. Perfis sao atribuidos exclusivamente por Concessoes de acesso;
+o cadastro nao concede acesso nem exige perfil global.
 
 ## Primeiro Administrador
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 import secrets
+import re
+from urllib.parse import unquote, urljoin, urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import RedirectResponse
@@ -23,8 +25,23 @@ from app.services.auth_service import (
 router = APIRouter()
 
 
+def safe_return_path(value):
+    try:
+        decoded = unquote(value)
+        parts = urlsplit(urljoin("http://thor.local", value))
+        if (not value.startswith("/") or decoded.startswith("//") or parts.netloc != "thor.local"
+                or "\\" in decoded or any(ord(char) < 32 or ord(char) == 127 for char in decoded)
+                or re.match(r"^/login(?:/|$)", unquote(parts.path))):
+            return "/dashboard"
+        return value
+    except ValueError:
+        return "/dashboard"
+
+
 @router.get("/govbr/start", response_model=AuthStartOut)
-def govbr_start(response: Response) -> AuthStartOut:
+def govbr_start(response: Response, next_path: str = Query(default="/dashboard", alias="next")) -> AuthStartOut:
+    response.set_cookie("thor_auth_return_to", safe_return_path(next_path), max_age=600,
+                        httponly=True, secure=settings.session_cookie_secure, samesite="lax")
     state = random_urlsafe()
     nonce = random_urlsafe()
     verifier = random_urlsafe(48)
@@ -51,8 +68,10 @@ async def govbr_callback(
         raise HTTPException(401, "Nonce de autenticacao invalido.")
     usuario = usuario_from_claims(db, claims)
     raw_session = create_session(db, usuario)
-    response = RedirectResponse(f"{settings.public_app_url}/dashboard")
+    destination = safe_return_path(request.cookies.get("thor_auth_return_to", "/dashboard"))
+    response = RedirectResponse(settings.public_app_url.rstrip("/") + destination)
     _set_session_cookie(response, raw_session)
+    response.delete_cookie("thor_auth_return_to")
     response.delete_cookie("thor_auth_state")
     response.delete_cookie("thor_auth_nonce")
     response.delete_cookie("thor_auth_verifier")

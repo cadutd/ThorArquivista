@@ -40,7 +40,7 @@ function cpfTeste() {
     await page.getByLabel("Usuario *",{exact:true}).fill(username);
     await page.getByLabel("E-mail *",{exact:true}).fill(username + "@example.org");
     await page.getByLabel("CPF *",{exact:true}).fill("00000000000");
-    await page.getByLabel(/^Perfil/).selectOption("CONSULTA_INTERNA");
+    assert.equal(await page.locator('select[name="perfil_codigo"]').count(),0);
     await page.getByLabel("Observacoes",{exact:true}).fill("Nota administrativa\nSegunda linha");
     const invalid = page.waitForResponse(r => r.url() === api + "/usuarios" && r.request().method() === "POST");
     await page.getByRole("button",{name:"Salvar usuario",exact:true}).click();
@@ -51,6 +51,11 @@ function cpfTeste() {
     const created = page.waitForResponse(r => r.url() === api + "/usuarios" && r.request().method() === "POST");
     await page.getByRole("button",{name:"Salvar usuario",exact:true}).click();
     user = await json(await created);
+    assert.equal(user.tem_acesso,false);
+    assert.deepEqual(user.perfis,[]);
+    await page.getByText("Usuario cadastrado. Sem acesso concedido.",{exact:true}).waitFor();
+    await page.getByRole("link",{name:"Conceder acesso",exact:true}).waitFor();
+    await page.getByRole("link",{name:"Voltar para usuarios",exact:true}).click();
     await page.waitForURL("**/usuarios");
     await search();
     const row = page.getByRole("row").filter({hasText:username});
@@ -88,12 +93,7 @@ function cpfTeste() {
     assert.equal(await page.locator(".crud-search-form").count(),0);
     assert.equal(await page.locator(".crud-pagination").count(),0);
     assert.equal(await page.getByRole("textbox",{name:"Buscar perfil",exact:true}).count(),0);
-    while(await page.locator('select[name="perfil_codigo"] option[value="REVISOR"]').count() === 0) {
-      const count = await page.locator('select[name="perfil_codigo"] option').count();
-      await page.getByRole("button",{name:"Mais perfis",exact:true}).click();
-      await page.waitForFunction(previous => document.querySelectorAll('select[name="perfil_codigo"] option').length > previous,count);
-    }
-    await page.getByLabel(/^Perfil/).selectOption("REVISOR");
+    assert.equal(await page.locator('select[name="perfil_codigo"]').count(),0);
     assert.equal(await page.locator(".usuario-form-grid").evaluate(el => getComputedStyle(el).gridTemplateColumns.split(" ").length),2);
     await page.screenshot({path:path.join(os.tmpdir(),"thor-usuarios-editar-desktop.png")});
     await page.getByLabel("Nome *",{exact:true}).fill("Usuario atualizado");
@@ -102,7 +102,8 @@ function cpfTeste() {
     await page.getByRole("button",{name:"Salvar alteracoes",exact:true}).click();
     const saved = await json(await updated);
     assert.equal(saved.ativo,false);
-    assert.equal(saved.perfil_codigo,"REVISOR");
+    assert.deepEqual(saved.perfis,[]);
+    assert.equal(saved.total_acessos,0);
     await page.waitForURL("**/usuarios");
     await search();
     await page.setViewportSize({width:390,height:844});

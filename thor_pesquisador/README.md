@@ -1,5 +1,17 @@
 # Thor Pesquisador
 
+## Atualizacao de 2026-10-15
+
+Cadastro de usuarios separado das concessoes; inclusao e edicao de acessos
+compartilham pesquisa e selecao multipla. Permissoes por operacao e escopo sao
+validadas no backend. Todas as telas exigem sessao, exceto /login, com retorno
+seguro a pagina solicitada. A massa dev/test possui 60 usuarios e 24 perfis.
+
+Validacao mais recente: 230 testes backend, 41 contratos frontend, builds Docker
+e sete fluxos de navegador: sessao, edicao de concessoes, CRUD de concessoes,
+inclusao em lote, concessoes independentes, administracao e editorial.
+Os testes usam bancos/servicos isolados e preservam o ambiente operacional.
+
 Sistema web para instrumentos de pesquisa dinamicos, com autenticacao gov.br, dashboard administrativo, registros flexiveis em MongoDB e deploy preparado para Docker Compose e Kubernetes/OKD.
 
 O projeto e independente do `thor_gestor_de_arquivos_digitais`, mas mantem a mesma identidade visual: paleta, shell administrativo, cards, tabelas, login institucional e dashboard como pagina inicial autenticada.
@@ -23,7 +35,7 @@ O projeto e independente do `thor_gestor_de_arquivos_digitais`, mas mantem a mes
 - Licenca AGPL-3.0, igual ao Thor Gestor.
 
 As fases 1 a 4 estao implementadas. A fase 4 inclui RBAC por instrumento,
-revisao editorial, publicacao versionada, historico e consulta anonima em
+revisao editorial, publicacao versionada, historico e consulta de publicacoes em
 `/consulta`. `/pesquisa` continua sendo busca interna autorizada por escopo.
 Exportacoes, retencao ampla e consolidacao operacional ficam nas fases 5 e 6.
 Consulte [Operacao da fase 4](docs/fase_04_operacao.md) para provisionamento,
@@ -357,7 +369,7 @@ pendentes de revisao; nao foi aplicado `npm audit fix --force`.
 Administracao -> Gestao de Usuarios oferece cadastro, filtros e paginacao no
 padrao do Gestor. A primeira coluna e o botao Visualizar abrem um popup;
 criacao e edicao usam paginas proprias. O formulario inclui nome, usuario,
-CPF, e-mail, perfil, ativo e observacoes.
+CPF, e-mail, ativo e observacoes.
 
 Todo acesso gov.br exige usuario local previamente cadastrado e ativo.
 O CPF validado e unico vincula a identidade autenticada; o login nao cria
@@ -377,14 +389,96 @@ Editar e Excluir, inclusive na administracao. Menus e botoes respeitam esses
 codigos; a autorizacao efetiva permanece no backend, com escopos por instrumento
 e protecao contra escalada de privilegios na delegacao administrativa.
 
+As permissoes dos varios perfis ativos do usuario sao somadas, respeitando
+o escopo de cada concessao; perfis inativos nao autorizam operacoes.
+A API retorna 403 em tentativas nao autorizadas, inclusive por acesso direto,
+e 401 quando nao ha sessao valida. Ocultar um botao nao substitui essa validacao.
+Alteracoes de concessoes/perfis valem na proxima requisicao ao backend;
+uma tela ja aberta pode precisar de recarga para atualizar menus e botoes.
+
+Com dev_admin_enabled e govbr_dev_login habilitados em dev/test, Entrar em
+desenvolvimento provisiona a concessao ADMIN global para a conta reservada
+de desenvolvimento. Essa conta possui acesso total e nao serve para avaliar
+restricoes de um perfil comum. Os testes de permissoes usam usuarios sem ADMIN
+na stack isolada. A massa sintetica nao cria senhas nem sessoes para seus usuarios.
+
 A migration `20261013_000009` preserva os perfis e acessos atuais e substitui
 os agrupamentos antigos por permissoes granulares. O catalogo de Permissoes
 permanece somente leitura. Consulte a matriz e as regras de rollback em
 [Administracao de Acessos](docs/administracao_acessos.md).
 
-Validacao: 165 testes backend e 35 contratos frontend, executados no Docker
+Validacao: 230 testes backend e 41 contratos frontend, executados no Docker
 isolado. O teste `frontend/tests/e2e/permissoes-crud.smoke.cjs` cobre a
 interface com usuario nao administrador e verificacoes desktop/mobile.
+
+## Cadastro Sem Perfil
+
+Desde a migration `20261014_000010`, o cadastro de usuarios nao atribui perfis.
+Permissoes sao concedidas exclusivamente em Concessoes de acesso, globais ou
+por instrumento. Varios perfis podem coexistir, sem perfil principal.
+Os vinculos antigos, IDs e historico foram preservados; origem USUARIO dos
+legados e apenas procedencia historica.
+
+Apos cadastrar, Conceder acesso aparece somente para quem possui essa permissao.
+Usuarios ativos sem concessoes podem autenticar-se, mas a interface informa
+Acesso nao concedido e as APIs internas continuam protegidas. Consultas de
+usuarios mostram os perfis concedidos e a situacao de acesso. A protecao do
+ultimo administrador tambem cobre revogacoes simultaneas.
+
+O teste `concessoes-independentes.smoke.cjs` cobre o novo fluxo em desktop/mobile.
+
+## Concessoes em Lote
+
+O cadastro de acesso pesquisa usuario por nome, nome de usuario e email,
+mostra seus acessos existentes e permite selecionar varios perfis ativos.
+O escopo global desabilita a pesquisa de instrumentos; no escopo por instrumento,
+a pesquisa usa Nome, Tipo e Status e permite selecionar varios instrumentos.
+Um resumo apresenta os acessos que serao criados antes da confirmacao.
+
+POST /api/v1/acessos/lote valida todos os vinculos antes de inserir e grava
+o lote em uma unica transacao, sem inclusoes parciais. Duplicidades,
+sobreposicoes global/instrumento para o mesmo perfil, referencias invalidas
+e delegacao superior aos privilegios do operador sao rejeitadas. A edicao
+em pagina propria e o popup de visualizacao permanecem disponiveis.
+
+Validado no Docker isolado: 230 testes backend, 41 contratos frontend e
+teste de navegador concessoes-lote.smoke.cjs com layout desktop/mobile.
+
+## Massa de Acessos para Desenvolvimento
+
+O gerador app.scripts.seed_acessos cria 60 usuarios e 24 perfis sinteticos,
+com situacoes ativas/inativas, usuarios sem acesso e multiplas concessoes.
+E idempotente, restrito a dev/test e nao sobrescreve cadastros existentes.
+Consulte [Massa de testes de acessos](docs/massa_teste_acessos.md).
+A inclusao de concessoes reutiliza a identidade visual de Usuarios e Perfis,
+com Cadastro, controles do tema, buscas com Limpar e paginacao compartilhada.
+
+## Edicao de Acessos e Sessao Ativa
+
+Inclusao e edicao reutilizam o mesmo formulario: usuario, acessos existentes,
+multiplos perfis e escopo global ou varios instrumentos. A edicao carrega as
+selecoes atuais e salva em PUT /api/v1/acessos/{id}/lote. Preserva o ID original,
+datas/origem e os outros acessos; somente as combinacoes adicionais sao inseridas.
+A operacao exige acessos_editar, e acessos_incluir quando gera novos vinculos.
+Duplicidades, sobreposicoes, delegacao indevida e remocao do ultimo administrador
+sao bloqueadas, com rollback de toda a operacao.
+
+Todas as telas, inclusive /consulta, verificam a sessao no backend antes de exibir
+seu conteudo. A unica tela aberta sem sessao e /login. A guarda revalida ao navegar,
+ao retornar a aba/janela e periodicamente a cada 60 segundos. Qualquer resposta
+401 dos clientes da API, incluindo imagens/upload, encaminha ao login.
+Respostas 403 indicam falta de permissao e nao encerram uma sessao valida.
+
+O parametro next preserva caminho, filtros e fragmento da pagina solicitada.
+O login de desenvolvimento e o callback gov.br so aceitam destinos internos;
+enderecos externos e retornos para login sao recusados. No gov.br, o destino
+fica em cookie HttpOnly temporario e e revalidado no callback, mantendo state,
+nonce e demais verificacoes existentes. APIs publicas de publicacoes permanecem
+inalteradas; a exigencia de sessao abrange a interface do sistema.
+
+Validacao: 230 testes backend e 41 contratos frontend no Docker isolado.
+Os testes sessao.smoke.cjs e concessoes-edicao.smoke.cjs verificam navegacao
+direta, expiracao durante o uso, retorno seguro e edicao desktop/mobile.
 
 ## Licenca
 
