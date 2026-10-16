@@ -9,7 +9,7 @@ from typing import Any
 
 from fastapi import HTTPException
 from pymongo.collection import Collection
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.db.mongo import registros_collection
@@ -42,8 +42,17 @@ def criar_registro(db: Session, instrumento_id: uuid.UUID, payload: RegistroCrea
         "atualizado_em": now,
         "texto_busca_basico": _texto_busca(campos, payload.dados),
     }
+    from app.services.auditoria_service import registrar
+    operacao = uuid.uuid4()
+    registrar(db, "CRIAR_REGISTRO_INTENCAO", "registro", documento["_id"], instrumento_id,
+              documento["_id"], {"etapa": "INTENCAO_PERSISTIDA"}, operacao_id=operacao)
+    db.execute(update(Instrumento).where(Instrumento.id == instrumento_id)
+               .values(revisao_dados=Instrumento.revisao_dados + 1).execution_options(synchronize_session=False))
+    db.commit()
     _collection(collection).insert_one(documento)
     controle(db, instrumento_id, documento["_id"], documento)
+    registrar(db, "CRIAR_REGISTRO_CONCLUIDO", "registro", documento["_id"], instrumento_id,
+              documento["_id"], {"etapa": "CONCLUIDA"}, operacao_id=operacao)
     db.commit()
     enqueue_registro(instrumento_id, documento["_id"])
     return _to_out(documento, db)

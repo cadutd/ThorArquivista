@@ -19,7 +19,7 @@ export class ApiError extends Error {
   }
 }
 
-export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function requestResponse(path: string, init?: RequestInit): Promise<Response> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     credentials: "include",
@@ -36,6 +36,19 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
       : detail.detail;
     throw new ApiError(message ?? "Falha na requisicao.",response.status,detail.detail);
   }
+  return response;
+}
+
+export async function downloadFile(path:string, filename:string) {
+  const response = await requestResponse(path);
+  const url = URL.createObjectURL(await response.blob());
+  const anchor = document.createElement("a");
+  anchor.href = url; anchor.download = filename; anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await requestResponse(path, init);
   if (response.status === 204) {
     return undefined as T;
   }

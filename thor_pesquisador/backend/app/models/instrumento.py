@@ -24,6 +24,7 @@ class Instrumento(Base):
     publicacao_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))
     geracao_publica: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     geracao_indexada: Mapped[int] = mapped_column(Integer, nullable=False, default=-1, server_default="-1")
+    revisao_dados: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     criado_por: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("usuarios.id"))
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     atualizado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)

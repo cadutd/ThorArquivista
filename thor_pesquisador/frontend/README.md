@@ -1,16 +1,31 @@
 # Frontend
 
-## Atualizacao de 2026-10-15
+## Atualizacao de 2026-10-16
 
 Cadastro de usuarios separado das concessoes; inclusao e edicao de acessos
 compartilham pesquisa e selecao multipla. Permissoes por operacao e escopo sao
 validadas no backend. Todas as telas exigem sessao, exceto /login, com retorno
 seguro a pagina solicitada. A massa dev/test possui 60 usuarios e 24 perfis.
 
-Validacao mais recente: 230 testes backend, 41 contratos frontend, builds Docker
-e sete fluxos de navegador: sessao, edicao de concessoes, CRUD de concessoes,
-inclusao em lote, concessoes independentes, administracao e editorial.
-Os testes usam bancos/servicos isolados e preservam o ambiente operacional.
+Fase 5 implementada: auditoria unificada e imutavel, exportacoes autenticadas
+CSV/JSON/pacote, jobs recuperaveis, relatorios, logs estruturados e politicas
+de retencao com simulacao, impedimentos e expurgo autorizado.
+Validacao acumulada: 360 testes backend e 47 contratos frontend no Docker isolado.
+Na revisao de 2026-10-16, os 47 contratos, a compilacao e quatro fluxos Playwright
+(conformidade, administracao, sessao e permissoes CRUD) passaram. A verificacao
+incluiu exportacao/download, edicao e simulacao de retencao, desativacao/reativacao
+de politica, relatorios, escopos, detalhes dedicados e telas desktop/mobile.
+
+Atualizacao de 2026-10-16: Auditoria, Exportacoes, Relatorios e Retencao estao
+no menu Administracao e seguem a identidade de Instrumentos (titulos,
+filtros Buscar/Limpar filtros, tabelas, paginacao dupla e formularios em grid).
+Auditoria, exportacoes, politicas e execucoes possuem visualizacao em pagina
+propria. Permissoes, comandos por estado e confirmacoes foram preservados.
+Os demais CRUDs administrativos mantem seus popups existentes.
+Detalhes, operacao, permissoes e limitacoes em
+[Operacao da fase 5](../docs/fase_05_operacao.md).
+Os numeros de validacao nas secoes historicas abaixo referem-se as respectivas
+entregas anteriores, nao ao total atual. A fase 6 permanece planejada.
 
 Interface web do `thor_pesquisador`, implementada com Next.js, React e TypeScript.
 
@@ -22,6 +37,8 @@ Interface web do `thor_pesquisador`, implementada com Next.js, React e TypeScrip
 - Instrumentos, campos dinamicos, registros e pesquisa.
 - Busca avancada por instrumento com filtros, facetas, ordenacao e reindexacao manual.
 - Consumo da API FastAPI.
+- Administracao com Auditoria, Exportacoes, Relatorios e Retencao respeitando escopos.
+- Formularios e detalhes dessas funcoes em paginas proprias, no padrao de Instrumentos.
 
 ## Identidade Visual
 

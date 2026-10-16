@@ -1,3 +1,4 @@
+import uuid
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -10,6 +11,7 @@ from app.services.usuario_service import validar_ativo
 
 
 def conceder_lote(db, payload, acesso_id=None):
+    db.info["operacao_id"] = uuid.uuid4()
     bloquear_administracao(db)
     actor = require(db, "acessos_editar" if acesso_id else "acessos_incluir")
     admin_antes = ha_administrador(db) if acesso_id else False

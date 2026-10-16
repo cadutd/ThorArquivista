@@ -140,6 +140,8 @@ def create_session(db: Session, usuario: Usuario) -> str:
         expira_em=datetime.now(UTC) + timedelta(hours=8),
     )
     db.add(sessao)
+    from app.services.auditoria_service import registrar
+    registrar(db, "LOGIN", "sessao", sessao.id, usuario=usuario)
     db.commit()
     return raw_token
 
@@ -159,6 +161,8 @@ def delete_session(db: Session, raw_token: str | None) -> None:
         return
     sessao = db.scalar(select(Sessao).where(Sessao.token_hash == token_hash(raw_token)))
     if sessao:
+        from app.services.auditoria_service import registrar
+        registrar(db, "LOGOUT", "sessao", sessao.id, usuario=db.get(Usuario, sessao.usuario_id))
         db.delete(sessao)
         db.commit()
 

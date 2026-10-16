@@ -30,6 +30,7 @@ select {
   width: 288px;
   border-right: 1px solid hsl(var(--border));
   background: #fff;
+  overflow-y: auto;
 }
 
 .sidebar-brand {
@@ -639,6 +640,16 @@ a:focus-visible {
 
 
 .concessao-editor-content { display: grid; gap: 24px; }
+.conformidade-fields { min-width: 0; margin: 0; padding: 0; border: 0; }
+.instrumento-lookup-control { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.instrumento-lookup-control .input { flex: 1; min-width: 0; width: 0; }
+.instrumento-lookup-control .icon-button { flex-shrink: 0; }
+.conformidade-fields .checkbox-field { display: flex; align-items: center; gap: 8px; min-height: 40px; font-size: 14px; }
+.conformidade-detail .detail-grid { margin: 0; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); }
+.conformidade-detail .detail-item { min-width: 0; }
+.conformidade-detail dt { color: hsl(var(--muted-foreground)); font-size: 14px; font-weight: 500; }
+.conformidade-detail dd { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.conformidade-detail pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; }
 .concessao-flow { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: 24px; }
 .concessao-step { border: 0; border-bottom: 1px solid hsl(var(--border)); margin: 0; padding: 0 0 24px; min-width: 0; display: grid; gap: 16px; }
 .concessao-step > h2, .concessao-step > legend, .concessao-review h2 { font-size: 16px; line-height: 24px; font-weight: 600; margin: 0; padding: 0 0 12px; }

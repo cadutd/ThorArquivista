@@ -7,6 +7,8 @@ resources:
   - meilisearch.yaml
   - backend.yaml
   - index-worker.yaml
+  - export-worker.yaml
+  - retention-cronjob.yaml
   - frontend.yaml
   - routes.yaml
 configMapGenerator:
@@ -26,6 +28,13 @@ configMapGenerator:
       - INDEXACAO_QUEUE_NAME=thor_pesquisador:indexacao
       - MEILISEARCH_URL=http://thor-pesquisador-meilisearch:7700
       - INDEXACAO_BATCH_SIZE=500
+      - EXPORTACAO_BATCH_SIZE=100
+      - EXPORTACAO_VALIDADE_HORAS=24
+      - JOBS_LEASE_SEGUNDOS=180
+      - JOBS_POLL_SEGUNDOS=3
+      - RETENCAO_BATCH_SIZE=100
+      - LOG_TECNICO_PERSISTIR=true
+      - LOG_ACESSO_CONSULTIVO=false
       - S3_ENDPOINT_URL=https://s3.example.local
       - S3_BUCKET=thor-pesquisador-imagens
       - S3_REGION=us-east-1

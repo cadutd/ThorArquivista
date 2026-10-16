@@ -57,8 +57,11 @@ class RegistroImagem(Base):
 
 class AuditoriaImagem(Base):
     __tablename__ = "auditoria_imagens"
+    __table_args__ = (Index("ix_imagens_auditoria_escopo_data", "instrumento_id", text("criado_em DESC"), "id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    request_id: Mapped[str | None] = mapped_column(String(64), index=True)
+    agente: Mapped[str | None] = mapped_column(String(255))
     # Identifiers are retained even after the referenced entity is deleted.
     imagem_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), index=True)
     instrumento_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True))

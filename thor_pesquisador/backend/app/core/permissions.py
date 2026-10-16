@@ -1,6 +1,7 @@
 """Catalogue of operation permissions; legacy bundles are used only for migration."""
 
 CRUD_MODULES = {
+    "retencao": "Politicas de retencao",
     "instrumentos": "Instrumentos",
     "campos": "Campos",
     "registros": "Registros",
@@ -20,11 +21,19 @@ PERMISSIONS += [
     {"codigo": f"{code}_consultar", "nome": f"Consultar {label}",
      "modulo": label, "funcao": "Consultar", "acao": "CONSULTAR"}
     for code, label in {"permissoes": "Permissoes", "pesquisa": "Pesquisa",
-                        "editorial": "Editorial", "dashboard": "Dashboard"}.items()
+                        "editorial": "Editorial", "dashboard": "Dashboard",
+                        "auditoria": "Auditoria", "relatorios": "Relatorios",
+                        "exportacoes": "Exportacoes"}.items()
 ]
 PERMISSIONS += [
     {"codigo": code, "nome": label, "modulo": module, "funcao": label, "acao": action}
     for code, label, module, action in [
+        ("exportacoes_incluir", "Solicitar exportacao", "Exportacoes", "INCLUIR"),
+        ("exportacoes_excluir", "Cancelar ou descartar exportacao", "Exportacoes", "EXCLUIR"),
+        ("exportacoes_repetir", "Repetir exportacao", "Exportacoes", "EDITAR"),
+        ("retencao_simular", "Simular retencao", "Politicas de retencao", "CONSULTAR"),
+        ("retencao_executar", "Executar retencao", "Politicas de retencao", "EXCLUIR"),
+        ("retencao_cancelar", "Cancelar retencao", "Politicas de retencao", "EDITAR"),
         ("enviar_revisao", "Enviar para revisao", "Editorial", "EDITAR"),
         ("revisar", "Aprovar e devolver", "Editorial", "EDITAR"),
         ("publicar", "Publicar", "Editorial", "EDITAR"),

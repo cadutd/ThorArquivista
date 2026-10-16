@@ -13,6 +13,10 @@ ROLE_PERMISSIONS = {
     "PUBLICO_AUTENTICADO": ["consulta_publicada"],
 }
 ROLE_PERMISSIONS = {name: expand_legacy(values) for name, values in ROLE_PERMISSIONS.items()}
+ROLE_PERMISSIONS["GESTOR_INSTRUMENTOS"] = sorted(set(ROLE_PERMISSIONS["GESTOR_INSTRUMENTOS"]) | {
+    "auditoria_consultar", "relatorios_consultar", "exportacoes_consultar", "exportacoes_incluir",
+    "exportacoes_excluir", "exportacoes_repetir"})
+ROLE_PERMISSIONS["REVISOR"] = sorted(set(ROLE_PERMISSIONS["REVISOR"]) | {"auditoria_consultar", "relatorios_consultar"})
 
 
 def permissoes(db, instrumento_id=None, usuario=None):

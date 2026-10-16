@@ -1,16 +1,28 @@
 # Backend
 
-## Atualizacao de 2026-10-15
+## Atualizacao de 2026-10-16
 
 Cadastro de usuarios separado das concessoes; inclusao e edicao de acessos
 compartilham pesquisa e selecao multipla. Permissoes por operacao e escopo sao
 validadas no backend. Todas as telas exigem sessao, exceto /login, com retorno
 seguro a pagina solicitada. A massa dev/test possui 60 usuarios e 24 perfis.
 
-Validacao mais recente: 230 testes backend, 41 contratos frontend, builds Docker
-e sete fluxos de navegador: sessao, edicao de concessoes, CRUD de concessoes,
-inclusao em lote, concessoes independentes, administracao e editorial.
-Os testes usam bancos/servicos isolados e preservam o ambiente operacional.
+Fase 5 implementada: auditoria unificada e imutavel, exportacoes autenticadas
+CSV/JSON/pacote, jobs recuperaveis, relatorios, logs estruturados e politicas
+de retencao com simulacao, impedimentos e expurgo autorizado.
+Validacao acumulada: 360 testes backend e 47 contratos frontend no Docker isolado.
+Na revisao de 2026-10-16, os 47 contratos, a compilacao e quatro fluxos Playwright
+(conformidade, administracao, sessao e permissoes CRUD) passaram. A verificacao
+incluiu exportacao/download, edicao e simulacao de retencao, desativacao/reativacao
+de politica, relatorios, escopos, detalhes dedicados e telas desktop/mobile.
+Detalhes, operacao, permissoes e limitacoes em
+[Operacao da fase 5](../docs/fase_05_operacao.md).
+Auditoria, Exportacoes, Relatorios e Retencao ficam em Administracao e seguem
+a identidade de Instrumentos. As APIs preservam os escopos globais/por instrumento,
+o historico imutavel e os comandos permitidos em cada estado dos jobs.
+Migrations da fase 5: 20261015_000011 a 20261015_000013; head atual 20261015_000013.
+Os numeros de validacao nas secoes historicas abaixo referem-se as respectivas
+entregas anteriores, nao ao total atual. A fase 6 permanece planejada.
 
 API do `thor_pesquisador`, implementada com FastAPI.
 
@@ -27,6 +39,9 @@ API do `thor_pesquisador`, implementada com FastAPI.
 - CRUD REST de instrumentos, campos e registros dinamicos com paginacao, validacao e erros consistentes.
 - Health check publico.
 - Metadados, vinculos e auditoria de imagens opcionais, com armazenamento S3.
+- Auditoria unificada e logs estruturados sem dados sensiveis.
+- Exportacoes autenticadas e recuperaveis, processadas pelo export_worker.
+- Relatorios autorizados e retencao com simulacao, bloqueios e expurgo explicito.
 
 ## Banco de Dados
 
@@ -216,12 +231,12 @@ PostgreSQL, MongoDB, Redis, Meilisearch e MinIO independentes. Execute na raiz
 
 ```bash
 docker compose -f docker-compose.test.yml up -d --build backend storage_init
-docker compose -f docker-compose.test.yml stop index_worker
+docker compose -f docker-compose.test.yml --profile e2e stop index_worker export_worker retention_scheduler
 docker compose -f docker-compose.test.yml exec -T backend python -m pytest -q -p no:cacheprovider app/tests
 ```
 
 O backend aplica migrations ao iniciar. A montagem somente leitura evita caches
-no checkout. O worker deve ficar parado durante pytest para nao disputar os
+no checkout. Os workers devem ficar parados durante pytest para nao disputar os
 jobs dos testes. A suite exige nomes de bancos terminados em `_test`.
 Cobertura: CRUD, imagens/S3, estados editoriais, papeis/escopos, concorrencia,
 idempotencia, snapshots, privacidade, falhas entre bancos e retomada de jobs.

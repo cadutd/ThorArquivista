@@ -119,7 +119,11 @@ ser fisicamente apagadas enquanto houver referencias historicas.
 
 ## Consulta e Projecao Publica
 
-`/consulta` e anonimo; dashboard continua sendo a entrada autenticada.
+Desde o refinamento de 2026-10-15, a tela `/consulta` exige sessao ativa
+via SessionGuard, assim como as demais telas; apenas `/login` fica aberta.
+Dashboard permanece a entrada autenticada padrao, preservando retorno next.
+As APIs `/api/v1/publico` continuam abertas para conteudo publicado elegivel;
+essa regra da API nao torna a tela consultiva anonima.
 O portal exige instrumento PUBLICO, publicacao/schema validos, registro ATIVO
 e snapshot vigente nao arquivado. Dados internos e rascunhos nunca alimentam
 a projecao publica. exibir_publico e false por padrao; aparece_busca/listagem
@@ -171,7 +175,7 @@ Nao executar esses fluxos de limpeza contra a stack operacional.
 O script PowerShell run-tests-with-reports.ps1 usa essa compose isolada e gera
 JUnit/Markdown/HTML, deixando o worker de testes parado.
 
-Validacao realizada:
+Validacao inicial da fase 4 (2026-10-11, registro historico):
 
 - 90 testes backend aprovados, incluindo matriz editorial, papeis/escopos,
   bypass por PUT, concorrencia, snapshots, revogacao, falhas e retomada.
@@ -187,7 +191,12 @@ Validacao realizada:
 - Kustomize base/dev/homolog/prod renderizados; rollout OKD nao testado,
   pois nao ha cluster disponibilizado para esta validacao.
 
-Avisos residuais: dependencias frontend existentes reportam 9 vulnerabilidades
+Os refinamentos de administracao/sessao foram validados posteriormente com
+230 testes backend, 41 contratos frontend e os fluxos descritos nos READMEs
+atuais. Os prompts das fases 5 e 6 partem dessa base revisada em 2026-10-15;
+essa revisao documental nao implementa as proximas fases.
+
+Avisos da validacao inicial: dependencias frontend existentes reportaram 9 vulnerabilidades
 npm (2 low, 1 moderate, 6 high); atualizacao de dependencias exige revisao propria.
 Os testes emitem avisos de deprecacao FastAPI/anyio existentes. Esta validacao
 nao equivale a certificacao de seguranca ou desempenho em producao.

@@ -18,6 +18,12 @@ assert.ok(base && api && process.env.THOR_E2E_ISOLATED==="true","Use apenas a st
   try {
     for(const route of ["/dashboard","/usuarios","/perfis","/permissoes","/acessos/novo","/imagens",
         "/consulta","/consulta/00000000-0000-0000-0000-000000000001/registro",
+        "/auditoria","/exportacoes","/exportacoes/nova","/relatorios","/retencao/politicas",
+        "/retencao/politicas/nova","/retencao/execucoes",
+        "/auditoria/geral/00000000-0000-0000-0000-000000000001",
+        "/exportacoes/00000000-0000-0000-0000-000000000001",
+        "/retencao/politicas/00000000-0000-0000-0000-000000000001",
+        "/retencao/execucoes/00000000-0000-0000-0000-000000000001",
         "/instrumentos/00000000-0000-0000-0000-000000000001/registros/registro/editar"]) {
       await page.goto(base+route);await redirected(route);
     }

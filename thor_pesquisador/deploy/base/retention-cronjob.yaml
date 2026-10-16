@@ -1,0 +1,34 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: thor-pesquisador-retention
+spec:
+  schedule: "*/15 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 840
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: thor-pesquisador-retention
+              image: thor-pesquisador-backend:latest
+              imagePullPolicy: IfNotPresent
+              command: ["python", "-m", "app.retention_worker", "--max-lotes", "100"]
+              envFrom:
+                - configMapRef:
+                    name: thor-pesquisador-config
+                - secretRef:
+                    name: thor-pesquisador-secrets
+              resources:
+                requests: {cpu: 100m, memory: 256Mi}
+                limits: {cpu: 500m, memory: 512Mi}
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]

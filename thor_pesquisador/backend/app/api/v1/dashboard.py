@@ -13,6 +13,7 @@ from app.schemas.dashboard import DashboardStats
 from app.services.indexacao_service import contar_jobs_falhos, jobs_recentes
 from app.services.permissao_service import filtro_escopo, require_any_scope
 from app.models.editorial import EditorialRegistro, EventoEditorial
+from app.services.relatorio_service import jobs_dashboard
 
 router = APIRouter()
 
@@ -45,6 +46,7 @@ def dashboard_stats(
         filtro_escopo(db, EventoEditorial.instrumento_id)).order_by(EventoEditorial.criado_em.desc(), EventoEditorial.id).limit(5))
 
     return DashboardStats(
+        jobs_conformidade=jobs_dashboard(db),
         total_instrumentos=total_instrumentos,
         pendencias_editoriais=pending_records + pending_schemas,
         publicacoes_recentes=[{"instrumento_id": str(e.instrumento_id), "registro_id": e.registro_id,

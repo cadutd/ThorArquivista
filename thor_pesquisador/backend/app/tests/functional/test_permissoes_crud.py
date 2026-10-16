@@ -83,6 +83,13 @@ def requests_for(admin, actor, user, instrument, record, module):
                 ("POST", "/api/v1/perfis", {**payload, "codigo": "NOVO_" + uuid.uuid4().hex.upper()}),
                 ("PUT", "/api/v1/perfis/" + profile, payload),
                 ("DELETE", "/api/v1/perfis/" + profile, None)]
+    if module == "retencao":
+        payload = {"nome": "Politica " + uuid.uuid4().hex, "categoria": "LOG_TECNICO", "dias": 30}
+        pid = admin.post("/api/v1/retencao/politicas", json=payload).json()["id"]
+        return [("GET", "/api/v1/retencao/politicas/" + pid, None),
+                ("POST", "/api/v1/retencao/politicas", {**payload, "nome": "Nova " + uuid.uuid4().hex}),
+                ("PUT", "/api/v1/retencao/politicas/" + pid, payload),
+                ("DELETE", "/api/v1/retencao/politicas/" + pid, None)]
     access = admin.post("/api/v1/acessos", json={"usuario_id": target["id"], "papel": profile}).json()["id"]
     return [("GET", "/api/v1/acessos/" + access, None),
             ("POST", "/api/v1/acessos", {"usuario_id": target["id"], "papel": profile, "instrumento_id": instrument}),

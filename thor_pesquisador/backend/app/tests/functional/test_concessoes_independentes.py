@@ -3,6 +3,7 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 from alembic import command
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select, text
 from sqlalchemy.engine import make_url
@@ -100,13 +101,14 @@ def test_migration_e_revogacoes_concorrentes_preservam_ultimo_admin(monkeypatch)
             db.add_all(grants); db.commit()
             ids = [str(grant.id) for grant in grants]
             user_ids = [str(user.id) for user in users]
-            tokens = [create_session(db, user) for user in users]
         with engine.connect() as connection:
             before = connection.execute(text("SELECT * FROM acessos_instrumento ORDER BY id")).all()
         command.upgrade(config, "head")
         with engine.connect() as connection:
             assert connection.execute(text("SELECT * FROM acessos_instrumento ORDER BY id")).all() == before
-            assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261014_000010"
+            assert connection.scalar(text("SELECT version_num FROM alembic_version")) == ScriptDirectory.from_config(config).get_current_head()
+        with Session(engine) as db:
+            tokens = [create_session(db, db.get(Usuario, uuid.UUID(uid))) for uid in user_ids]
         app = create_app()
         def isolated_db():
             with Session(engine) as db:

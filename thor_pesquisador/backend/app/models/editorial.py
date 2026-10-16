@@ -37,7 +37,8 @@ class AcessoInstrumento(Base):
 
 class EditorialRegistro(Base):
     __tablename__ = "editorial_registros"
-    __table_args__ = (UniqueConstraint("instrumento_id", "registro_id", name="uq_editorial_registro"),)
+    __table_args__ = (UniqueConstraint("instrumento_id", "registro_id", name="uq_editorial_registro"),
+                     Index("ix_editorial_expurgo", "instrumento_id", "status_operacional", "atualizado_em", "id"))
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     instrumento_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("instrumentos.id", ondelete="RESTRICT"), index=True)
     registro_id: Mapped[str] = mapped_column(String(255))
@@ -47,6 +48,10 @@ class EditorialRegistro(Base):
     versao_publicada: Mapped[int | None] = mapped_column(Integer)
     snapshot_id: Mapped[str | None] = mapped_column(String(255))
     aprovacao_hash: Mapped[str | None] = mapped_column(String(64))
+    retencao_bloqueada: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    reter_ate: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expurgo_iniciado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expurgado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     atualizado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
@@ -64,6 +69,7 @@ class PublicacaoInstrumento(Base):
 class EventoEditorial(Base):
     __tablename__ = "eventos_editoriais"
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    request_id: Mapped[str | None] = mapped_column(String(64), index=True)
     instrumento_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
     registro_id: Mapped[str | None] = mapped_column(String(255))
     usuario_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True))

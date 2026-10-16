@@ -16,3 +16,4 @@ class DashboardStats(BaseModel):
     indexacao_jobs_falhos: int = 0
     pendencias_editoriais: int = 0
     publicacoes_recentes: list[dict] = []
+    jobs_conformidade: dict = {}

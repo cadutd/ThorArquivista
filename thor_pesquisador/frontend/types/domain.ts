@@ -70,6 +70,7 @@ export type Registro = {
 };
 
 export type DashboardStats = {
+  jobs_conformidade: {exportacoes:Record<string,number>;retencao_pendente:number};
   pendencias_editoriais: number;
   publicacoes_recentes: {instrumento_id: string; registro_id: string | null; agente: string; data: string; versao: number}[];
   total_instrumentos: number;

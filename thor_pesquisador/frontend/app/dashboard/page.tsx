@@ -54,6 +54,13 @@ export default function DashboardPage() {
         </section>
 
         <section className="stack">
+          <h2>Exportacoes e retencao</h2>
+          <div className="table-wrap"><table className="table"><thead><tr><th>Situacao</th><th>Total</th></tr></thead><tbody>
+            {Object.entries(stats?.jobs_conformidade?.exportacoes||{}).map(([key,value])=><tr key={key}><td>{key}</td><td>{value}</td></tr>)}
+            <tr><td>Retencoes pendentes ou com falha</td><td>{stats?.jobs_conformidade?.retencao_pendente||0}</td></tr>
+          </tbody></table></div>
+        </section>
+        <section className="stack">
           <div className="row"><h2>Publicacoes recentes</h2><Link className="button secondary" href="/revisao">Fila de revisao</Link></div>
           <div className="table-wrap"><table className="table"><thead><tr><th>Data</th><th>Usuario</th><th>Versao</th><th>Publicacao</th></tr></thead><tbody>
             {(stats?.publicacoes_recentes ?? []).map((p, index) => <tr key={p.instrumento_id + index}><td>{new Date(p.data).toLocaleString("pt-BR")}</td>

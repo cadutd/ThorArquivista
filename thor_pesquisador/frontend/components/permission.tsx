@@ -30,9 +30,10 @@ export function ImagePermission({ owner, acao="imagens_editar", children }: { ow
   return admin || (owner && manage) ? <>{children}</> : null;
 }
 
-export function AnyPermission({acoes,children}:{acoes:string[];children:React.ReactNode}) {
+export function AnyPermission({acoes,anyScope=false,children}:{acoes:string[];anyScope?:boolean;children:React.ReactNode}) {
   const access = useContext(Context);
-  return access.permissoes.includes("*") || acoes.some(a => access.permissoes.includes(a)) ? <>{children}</> : null;
+  return access.permissoes.includes("*") || acoes.some(a => access.permissoes.includes(a) ||
+    (anyScope && Object.values(access.escopos).some(p => p.includes(a)))) ? <>{children}</> : null;
 }
 
 export function AccessBoundary({children,publico=false}:{children:React.ReactNode;publico?:boolean}) {

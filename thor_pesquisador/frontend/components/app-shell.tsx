@@ -17,6 +17,17 @@ const navigation = [
   { href: "/consulta", label: "Consulta publica", icon: Search, acao:"consulta_publicada" }
 ];
 
+const administration = [
+  {acao:"usuarios_consultar",href:"/usuarios",prefix:"/usuarios",label:"Gestão de Usuários",icon:Users,anyScope:false},
+  {acao:"perfis_consultar",href:"/perfis",prefix:"/perfis",label:"Perfis",icon:ShieldCheck,anyScope:false},
+  {acao:"permissoes_consultar",href:"/permissoes",prefix:"/permissoes",label:"Permissões",icon:KeyRound,anyScope:false},
+  {acao:"acessos_consultar",href:"/acessos",prefix:"/acessos",label:"Concessoes de acesso",icon:KeyRound,anyScope:false},
+  {acao:"auditoria_consultar",href:"/auditoria",prefix:"/auditoria",label:"Auditoria",icon:ShieldCheck,anyScope:true},
+  {acao:"exportacoes_consultar",href:"/exportacoes",prefix:"/exportacoes",label:"Exportações",icon:Database,anyScope:true},
+  {acao:"relatorios_consultar",href:"/relatorios",prefix:"/relatorios",label:"Relatórios",icon:Gauge,anyScope:true},
+  {acao:"retencao_consultar",href:"/retencao/politicas",prefix:"/retencao",label:"Retenção",icon:FileSearch,anyScope:true}
+];
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -85,14 +96,11 @@ function SidebarNavigation({pathname, onNavigate}: {pathname:string;onNavigate?:
               </Link></Permission>
             );
           })}
-          <AnyPermission acoes={["usuarios_consultar","perfis_consultar","permissoes_consultar","acessos_consultar"]}><details className="admin-navigation"
-            open={["/usuarios","/perfis","/permissoes","/acessos"].some(p => pathname.startsWith(p))}>
+          <AnyPermission acoes={administration.map(item=>item.acao)} anyScope><details className="admin-navigation"
+            open={administration.some(item => pathname===item.prefix || pathname.startsWith(item.prefix+"/"))}>
             <summary className="nav-link"><Settings size={16}/>Administra&#231;&#227;o<ChevronDown size={16}/></summary>
-            {[{acao:"usuarios_consultar",href:"/usuarios",label:"Gest\u00e3o de Usu\u00e1rios",icon:Users},
-              {acao:"perfis_consultar",href:"/perfis",label:"Perfis",icon:ShieldCheck},
-              {acao:"permissoes_consultar",href:"/permissoes",label:"Permiss\u00f5es",icon:KeyRound},
-              {acao:"acessos_consultar",href:"/acessos",label:"Concessoes de acesso",icon:KeyRound}].map(item => {
-                const Icon=item.icon;return <Permission key={item.href} acao={item.acao}><Link key={item.href} className={"nav-link " + (pathname.startsWith(item.href) ? "active" : "")}
+            {administration.map(item => {
+                const Icon=item.icon;return <Permission key={item.href} acao={item.acao} anyScope={item.anyScope}><Link key={item.href} className={"nav-link " + (pathname===item.prefix || pathname.startsWith(item.prefix+"/") ? "active" : "")}
                   href={item.href} onClick={onNavigate}><Icon size={16}/>{item.label}</Link></Permission>;
               })}
           </details></AnyPermission>

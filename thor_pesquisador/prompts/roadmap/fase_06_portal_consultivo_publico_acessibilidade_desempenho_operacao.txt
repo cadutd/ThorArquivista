@@ -3,53 +3,85 @@ Voce e o Codex trabalhando no projeto thor_pesquisador.
 Objetivo da fase 6:
 Consolidar o portal entregue na fase 4 e as operacoes da fase 5, com acessibilidade, desempenho, observabilidade e validacao real de seguranca/operacao Docker e OKD. Esta fase e de endurecimento e acabamento, nao de reconstruir as fases anteriores.
 
-Base verificada em 2026-10-11 (nao confundir com entregas futuras):
-- As fases 1, 2 e 3 estao implementadas no checkout local. Nao presumir que todas as alteracoes ja foram commitadas ou enviadas ao remoto.
-- FastAPI, SQLAlchemy, Pydantic, Alembic e PostgreSQL para dados relacionais; instrumento_registros no MongoDB continua como fonte canonica dos registros dinamicos.
-- gov.br/dev-login e sessoes locais ja existem. current_user valida sessao, mas ainda nao existe RBAC geral nem autorizacao por instrumento.
-- StatusInstrumento atual: RASCUNHO, PUBLICADO, ARQUIVADO. StatusRegistro atual: ATIVO, INATIVO, EXCLUIDO. EM_REVISAO e demais estados editoriais de registros ainda nao existem.
-- /dashboard e a pagina inicial autenticada; /pesquisa e busca INTERNA autenticada, nao um portal publico.
-- Meilisearch e projecao derivada; Redis e index_worker processam indexacao e reindexacao com indexacao_jobs, lotes e checkpoint. O worker atual nao e um executor generico de exportacao/publicacao.
-- A listagem de registros usa page_size/next_cursor/has_more. Busca simples envia POST /api/v1/instrumentos/{id}/buscar e preserva termo aplicado e cursor ao carregar mais; Enter submete e termo vazio restaura a listagem. Nao substituir por paginacao local ou perder esse comportamento.
-- CRUD de imagens pronto: UPLOAD, URL, IIIF e REPOSITORIO_EXTERNO; imagens_documento, registro_imagens e auditoria_imagens no PostgreSQL; migration 20261003_000003_imagens.py.
-- Galeria na aba Imagens dos detalhes do registro, carregada sob demanda: miniaturas, previa grande, legenda, principal, ordem, vinculo compartilhado e desvinculo confirmado. Exclusao de imagem vinculada retorna 409.
-- Atualmente PUBLICO permite conteudo anonimo, INTERNO exige sessao, RESTRITO exige criador. Editar/excluir imagem exige criador. Essas regras sao aplicadas no backend e nao representam RBAC completo.
-- Originais e miniaturas de upload usam GET /api/v1/imagens/{id}/conteudo, com thumbnail=true para miniatura e streaming autorizado. ArmazenamentoS3 ja oferece salvar_upload, obter_objeto, obter_url_acesso, remover_objeto e calcular_checksum.
-- Upload valida MIME real, tamanho, dimensoes, SHA-256 e gera miniatura. Nao ha armazenamento final no filesystem do pod.
-- A projecao interna persiste somente resumo de imagens PUBLICO: possui_imagens, total_imagens, imagem_principal_thumbnail. A busca autenticada enriquece a pagina em uma consulta SQL por lote com as imagens acessiveis. Isso NAO torna o indice interno seguro para consulta publica de registros.
-- Auditoria de imagens ja registra criacao, upload, alteracao, vinculo, alteracao de vinculo, desvinculo, ordem e exclusao, com usuario autenticado e historico preservado.
-- Excluir instrumento atualmente remove registros do MongoDB e vinculos SQL; excluir registro e logico. Ambos preservam imagens compartilhadas e auditoria. Publicacao/retencao exigirao evoluir essas regras, nao presumir soft delete geral.
-- Compose usa thor_pesquisador_; Kubernetes/OKD usa thor-pesquisador-. deploy/base e overlays dev, homolog, prod ja existem.
-- MinIO e opcional via perfil storage, com bucket privado inicializado por app.scripts.init_storage apenas em desenvolvimento. Producao deve usar S3 institucional/compativel, nao assumir que o MinIO local e um deploy de producao.
-- Configuracao S3 existente: S3_ENDPOINT_URL, S3_BUCKET, S3_REGION, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY, S3_FORCE_PATH_STYLE, S3_URL_EXPIRATION, UPLOAD_MAX_BYTES, UPLOAD_ALLOWED_MIME_TYPES. Secrets/ConfigMaps base ja incluem configuracao S3.
-- AppShell, login_pesquisador.png e app/thor-theme.css ja existem. Preservar paridade visual com o Gestor sem modificar o outro projeto.
-- Testes backend, contratos frontend e e2e imagens.smoke.cjs/registros-busca.smoke.cjs ja existem; reaproveitar e ampliar.
+Base verificada em 2026-10-15 (revalidar no checkout antes de implementar):
+- As fases 1 a 5 estao implementadas, incluindo os refinamentos de usuarios, perfis, concessoes e sessao. A fase 6 continua planejada. Nome de prompt ou documentacao de requisito nao comprova entrega; revalidar codigo e evidencias.
+- Ler README.md, backend/README.md, frontend/README.md, docs/administracao_acessos.md, docs/fase_04_operacao.md e docs/fase_05_operacao.md. O checkout e a fonte de verdade; nao fixar um hash remoto nem sobrescrever alteracoes locais.
+- Stack existente: FastAPI, SQLAlchemy, Pydantic, Alembic, PostgreSQL; Next.js/React/TypeScript no frontend; MongoDB instrumento_registros canonico para conteudo dinamico e registro_snapshots para snapshots imutaveis.
+- SQL governa usuarios, papeis, acessos_instrumento, estado/versao editorial, publicacoes_instrumento, publicacao_imagens e eventos_editoriais. Nao existe transacao atomica entre SQL, MongoDB, Redis, Meilisearch e S3.
+- Instrumentos/controle editorial usam RASCUNHO, EM_REVISAO, APROVADO, PUBLICADO e ARQUIVADO. Registros mantem ATIVO, INATIVO e EXCLUIDO como estados operacionais separados. PUT comum nao pode publicar nem contornar exclusao/permissoes.
+- Workflow, operacao_id, versao esperada, justificativas, hash de aprovacao, historico append-only e snapshots/schema publicados ja existem. Edicao invalida aprovacao; republicacao gera nova versao. Preservar esses contratos.
+- As migrations 20261012_000007/000008, 20261013_000009 e 20261014_000010 ja evoluiram administracao, usuarios, permissoes granulares e concessoes independentes. Adicionar migrations depois do head real; nao renumerar ou reexecutar transformacoes ja aplicadas.
+- Todo usuario institucional deve estar cadastrado e ativo antes do login gov.br; CPF validado/unico e o vinculo. Login nao cria usuarios nem sobrescreve identidade. Cadastro/edicao de usuario nao atribui perfil; nao reintroduzir perfil principal.
+- Perfis sao cadastraveis. Permissoes sao catalogo somente leitura. Os CRUDs instrumentos, campos, registros, imagens, galerias, usuarios, perfis e acessos possuem Consultar/Incluir/Editar/Excluir independentes; ha tambem permissoes tecnicas editoriais, pesquisa, dashboard e consulta_publicada.
+- permissoes/require/filtro_escopo/validar_delegacao no backend aplicam a soma dos perfis ativos, escopo global ou por instrumento. ADMIN tem wildcard global. Nenhum operador pode delegar privilegios superiores aos seus.
+- Concessoes possuem pesquisa de usuario por nome/username/email, acessos existentes, multiplos perfis e escopo global ou instrumentos pesquisados por Nome/Tipo/Status. AcessoCadastro e compartilhado entre inclusao e edicao; POST /acessos/lote e PUT /acessos/{id}/lote sao transacionais, rejeitam duplicidades/sobreposicoes e preservam os demais acessos. Expandir na edicao exige tambem acessos_incluir.
+- Bloqueio administrativo transacional e protecao do proprio/ultimo administrador ja existem. Desativacao/exclusao logica de usuario revoga sessoes; perfil inativo nao autoriza. Preservar IDs, historico e origem USUARIO dos legados sem prioridade ou obrigatoriedade global.
+- SessionGuard no layout protege TODAS as telas, inclusive /consulta; apenas /login e aberta sem sessao. Revalida ao navegar, voltar a aba/janela e a cada 60 segundos. Clientes request/imageRequest sinalizam 401 para login; 403 nao encerra sessao valida.
+- next e validado como destino interno no login local e gov.br, com cookie HttpOnly temporario no callback. Manter state/nonce, validacao OIDC, expiracao/revogacao e retorno seguro; nao criar mecanismo de autenticacao paralelo.
+- /dashboard e entrada autenticada, /pesquisa e busca interna autorizada e /consulta apresenta publicacoes com sessao ativa. APIs /api/v1/publico permanecem consultivas abertas, apenas com snapshots/schema/campos/imagens elegiveis. Conteudo publicado e autenticacao da tela sao conceitos distintos; nao reabrir telas anonimas por iniciativa destas fases.
+- Publicacao vigente, instrumento com visibilidade PUBLICO, registro ATIVO, exibir_publico e restricoes atuais sao cumulativos. Nao divulgavel retorna 404; busca/facetas retornam 503 se geracao_publica divergir de geracao_indexada, sem totais/facetas antigos. UUID nao substitui autorizacao.
+- Meilisearch e derivado: indice interno e projecao publica separada publico_UUID_geracao. Redis/index_worker/indexacao_jobs ja processam indexacao, reindexacao e PUBLICACAO duravel no SQL, com lotes/checkpoints/reconciliacao. Nao sao ainda executor generico de exportacao/retencao.
+- Registros usam page_size/next_cursor/has_more; POST /instrumentos/{id}/buscar preserva termo aplicado/cursor em Carregar mais, Enter submete e busca vazia restaura a listagem. Preservar o contrato.
+- Imagens UPLOAD/URL/IIIF/REPOSITORIO_EXTERNO, imagens_documento/registro_imagens/auditoria_imagens, galeria lazy, miniaturas, previa, legenda, principal, ordem e compartilhamento ja existem. Reusar RegistroImagens, MediaPreview, ArmazenamentoS3 e streaming GET /imagens/{id}/conteudo.
+- PUBLICO permite conteudo de imagem isolada anonimo, sem publicar o registro. INTERNO exige autoria ou consulta autorizada; RESTRITO exige criador ou ADMIN. Mutacoes exigem permissao explicita e autoria, salvo ADMIN. Reavaliar direitos atuais, inclusive em snapshots.
+- Upload confere MIME real, tamanho, dimensoes, SHA-256 e miniatura. Storage final e S3 privado, nunca filesystem do pod; preservar variaveis S3/UPLOAD existentes. MinIO e opcional/local via perfil storage, nao padrao institucional de producao.
+- Exclusao fisica de instrumento com publicacao/historico editorial e bloqueada. Rascunhos descartaveis continuam removiveis quando seguros; registros usam exclusao logica. Imagens compartilhadas e referencias historicas nao sao apagadas por cascade ou limpeza generica.
+- Reutilizar deploy/base e deploy/overlays/dev, homolog, prod; Compose thor_pesquisador_ e OKD thor-pesquisador-. Nao criar outro deploy paralelo.
+- app.scripts.seed_acessos gera 60 usuarios/24 perfis sinteticos em dev/test, de forma idempotente e sem senhas/sessoes. dev-login com dev_admin_enabled usa ADMIN, portanto nao comprova restricoes de usuario comum. Nunca ativar dev-login/auth_disabled_for_tests/seed em homolog/prod.
+- Referencia historica de validacao: 230 testes backend, 41 contratos frontend e fluxos e2e reais de sessao, concessoes, usuarios, administracao, editorial, imagens e busca. Ampliar cobertura; contagens sao baseline, nao substituem resultados da execucao atual.
 
 Instrucoes comuns:
-- Trabalhar apenas no thor_pesquisador. Ler codigo, migrations, READMEs e git status antes de editar; preservar alteracoes locais e nao usar um hash remoto fixo como fonte de verdade.
-- Reutilizar camadas, componentes, autenticacao, armazenamento, fila e contratos existentes. Nao recriar funcionalidades concluidas.
-- Usar thor-crud-base nas novas superficies CRUD; auditoria/historico sao listagem e detalhe somente leitura, nao CRUD destrutivo.
-- Usar thor-lazy-tree somente se surgir hierarquia real, com filhos sob demanda; nao criar arvore artificial como requisito desta fase.
-- Usar testar-com-docker para validacoes. Nao instalar dependencias no host quando ha fluxo Docker.
-- Nao fazer commit/push nem modificar fases anteriores sem solicitacao explicita.
+- Trabalhar somente no thor_pesquisador. Ler git status, codigo, migrations e documentacao antes de editar; preservar alteracoes locais e os dados operacionais. Thor Gestor e referencia somente de leitura.
+- Reutilizar servicos, schemas, componentes, API clients, autenticacao, armazenamento e filas existentes. Nao refazer a fase 4 nem introduzir outra gestao de usuarios/perfis/sessoes.
+- Aplicar thor-crud-base e sua referencia a cada CRUD novo ou alterado. Historico/auditoria sao somente leitura; jobs usam comandos por estado, sem editar livremente status.
+- Usar thor-lazy-tree apenas se houver hierarquia real. Priorizar testar-com-docker para testes/builds; nao instalar dependencias no host quando houver fluxo em container.
+- Nao fazer commit/push, alterar o Thor Gestor ou executar fases anteriores sem solicitacao explicita.
 
-Dependencias obrigatorias:
-- Antes de executar, verificar entregas efetivas da fase 4: RBAC, estados editoriais separados dos operacionais, snapshots/schema publicados, revogacao e projecao publica.
-- Verificar fase 5: auditoria integrada, request_id/logs estruturados, exportacoes limitadas em memoria, jobs recuperaveis e retencao controlada.
-- Essas entregas sao futuras em relacao a base verificada; nao presume-las prontas pelo nome do prompt.
-- Se incompletas, listar lacunas e tratar como dependencias, sem criar uma implementacao alternativa na fase 6.
+Contrato obrigatorio de identidade visual e comportamento:
+Este contrato vale para TODA funcionalidade criada OU alterada, em ambas as fases; nao e acabamento opcional da fase 6.
+- Antes de editar uma tela, comparar a referencia local equivalente: Usuarios/Perfis/Concessoes para administracao, instrumentos/registros para consulta, RegistroImagens para galeria. Preservar a experiencia especifica ja estabelecida, nao padronizar tudo por um modelo novo.
+- Reutilizar AppShell, app/thor-theme.css e classes de app/globals.css: paleta por tokens, tipografia compacta, escala de titulos/campos, bordas, espacos e estados dos controles. Nao criar tema ou folha global alternativa nem versoes visuais paralelas de menus, tabelas, modais ou paginadores. Novos componentes de dominio reutilizam os componentes/classes e contratos existentes; nao aumentar fontes ou alterar CSS global para resolver uma unica tela.
+- Preservar o menu Administracao sem Eventos/Administracao Geral. Integrar funcionalidades novas ao grupo funcional correto, com visibilidade por permissao, sem reposicionar entradas existentes ou criar atalhos de bypass.
+- Criacao/edicao usam paginas proprias, formularios compartilhados, estrutura administracao-editor-page/surface/content quando equivalente, Voltar e retorno a listagem de origem. Nao colocar editor acima da busca ou trocar por popup.
+- Visualizacao administrativa segue popup ModalFrame/AdministracaoDetails, com campos de leitura, foco, Escape e acoes permitidas; detalhes de instrumento/registro/imagem preservam suas rotas existentes. Nao trocar rotas por popup ou vice-versa sem necessidade demonstrada.
+- Listagens reutilizam CrudPagination acima/abaixo: contagem, Primeira/Anterior, paginas numeradas/reticencias, Proxima/Ultima, seletor Por pagina centralizado, tamanhos/estados e reset para primeira pagina ao buscar/mudar tamanho. Preservar cursor/Carregar mais dos registros em vez de impor offset.
+- Primeira coluna navegavel azul abre a visualizacao no comportamento do modulo; acoes CRUD por registro usam icones lucide-react, title/tooltip e nome acessivel. Exibir apenas acoes suportadas e autorizadas; cancelar/baixar/repetir jobs dependem tambem do estado.
+- Busca simples funciona por botao e Enter; filtros avancados ficam recolhidos; abrir filtros nao executa busca. Limpar reseta campos, filtros aplicados e pagina/cursor. Preservar selecoes entre paginas, termos aplicados e resultados filtrados ao carregar mais.
+- Consultas, filtros e paginacao sao no servidor, com ordenacao deterministica e limites. Lookups pesquisaveis sao paginados/sob demanda, nao selects abastecidos com todos os usuarios, perfis ou instrumentos.
+- Campos obrigatorios tem marcador e validacao inline; manter grid responsivo de duas colunas quando adequado, erros proximos ao envio e estados carregando/vazio/erro/salvando. Bloquear duplo envio e controles dependentes invalidos.
+- Manter o fluxo unificado de concessoes: usuario selecionado mostra seus acessos; multiplos perfis/instrumentos; escopo global desabilita a pesquisa e limpa instrumentos; trocar usuario limpa o rascunho. Nao voltar aos seletores antigos de um unico vinculo.
+- Confirmar explicitamente exclusao, revogacao, descarte ou cancelamento destrutivo. Auditar o usuario autenticado e preservar historico; botoes ocultos nao substituem autorizacao na API.
+- Toda nova rota de tela continua sob SessionGuard; reutilizar request/imageRequest e notificacao de 401. Nao tratar 403 como sessao expirada nem criar fetch/rotas alternativas que contornem o controle. Manter next interno seguro.
+- Layouts devem funcionar em desktop/mobile e zoom, sem sobreposicao, texto cortado, deslocamentos de controles ou overflow da pagina. Rolagem horizontal, quando necessaria, fica contida na tabela.
+- Validar cada superficie alterada com testes de comportamento e screenshots Playwright desktop/mobile comparadas aos modulos de referencia. Conferir teclado, foco, tooltips, paginacao, buscas e erros; nao aceitar apenas build ou screenshot como prova de funcionalidade.
+
+Permissoes das novas funcoes:
+- Mapear operacoes e escopos antes de implementar. CRUDs novos usam <modulo>_consultar/incluir/editar/excluir; superficies somente leitura e comandos tecnicos recebem apenas permissoes coerentes, sem CRUD artificial de eventos/jobs.
+- Atualizar app/core/permissions.py, schemas/servicos/rotas e controles frontend com o mesmo contrato. O catalogo de Permissoes continua somente leitura.
+- Criar migration Alembic incremental para ajustes necessarios em perfis padroes/codigos, preservando personalizados, escopos, IDs e historico. Documentar matriz antes/depois e rollback; nao conceder administracao/exportacao ampla a usuarios ou perfis sem justificativa.
+- Autorizacao efetiva ocorre no backend a cada consulta/comando/download, com soma de perfis ativos e escopo. Testar sem sessao, usuario sem permissao, escopo diferente, perfil inativo e revogacao apos inicio de job.
+- Manter protecao contra delegacao superior, autodesativacao administrativa e remocao do ultimo administrador; reutilizar o lock administrativo existente quando pertinente.
+
+Dependencias e limite desta fase:
+- A fase 4 ja esta implementada e deve permanecer funcional. Revalidar os refinamentos de administracao/concessoes/sessao de 2026-10-15; nao propor novamente RBAC, cadastro de usuario ou login.
+- A fase 5 entrega auditoria integrada sem copia dos historicos anteriores, request_id/logs minimizados, export_worker com fila SQL, checkpoints S3 e multipart, relatorios e retencao com simulacao, holds, tombstones e CronJob. Migrations 20261015_000011/000012/000013; catalogo com 55 permissoes. Reutilizar esses mecanismos, sem nova fila ou historico paralelo.
+- Base validada apos fase 5: 360 testes backend, 44 contratos frontend e oito fluxos Playwright. Investigar limites explicitados em docs/fase_05_operacao.md, incluindo tamanho/referencias das exportacoes, Blob no navegador, janela de indices, logs externos e deploy OKD ainda nao executado em cluster.
+- Arquivos de prompt nao comprovam implementacao. Listar entregas da fase 5 presentes/faltantes, evidencias e impacto antes de alterar esses componentes; tratar lacunas como dependencias, sem criar solucao alternativa na fase 6.
+- Esta fase refina experiencia e endurece/valida seguranca, acessibilidade, desempenho e operacao. Nao usar essa autorizacao para redesenhar a identidade visual, reabrir telas anonimas ou mudar regras funcionais ja aprovadas.
 
 Portal e experiencia:
-- Refinar rotas consultivas estabelecidas na fase 4, preferencialmente /consulta. /pesquisa permanece busca interna autenticada; nao converter indiscriminadamente sua API/indice em portal anonimo.
-- Manter /dashboard como entrada administrativa, AppShell e login institucional. Nenhuma landing page de marketing.
+- Refinar /consulta e suas rotas de detalhes ja existentes. TODAS continuam sob SessionGuard e exigem sessao ativa; /pesquisa permanece busca interna autorizada. O nome publico refere-se ao conteudo elegivel, nao a uma nova excecao de autenticacao.
+- Preservar o contrato das APIs /api/v1/publico, separado da interface autenticada. Nao transforma-las em APIs administrativas, nao ampliar os dados que divulgam e nao criar frontend anonimo sem nova solicitacao explicita.
+- Manter /dashboard como entrada autenticada padrao, retorno next quando existente, AppShell e login institucional. Preservar menus administrativos alinhados, sem Eventos/Administracao Geral. Nenhuma landing page ou shell consultivo paralelo.
 - Instrumentos publicados, detalhes, filtros por campos publicos, facetas, ordenacao, paginas e registro/snapshot publicado com citacao/link permanente.
-- Os detalhes e galeria de registro JA existem. Reusar componentes e expandir acessibilidade/consulta publica, nao criar outro visualizador ou carregar binarios IIIF no storage.
-- Originais apenas sob demanda; miniaturas na listagem. Imagens RESTRITO/INTERNO nao aparecem em consulta anonima, nem por resumo/legenda/thumbnail.
+- Os detalhes e galeria de registro JA existem. Reusar RegistroImagens/MediaPreview e melhorar acessibilidade/consulta de publicacoes; nao criar outro visualizador, formulario ou copiar binarios IIIF para storage.
+- Originais apenas sob demanda; miniaturas na listagem. Imagens RESTRITO/INTERNO nao aparecem nas APIs publicas ou na projecao de publicacoes, nem por resumo/legenda/thumbnail; os direitos sao reavaliados mesmo com usuario autenticado na tela consultiva.
 - Confirmar direitos e elegibilidade atual, mesmo em cache/snapshot antigo; revogacao de publicacao/campo/imagem nao pode depender de aguardar reindexacao.
 - Links permanentes para instrumento, registro e versao publicada, com redirecionamentos/alias quando necessario. UUID nao e segredo nem substitui autorizacao; nao mudar IDs/URLs existentes por estetica. Nunca usar URL assinada S3 como permalink.
 - Hierarquia apenas se houver modelo real, com thor-lazy-tree; nao carregar todos os nos ou inventar classificacao nesta fase.
 - Preservar comportamento de busca simples (termo aplicado, Enter, vazio restaura, cursor filtrado). Abrir filtros e buscar devem ser comandos distintos e previsiveis.
-- Preservar thor-theme.css, tipografia e escala compacta ja alinhadas ao Gestor. Mudancas no tema compartilhado exigem coordenacao; nao editar o outro projeto por iniciativa desta fase.
+- Aplicar o contrato visual/comportamental comum a cada mudanca de portal, auditoria, exportacao, retencao ou administracao. Refinamento de acessibilidade/desempenho nao justifica trocar modal de visualizacao por editor inline, aumentar fontes, mudar barra de pagina ou redesenhar os CRUDs.
+- Novas rotas/versionamentos/permalinks continuam verificando sessao/permissao e elegibilidade; retorno do login preserva URL interna completa, sem open redirect.
 
 Acessibilidade:
 - HTML semantico, labels, foco visivel, cabecalhos, nomes acessiveis de icones, mensagens de carregamento/erro/vazio e estado nao representado apenas por cor.
@@ -65,7 +97,8 @@ Desempenho e escala:
 - Reusar ensure_mongo_indexes e indices ja existentes; validar planos reais e acrescentar indices para novos estados/publicacoes/jobs somente quando justificado.
 - Busca simples atual usa regex literal sobre texto_busca_basico; indice text existente nao garante acelerar essa regex. Medir custo e definir eventual evolucao para mecanismo adequado preservando contrato/campos permitidos, sem ignorar limites ou usar busca publica como fallback interno.
 - Revisar estrategia Meilisearch para limite de resultados/offset, facetas, tempo de reindexacao, retry e publicacao. Nao prometer escala de milhoes apenas porque a pagina tem limit.
-- Cache publico por versao/publicacao/politica de acesso, invalidacao e expiracao. Cache interno isolado por escopo; nunca compartilhar respostas autenticadas entre usuarios.
+- Cache de dados publicos apenas para endpoints/objetos realmente abertos, por versao/publicacao/politica, com invalidacao/expiracao. Paginas /consulta, HTML autenticado, /auth/me e /auth/permissoes nao se tornam publicamente cacheaveis porque usam projecao publica.
+- Cache interno deve considerar usuario, escopo e versao/revogacao das permissoes; nunca compartilhar respostas autenticadas entre usuarios ou conservar autorizacao antiga apos inativacao/revogacao.
 - Preservar Cache-Control private/no-store do conteudo protegido; cache/CDN publico apenas para objetos explicitamente permitidos e estrategia de revogacao definida.
 - Dashboard e relatorios usam agregacoes/metricas persistidas quando necessario, nao scans completos em cada requisicao.
 - Jobs de indexacao/publicacao/exportacao/retencao continuam recuperaveis, em segundo plano, limitados em memoria e com concorrencia controlada.
@@ -79,7 +112,9 @@ Observabilidade:
 - Dashboard complementa monitoramento externo, sem expor diagnostico administrativo ao publico.
 
 Seguranca e dependencias:
-- Auditar permissoes/RBAC e escopos de todas as rotas, inclusive busca, facetas, historico, imagens/miniaturas, download e jobs.
+- Auditar permissoes/RBAC e escopos de todas as rotas, inclusive busca, facetas, historico, imagens/miniaturas, relatorios, download e jobs. Usar o catalogo granular existente e as migrations/perfis da fase 5; ajustes novos seguem migration incremental, nunca grants amplos para fazer testes passarem.
+- Revalidar acumulacao de perfis ativos, escopos globais/instrumentos, delegacao, lock e protecao do ultimo administrador, usuarios sem acesso, perfis inativos e revogacao com sessao aberta.
+- Preservar SessionGuard, notificacao central de 401 nos dois clientes, 403 sem logout, callback gov.br e next interno seguro. Testar acesso direto e expiracao em navegacao, comandos, uploads, foco e verificacao periodica; falha temporaria de rede nao equivale a credencial invalida.
 - Revisar cookies, expiracao/revogacao de sessao, CORS restrito, CSRF em mutacoes, redirecionamentos, limites de upload/requisicao, timeout e rate limit adequado.
 - Revisar dependencias backend/frontend e imagens de container, inclusive alertas npm observados nos builds; corrigir com atualizacao compativel e testes. Nao usar npm audit fix --force indiscriminadamente.
 - Preservar validacao real de MIME/checksum/thumbnail, armazenamento privado e endpoints mediados. Referencias externas/IIIF dependem de permissoes/CORS do provedor; nao prometer protecao de URL publica de terceiros.
@@ -106,8 +141,11 @@ Backup, restauracao e continuidade:
 - RPO/RTO acordados, runbook de indisponibilidade, recuperacao de multipart/jobs, atualizacao e rollback. Rollback de imagem nao desfaz automaticamente migration/backfill.
 
 Testes finais e documentacao:
-- E2e anonimo/autenticado/administrativo com backend real: consulta, facetas, workflow, revogacao, galeria, upload, exportacao, retencao e permissoes por escopo.
-- Reusar imagens.smoke.cjs e registros-busca.smoke.cjs, ampliando os cenarios; fixtures proprias e dados operacionais preservados.
+- E2e sem sessao/autenticado/administrativo com backend real: qualquer tela sem sessao vai ao login; /consulta so abre apos autenticar. Manter testes separados das APIs publicas anonimas e da ausencia de vazamento de dados internos.
+- Reexecutar sessao.smoke.cjs, concessoes-edicao.smoke.cjs, concessoes-crud.smoke.cjs, concessoes-lote.smoke.cjs, concessoes-independentes.smoke.cjs, concessoes-identidade.smoke.cjs e administracao.smoke.cjs. Verificar popup, paginas completas, selecao multipla entre paginas, escopo global, ultima administracao e retorno de navegacao.
+- Cobrir consulta/facetas/workflow/revogacao/galeria/upload e os fluxos reais de exportacao/retencao entregues na fase 5, com permissao por acao e escopo; nao afirmar sucesso de funcoes ausentes.
+- Reusar editorial.smoke.cjs, imagens.smoke.cjs, registros-busca.smoke.cjs e os testes da fase 5, ampliando cenarios. Fixtures proprias, APIs reais e dados operacionais preservados; a conta ADMIN de desenvolvimento nao e prova de RBAC restritivo.
+- Screenshots desktop/mobile das telas alteradas devem ser comparadas com Usuarios/Perfis/Concessoes e demais referencias locais. Cobrir tipografia, cores, espacamento, acoes/tooltips, links azuis, alinhamento Por pagina, busca por Enter, limpar, paginacao e estados de erro; testes visuais nao substituem testes funcionais.
 - Verificar acessibilidade, responsividade, estados vazios/erro, carga representativa, memoria limitada, consulta em lote e comportamento com dependencias indisponiveis.
 - Smoke Docker completo; smoke OKD de rollout/readiness/login/callback/conexoes se houver acesso. Declarar limites de ambiente e nao inventar verificacao em cluster.
 - Atualizar READMEs, guias gov.br, storage, indexacao/publicacao, exportacao/auditoria, workers/Jobs/CronJobs, retencao, backup/restore/rollback e configuracao de producao.
@@ -119,10 +157,13 @@ Validacao e entrega:
 - Rodar contratos frontend em container e build Docker de backend/index_worker/frontend quando alterados; incluir novos workers nos builds quando existirem.
 - Reexecutar os e2e existentes pertinentes, com API real. imagens.smoke.cjs requer bucket privado e perfil storage ou S3 externo; registros-busca.smoke.cjs nao requer storage. Usar dados proprios e limpeza controlada, nunca mocks da API como unica prova do fluxo.
 - Quando manifests mudarem, renderizar kubectl kustomize para deploy/base e overlays dev, homolog e prod. Renderizacao nao prova rollout; registrar validacao em cluster separadamente ou declarar que nao foi possivel.
-- Manter a stack completa acessivel apos validacao, nao subir somente frontend com API/bancos parados.
+- Usar docker-compose.test.yml com bancos, Redis/filas e storage isolados. Parar index_worker durante pytest; ativar workers/storage para e2e e observar backlog sem apagar jobs/volumes operacionais.
+- Massas maiores devem ser sinteticas, geradas em ambiente dedicado e sem vinculo gov.br real. seed_acessos e as fixtures atuais podem ser ampliados de forma idempotente; nao ativar o gerador em homolog/prod nem usar os cadastros locais operacionais como carga de teste.
+- Ao disponibilizar a entrega local, manter frontend/backend/dependencias necessarias acessiveis e encerrar apenas a stack de testes. Nao substituir o ambiente operacional pelos servicos de teste.
 - Atualizar README raiz/backend/frontend e documentacao operacional afetada. Relatar implementado, pendencias, riscos, comandos e resultados reais; nao declarar fases futuras concluidas.
 
 Criterios de aceite:
-- Portal e administracao existentes refinados, sem regressao de busca, imagens ou publicacao.
+- Portal e administracao existentes refinados, sem regressao de busca, imagens, publicacao, usuarios/concessoes ou sessao.
+- Identidade visual e comportamento aprovados preservados em toda tela nova/alterada, com comparacao visual e testes desktop/mobile; nenhuma tela anonima adicional nem componente paralelo de tabela/paginacao/formulario.
 - Seguranca/acessibilidade/desempenho comprovados nos limites medidos e pendencias explicitadas.
 - Operacao de producao, monitoramento, restore e rollback documentados/testados onde houver ambiente; nao declarar prontidao institucional sem evidencias.

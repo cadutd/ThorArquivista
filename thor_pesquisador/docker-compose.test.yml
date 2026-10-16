@@ -76,6 +76,18 @@ services:
     <<: *backend
     profiles: [e2e]
     command: python -m app.worker
+  export_worker:
+    <<: *backend
+    profiles: [e2e]
+    command: python -m app.export_worker
+  retention_worker:
+    <<: *backend
+    profiles: [jobs]
+    command: python -m app.retention_worker
+  retention_scheduler:
+    <<: *backend
+    profiles: [e2e]
+    command: python -m app.retention_worker --loop --intervalo-segundos 1
   frontend:
     profiles: [e2e]
     build:

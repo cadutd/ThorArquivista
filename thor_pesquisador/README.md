@@ -1,16 +1,29 @@
 # Thor Pesquisador
 
-## Atualizacao de 2026-10-15
+## Atualizacao de 2026-10-16
 
 Cadastro de usuarios separado das concessoes; inclusao e edicao de acessos
 compartilham pesquisa e selecao multipla. Permissoes por operacao e escopo sao
 validadas no backend. Todas as telas exigem sessao, exceto /login, com retorno
 seguro a pagina solicitada. A massa dev/test possui 60 usuarios e 24 perfis.
 
-Validacao mais recente: 230 testes backend, 41 contratos frontend, builds Docker
-e sete fluxos de navegador: sessao, edicao de concessoes, CRUD de concessoes,
-inclusao em lote, concessoes independentes, administracao e editorial.
-Os testes usam bancos/servicos isolados e preservam o ambiente operacional.
+Fase 5 implementada: auditoria unificada e imutavel, exportacoes autenticadas
+CSV/JSON/pacote, jobs recuperaveis, relatorios, logs estruturados e politicas
+de retencao com simulacao, impedimentos e expurgo autorizado.
+Validacao acumulada: 360 testes backend e 47 contratos frontend no Docker isolado.
+Na revisao de 2026-10-16, os 47 contratos, a compilacao e quatro fluxos Playwright
+(conformidade, administracao, sessao e permissoes CRUD) passaram. A verificacao
+incluiu exportacao/download, edicao e simulacao de retencao, desativacao/reativacao
+de politica, relatorios, escopos, detalhes dedicados e telas desktop/mobile.
+
+Em 2026-10-16, Auditoria, Exportacoes, Relatorios e Retencao foram agrupados
+em Administracao e alinhados a Instrumentos: busca, tabelas, paginacao,
+formularios e visualizacao em pagina propria. Os demais CRUDs administrativos
+continuam com seus popups. Permissoes globais e por instrumento sao preservadas.
+Detalhes, operacao, permissoes e limitacoes em
+[Operacao da fase 5](docs/fase_05_operacao.md).
+Os numeros de validacao nas secoes historicas abaixo referem-se as respectivas
+entregas anteriores, nao ao total atual. A fase 6 permanece planejada.
 
 Sistema web para instrumentos de pesquisa dinamicos, com autenticacao gov.br, dashboard administrativo, registros flexiveis em MongoDB e deploy preparado para Docker Compose e Kubernetes/OKD.
 
@@ -34,25 +47,26 @@ O projeto e independente do `thor_gestor_de_arquivos_digitais`, mas mantem a mes
 - Manifests Kustomize iniciais para Kubernetes/OKD.
 - Licenca AGPL-3.0, igual ao Thor Gestor.
 
-As fases 1 a 4 estao implementadas. A fase 4 inclui RBAC por instrumento,
+As fases 1 a 5 estao implementadas. A fase 4 inclui RBAC por instrumento,
 revisao editorial, publicacao versionada, historico e consulta de publicacoes em
 `/consulta`. `/pesquisa` continua sendo busca interna autorizada por escopo.
-Exportacoes, retencao ampla e consolidacao operacional ficam nas fases 5 e 6.
+Exportacoes, auditoria, relatorios e retencao controlada foram entregues na fase 5.
+Consolidacao operacional, portal e refinamentos de desempenho ficam na fase 6.
 Consulte [Operacao da fase 4](docs/fase_04_operacao.md) para provisionamento,
 migrations, reconciliacao e testes isolados.
 
 ## Arquitetura
 
-A administracao de acessos segue o menu do Gestor: Gestao de Usuarios, Perfis
-e Permissoes, sem Eventos ou Administracao Geral. Perfis sao cadastraveis e
-concessoes preservam os escopos por instrumento.
+Administracao agrupa Gestao de Usuarios, Perfis, Permissoes, Concessoes de acesso,
+Auditoria, Exportacoes, Relatorios e Retencao, sem Eventos ou Administracao Geral.
+Perfis sao cadastraveis e concessoes preservam os escopos por instrumento.
 [Operacao administrativa](docs/administracao_acessos.md).
 
 - `backend/`: API FastAPI, migrations Alembic, modelos PostgreSQL, servicos MongoDB e testes.
 - `frontend/`: Next.js standalone, `AppShell`, dashboard, login, instrumentos, campos, registros e pesquisa.
 - `deploy/`: manifests Kustomize com `base` e overlays `dev`, `homolog` e `prod`.
 - `prompts/roadmap/`: prompts por fase para evolucao incremental do sistema.
-- `docker-compose.yml`: ambiente local com backend, frontend, worker, PostgreSQL, MongoDB, Redis e Meilisearch.
+- `docker-compose.yml`: ambiente local com backend, frontend, index_worker, export_worker, retention_scheduler, PostgreSQL, MongoDB, Redis, Meilisearch e armazenamento MinIO opcional.
 
 PostgreSQL guarda usuarios, sessoes, instrumentos, campos e governanca. MongoDB guarda os registros dinamicos e deve continuar sendo a fonte canonica para conteudo variavel, inclusive em cenarios com milhoes de registros.
 
@@ -246,12 +260,19 @@ Os prompts em `prompts/roadmap/` orientam a evolucao:
 - Fase 2: busca avancada com Meilisearch, Redis, worker, facetas e reindexacao. Implementada.
 - Fase 3: imagens opcionais por URL, upload, IIIF e object storage. Implementada.
 - Fase 4: RBAC por escopo, revisao, publicacao versionada e consulta publica inicial, preservando ATIVO/INATIVO/EXCLUIDO como estados operacionais de registros. Implementada.
-- Fase 5 (planejada; depende da 4): ampliar auditoria de imagens/editorial sem duplicacao, exportacoes recuperaveis, logs, relatorios e retencao controlada.
+- Fase 5: auditoria de imagens/editorial sem duplicacao, exportacoes recuperaveis, logs, relatorios e retencao controlada. Implementada.
 - Fase 6 (planejada; depende da 4 e 5): refinar portal e consolidar acessibilidade, seguranca, desempenho, observabilidade, backup/restore e operacao OKD.
 
-Os prompts das fases 4 a 6 foram revisados com a base local de 2026-10-11.
-Eles reaproveitam imagens, S3, galeria, indexacao e testes existentes, sem
-presumir que as entregas futuras ja estejam prontas.
+O prompt da fase 4 registra sua base historica de 2026-10-11. Os prompts das
+fases 5 e 6 foram harmonizados em 2026-10-15 com a fase 4 e os refinamentos
+de usuarios, concessoes em lote, permissoes granulares e sessao ja entregues.
+A fase 5 foi executada sobre essa base. A fase 6 continua planejada.
+
+Ambos exigem preservar identidade visual e comportamento em TODA funcionalidade
+nova ou alterada: AppShell/tema, paginas de criacao/edicao, popups administrativos,
+links azuis, acoes com icones/tooltips, CrudPagination, buscas Enter/Limpar,
+lookups sob demanda, SessionGuard e autorizacao real na API. A entrega exige
+comparacao com os modulos de referencia e testes desktop/mobile.
 
 ## Busca de Registros
 

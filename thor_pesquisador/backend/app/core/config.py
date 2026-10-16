@@ -32,6 +32,14 @@ class Settings(BaseSettings):
     meilisearch_url: str = "http://meilisearch:7700"
     meilisearch_api_key: str = "dev-master-key"
     indexacao_batch_size: int = 500
+    exportacao_batch_size: int = Field(default=100, ge=1, le=1000)
+    exportacao_max_referencias_lote: int = Field(default=5000, ge=1, le=50000)
+    exportacao_validade_horas: int = Field(default=24, ge=1, le=168)
+    jobs_lease_segundos: int = Field(default=180, ge=30, le=3600)
+    jobs_poll_segundos: int = Field(default=3, ge=1, le=60)
+    log_tecnico_persistir: bool = True
+    log_acesso_consultivo: bool = False
+    retencao_batch_size: int = Field(default=100, ge=1, le=500)
     s3_endpoint_url: str = ""
     s3_bucket: str = ""
     s3_region: str = "us-east-1"

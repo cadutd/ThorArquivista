@@ -6,6 +6,7 @@ import { useEffect,useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { RegistroImagens } from "@/components/registro-imagens";
 import { EditorialPanel } from "@/components/editorial-panel";
+import { RetencaoRegistro } from "@/components/retencao-registro";
 import { Permission } from "@/components/permission";
 import { getSchema } from "@/lib/api";
 import { getRegistro } from "@/lib/imagens";
@@ -20,6 +21,7 @@ export default function RegistroDetail(){
  <section className="panel" role="tabpanel">{tab==="imagens"?<RegistroImagens instrumentoId={id} registroId={registroId} readonly={registro.status_editorial!=="RASCUNHO"} onChange={()=>getRegistro(id,registroId).then(setRegistro).catch(e=>setError(e.message))}/>:<div className="detail-grid">{campos.map(c=><div className="detail-item" key={c.id}><span>{c.nome}</span><strong className="break-text">{format(registro.dados[c.chave])}</strong></div>)}</div>}</section>
  <EditorialPanel instrumentoId={id} registroId={registroId} status={registro.status_editorial}
    versao={registro.versao} onChange={()=>getRegistro(id,registroId).then(setRegistro).catch(e=>setError(e.message))}/>
+ <RetencaoRegistro instrumentoId={id} registroId={registroId}/>
  </>}
  </div></AppShell>;
 }

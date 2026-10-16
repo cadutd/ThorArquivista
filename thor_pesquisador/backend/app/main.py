@@ -6,10 +6,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.db.mongo import ensure_mongo_indexes
+from app.core.observability import RequestContextMiddleware
+from app.services import auditoria_service  # Register transactional audit hooks.
 
 
 def create_app() -> FastAPI:
     app = FastAPI(title=settings.app_name)
+    app.add_middleware(RequestContextMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,

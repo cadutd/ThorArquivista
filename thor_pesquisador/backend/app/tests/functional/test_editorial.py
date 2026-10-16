@@ -151,7 +151,8 @@ def test_crud_acessos_e_protecao_do_proprio_admin(ctx):
     assert admin.delete(path).status_code == 200
     assert admin.get(path).status_code == 404
     self_id = admin.get("/api/v1/auth/me").json()["id"]
-    own = next(a for a in admin.get("/api/v1/acessos?papel=ADMIN").json()["items"] if a["usuario_id"] == self_id)
+    own = next(a for a in admin.get("/api/v1/acessos", params={"papel": "ADMIN", "usuario_id": self_id}).json()["items"]
+               if a["usuario_id"] == self_id)
     assert admin.delete("/api/v1/acessos/" + own["id"]).status_code == 409
     assert admin.put("/api/v1/acessos/" + own["id"], json={
         "usuario_id": self_id, "papel": "EDITOR", "instrumento_id": None}).status_code == 409
