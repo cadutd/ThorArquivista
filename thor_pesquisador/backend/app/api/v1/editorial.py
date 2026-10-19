@@ -67,17 +67,6 @@ def registro_versoes(instrumento_id: uuid.UUID, registro_id: str, limit: int = Q
                       "snapshot": snapshots.get(str(e.id))} for e in events[:limit]], "has_more": len(events) > limit}
 
 
-@router.get("/auth/permissoes")
-def acessos_efetivos(instrumento_id: uuid.UUID | None = None, db: Session = Depends(db_dep)):
-    scoped = {}
-    if instrumento_id is None:
-        actor = db.info["usuario"]
-        for instrument_id, permissions in db.execute(select(AcessoInstrumento.instrumento_id, Papel.permissoes).join(
-            Papel, Papel.nome == AcessoInstrumento.papel).where(
-                AcessoInstrumento.usuario_id == actor.id, AcessoInstrumento.instrumento_id.is_not(None), Papel.ativo.is_(True))):
-            scoped.setdefault(str(instrument_id), set()).update(permissions)
-    return {"permissoes": sorted(permissoes(db, instrumento_id)),
-            "escopos": {key: sorted(value) for key, value in scoped.items()}}
 
 
 @router.get("/papeis")

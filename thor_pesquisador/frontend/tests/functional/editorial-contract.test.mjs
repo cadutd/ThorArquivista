@@ -12,7 +12,7 @@ test("acoes editoriais tem operacao idempotente, versao, justificativa e permiss
   assert.match(panel, /historico\?limit=20&offset=/);
 });
 test("consulta nao usa indice interno nem oferece comandos administrativos", () => {
-  const portal = read("app/consulta/page.tsx");
+  const portal = read("components/portal-records.tsx");
   assert.match(portal, /\/publico\/instrumentos/);
   assert.doesNotMatch(portal, /reindexarInstrumento|EditorialPanel|buscar-avancado/);
   assert.match(portal, /CrudPagination/);

@@ -4,6 +4,8 @@ import base64
 import hashlib
 import secrets
 import uuid
+import hmac
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from urllib.parse import urlencode, urlsplit
 
@@ -18,6 +20,19 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.models.user import Sessao, Usuario
 from app.services.cpf import normalizar_cpf
+
+
+@dataclass
+class Visitante:
+    cpf_consultivo: str
+    nome: str
+    id: None = None
+    email: None = None
+    cpf: None = None
+
+
+def identidade_chave(cpf):
+    return hmac.new(settings.app_session_secret.encode(), cpf.encode(), hashlib.sha256).hexdigest()
 
 
 def token_hash(token: str) -> str:
@@ -98,7 +113,7 @@ def validate_jwt(token: str, jwks: dict) -> dict:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Token gov.br invalido: {exc}") from exc
 
 
-def usuario_from_claims(db: Session, claims: dict) -> Usuario:
+def usuario_from_claims(db: Session, claims: dict) -> Usuario | Visitante:
     try:
         sub = normalizar_cpf(str(claims.get("sub") or ""))
         cpf = normalizar_cpf(str(claims.get("preferred_username") or sub))
@@ -107,7 +122,9 @@ def usuario_from_claims(db: Session, claims: dict) -> Usuario:
     except ValueError as exc:
         raise HTTPException(401, "Identidade gov.br invalida.") from exc
     usuario = db.scalar(select(Usuario).where(Usuario.cpf == cpf).with_for_update())
-    if not usuario or not usuario.ativo or usuario.excluido_em:
+    if not usuario:
+        return Visitante(cpf, "Visitante " + identidade_chave(cpf)[:12])
+    if not usuario.ativo or usuario.excluido_em:
         raise HTTPException(403, "Usuario nao cadastrado ou inativo. Solicite acesso ao administrador.")
     if usuario.govbr_sub:
         try:
@@ -125,7 +142,21 @@ def usuario_from_claims(db: Session, claims: dict) -> Usuario:
     return usuario
 
 
-def create_session(db: Session, usuario: Usuario) -> str:
+def create_session(db: Session, usuario: Usuario | Visitante) -> str:
+    if isinstance(usuario, Visitante):
+        # Recheck registration/blocking at issuance and on every subsequent request.
+        registered = db.scalar(select(Usuario).where(Usuario.cpf == usuario.cpf_consultivo).with_for_update())
+        if registered:
+            return create_session(db, registered)
+        raw_token = random_urlsafe(48)
+        sessao = Sessao(id=uuid.uuid4(), cpf_consultivo=usuario.cpf_consultivo,
+                        nome_consultivo=usuario.nome, token_hash=token_hash(raw_token),
+                        expira_em=datetime.now(UTC) + timedelta(hours=8))
+        db.add(sessao)
+        from app.services.auditoria_service import registrar
+        registrar(db, "LOGIN", "sessao", sessao.id, usuario=usuario)
+        db.commit()
+        return raw_token
     usuario = db.scalar(select(Usuario).where(Usuario.id == usuario.id).with_for_update()
                         .execution_options(populate_existing=True))
     if not usuario:
@@ -146,14 +177,29 @@ def create_session(db: Session, usuario: Usuario) -> str:
     return raw_token
 
 
-def get_usuario_by_session(db: Session, raw_token: str | None) -> Usuario | None:
+def get_identidade_by_session(db: Session, raw_token: str | None) -> Usuario | Visitante | None:
     if not raw_token:
         return None
     sessao = db.scalar(select(Sessao).where(Sessao.token_hash == token_hash(raw_token)))
     if not sessao or sessao.expira_em < datetime.now(UTC):
         return None
-    usuario = db.get(Usuario, sessao.usuario_id)
+    db.info["sessao_id"] = sessao.id
+    if sessao.usuario_id:
+        usuario = db.get(Usuario, sessao.usuario_id)
+    elif sessao.cpf_consultivo:
+        usuario = db.scalar(select(Usuario).where(Usuario.cpf == sessao.cpf_consultivo))
+        if usuario and (not usuario.ativo or usuario.excluido_em):
+            return None
+        # An old consultive token never inherits newly granted internal privileges.
+        return Visitante(sessao.cpf_consultivo, sessao.nome_consultivo or "Visitante autenticado")
+    else:
+        return None
     return usuario if usuario and usuario.ativo and not usuario.excluido_em else None
+
+
+def get_usuario_by_session(db: Session, raw_token: str | None) -> Usuario | None:
+    identity = get_identidade_by_session(db, raw_token)
+    return identity if isinstance(identity, Usuario) else None
 
 
 def delete_session(db: Session, raw_token: str | None) -> None:
@@ -162,7 +208,8 @@ def delete_session(db: Session, raw_token: str | None) -> None:
     sessao = db.scalar(select(Sessao).where(Sessao.token_hash == token_hash(raw_token)))
     if sessao:
         from app.services.auditoria_service import registrar
-        registrar(db, "LOGOUT", "sessao", sessao.id, usuario=db.get(Usuario, sessao.usuario_id))
+        identity = get_identidade_by_session(db, raw_token)
+        registrar(db, "LOGOUT", "sessao", sessao.id, usuario=identity)
         db.delete(sessao)
         db.commit()
 

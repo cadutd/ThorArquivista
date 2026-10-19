@@ -33,15 +33,18 @@ selecao de permissoes por checkboxes.
 Componentes locais AppShell, CrudPagination, ModalFrame e EntitySelect continuam
 em uso. Nao foram importados Keycloak, clientes de API ou componentes dependentes
 da infraestrutura do Gestor. A autenticacao permanece no gov.br, mas o cadastro
-local e obrigatorio e anterior ao login. O formulario tem nome, username, CPF,
+local e necessario para acessos administrativos, nao para consulta publicada.
+O formulario tem nome, username, CPF,
 e-mail, ativo e observacoes. CPF e validado pelos digitos verificadores,
 normalizado para 11 digitos e unico; username e normalizado para minusculas.
 
 O ID_TOKEN tem assinatura, validade, audience e emissor verificados; o callback
 valida state e nonce. sub/preferred_username sao interpretados como CPF conforme
 o [roteiro tecnico oficial gov.br](https://acesso.gov.br/roteiro-tecnico/iniciarintegracao.html).
-Usuario desconhecido, inativo ou excluido nao recebe sessao. O primeiro login
-vincula o cadastro, sem criar contas locais ou alterar nome/e-mail. CPF vinculado
+Usuario desconhecido recebe sessao consultiva, sem conta/perfil/concessao.
+Usuario inativo ou excluido nao recebe sessao, nem pode contornar o bloqueio
+como visitante. O primeiro login de usuario cadastrado vincula o cadastro,
+sem criar contas locais ou alterar nome/e-mail. CPF vinculado
 nao pode ser trocado. Esta interface nao cria contas no provedor nem senhas locais.
 
 Desativacao/exclusao logica revogam sessoes, conservando IDs, historico e
@@ -265,18 +268,25 @@ A operacao exige acessos_editar, e acessos_incluir quando gera novos vinculos.
 Duplicidades, sobreposicoes, delegacao indevida e remocao do ultimo administrador
 sao bloqueadas, com rollback de toda a operacao.
 
-Todas as telas, inclusive /consulta, verificam a sessao no backend antes de exibir
-seu conteudo. A unica tela aberta sem sessao e /login. A guarda revalida ao navegar,
-ao retornar a aba/janela e periodicamente a cada 60 segundos. Qualquer resposta
-401 dos clientes da API, incluindo imagens/upload, encaminha ao login.
+Desde a fase 6, /, /consulta e /login sao rotas abertas. Registros e telas
+internas exigem sessao; a area interna exige tambem permissoes por escopo.
+A guarda revalida ao navegar, retornar a aba/janela e a cada 60 segundos.
+401 em recurso protegido inicia login; /auth/estado consulta sessao opcional.
 Respostas 403 indicam falta de permissao e nao encerram uma sessao valida.
 
 O parametro next preserva caminho, filtros e fragmento da pagina solicitada.
 O login de desenvolvimento e o callback gov.br so aceitam destinos internos;
 enderecos externos e retornos para login sao recusados. No gov.br, o destino
 fica em cookie HttpOnly temporario e e revalidado no callback, mantendo state,
-nonce e demais verificacoes existentes. APIs publicas de publicacoes permanecem
-inalteradas; a exigencia de sessao abrange a interface do sistema.
+nonce e demais verificacoes existentes. As APIs de registros publicados e
+conteudo de imagens tambem exigem sessao desde a fase 6.
+
+O catalogo tem 57 permissoes: a fase 6 acrescenta
+portal_configuracao_consultar e portal_configuracao_editar, somente globais.
+ADMIN mantem wildcard; os demais perfis nao recebem privilegios novos
+automaticamente. Sessoes de visitante nao herdam concessoes administrativas
+criadas depois: e necessario novo login gov.br para vincular o Usuario.
+Veja [Operacao da fase 6](fase_06_operacao.md) para matriz, migrations e limites.
 
 Validacao: 230 testes backend e 41 contratos frontend no Docker isolado.
 Os testes sessao.smoke.cjs e concessoes-edicao.smoke.cjs verificam navegacao

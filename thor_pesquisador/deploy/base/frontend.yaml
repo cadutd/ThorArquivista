@@ -12,6 +12,16 @@ spec:
       labels:
         app: thor-pesquisador-frontend
     spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      volumes:
+        - name: temporary
+          emptyDir: {sizeLimit: 64Mi}
+        - name: cache
+          emptyDir: {sizeLimit: 128Mi}
       containers:
         - name: thor-pesquisador-frontend
           image: thor-pesquisador-frontend:latest
@@ -21,6 +31,9 @@ spec:
           env:
             - name: NEXT_PUBLIC_API_BASE_URL
               value: https://thor-pesquisador-api.apps.example.local/api/v1
+          volumeMounts:
+            - {name: temporary, mountPath: /tmp}
+            - {name: cache, mountPath: /app/.next/cache}
           readinessProbe:
             httpGet:
               path: /login
@@ -40,6 +53,7 @@ spec:
               memory: 512Mi
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop: ["ALL"]
 ---

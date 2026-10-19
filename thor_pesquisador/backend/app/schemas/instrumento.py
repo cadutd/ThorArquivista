@@ -13,6 +13,7 @@ class InstrumentoBase(BaseModel):
     nome: str = Field(min_length=1, max_length=255)
     tipo: TipoInstrumento
     descricao: str | None = None
+    imagem_card_id: uuid.UUID | None = None
     status: StatusInstrumento = StatusInstrumento.RASCUNHO
     visibilidade: VisibilidadeInstrumento = VisibilidadeInstrumento.INTERNO
 
@@ -22,6 +23,7 @@ class InstrumentoCreate(InstrumentoBase):
 
 
 class InstrumentoUpdate(BaseModel):
+    imagem_card_id: uuid.UUID | None = None
     versao_editorial: int | None = Field(default=None, ge=1)
     nome: str | None = Field(default=None, min_length=1, max_length=255)
     tipo: TipoInstrumento | None = None

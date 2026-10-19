@@ -3,10 +3,14 @@ import json
 import logging
 import time
 import uuid
+from threading import Lock
 from contextvars import ContextVar
 from app.core.config import settings
 
 request_id_context = ContextVar("request_id", default=None)
+metrics_lock = Lock()
+http_metrics = {}
+HTTP_BUCKETS = (.01, .05, .1, .5, 1, 5)
 logger = logging.getLogger("thor.requests")
 logger.setLevel(logging.INFO)
 if not logger.handlers:
@@ -55,8 +59,24 @@ class RequestContextMiddleware:
             await self.app(scope, receive, correlated)
         finally:
             route = getattr(scope.get("route"), "path", "unmatched")
+            # Included routers in recent FastAPI expose the local route template.
+            if route != "unmatched" and not route.startswith("/api/v1"):
+                module = getattr(scope.get("endpoint"), "__module__", "")
+                prefix = "/api/v1/auth" if module.endswith(".auth") else (
+                    "/api/v1/instrumentos" if module.endswith(".instrumentos") else "/api/v1")
+                route = prefix + route
             data = {"request_id": request_id, "metodo": scope["method"], "rota": route,
                     "status": status, "duracao_ms": round((time.monotonic() - start) * 1000)}
+            method = scope["method"] if scope["method"] in {"GET","POST","PUT","PATCH","DELETE","HEAD","OPTIONS"} else "OUTRO"
+            key = (route, method, str(status // 100) + "xx")
+            elapsed = time.monotonic() - start
+            with metrics_lock:
+                values = http_metrics.setdefault(key, [0, 0.0, [0] * len(HTTP_BUCKETS)])
+                values[0] += 1
+                values[1] += elapsed
+                for index, bucket in enumerate(HTTP_BUCKETS):
+                    if elapsed <= bucket:
+                        values[2][index] += 1
             logger.info(json.dumps(data, separators=(",", ":")))
             try:
                 from app.db.session import SessionLocal

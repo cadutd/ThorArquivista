@@ -75,11 +75,14 @@ export function getDashboardStats() {
   return request<DashboardStats>("/dashboard");
 }
 
-export function listInstrumentos(params: { q?: string; limit?: number; offset?: number }) {
+export function listInstrumentos(params: { q?: string; nome?: string; tipo?: string; status?: string; visibilidade?: string; descricao?: string; limit?: number; offset?: number }) {
   const search = new URLSearchParams();
   search.set("limit", String(params.limit ?? 20));
   search.set("offset", String(params.offset ?? 0));
   if (params.q) search.set("q", params.q);
+  for(const key of ["nome","tipo","status","visibilidade","descricao"] as const) {
+    if(params[key]) search.set(key,params[key]);
+  }
   return request<Page<Instrumento>>(`/instrumentos?${search}`);
 }
 

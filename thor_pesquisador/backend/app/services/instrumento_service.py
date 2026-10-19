@@ -18,7 +18,8 @@ from app.services.editorial_service import invalidar_publicacao, auditar_edicao,
 
 
 def listar_instrumentos(db: Session, limit: int, offset: int, q: str | None = None,
-                        nome: str = "", tipo: str | None = None, status: str | None = None) -> tuple[list[Instrumento], int]:
+                        nome: str = "", tipo: str | None = None, status: str | None = None,
+                        visibilidade: str | None = None, descricao: str = "") -> tuple[list[Instrumento], int]:
     safe_limit = min(max(limit, 1), 100)
     safe_offset = max(offset, 0)
     query = select(Instrumento).where(filtro_escopo(db, Instrumento.id))
@@ -31,6 +32,10 @@ def listar_instrumentos(db: Session, limit: int, offset: int, q: str | None = No
         query = query.where(Instrumento.tipo == tipo)
     if status:
         query = query.where(Instrumento.status == status)
+    if visibilidade:
+        query = query.where(Instrumento.visibilidade == visibilidade)
+    if descricao.strip():
+        query = query.where(Instrumento.descricao.ilike("%" + descricao.strip() + "%"))
     total = db.scalar(select(func.count()).select_from(query.subquery())) or 0
     items = db.scalars(query.order_by(Instrumento.criado_em.desc(), Instrumento.id.desc()).limit(safe_limit).offset(safe_offset)).all()
     return list(items), total
@@ -45,6 +50,8 @@ def criar_instrumento(db: Session, payload: InstrumentoCreate, usuario_id: uuid.
     require(db, "instrumentos_incluir")
     if payload.status.value != "RASCUNHO":
         raise HTTPException(409, "Novos instrumentos devem iniciar como rascunho.")
+    from app.services.capa_instrumento_service import validar_vinculo
+    validar_vinculo(db, payload.imagem_card_id)
     instrumento = Instrumento(**payload.model_dump(mode="json"), criado_por=usuario_id)
     db.add(instrumento)
     db.commit()
@@ -58,6 +65,9 @@ def atualizar_instrumento(db: Session, instrumento_id: uuid.UUID, payload: Instr
     if not instrumento:
         raise HTTPException(status_code=404, detail="Instrumento nao encontrado.")
     values = payload.model_dump(exclude_unset=True, mode="json")
+    if "imagem_card_id" in values and str(values["imagem_card_id"]) != str(instrumento.imagem_card_id):
+        from app.services.capa_instrumento_service import validar_vinculo
+        validar_vinculo(db, payload.imagem_card_id)
     if instrumento.status == "ARQUIVADO":
         raise HTTPException(409, "Reabra o instrumento pelo fluxo editorial antes de editar.")
     expected = values.pop("versao_editorial", None)

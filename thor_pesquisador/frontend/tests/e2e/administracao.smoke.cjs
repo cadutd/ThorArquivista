@@ -21,7 +21,7 @@ assert.ok(base && api && process.env.THOR_E2E_ISOLATED === "true", "Use exclusiv
     const user = await json(await context.request.get(api + "/auth/me"));
     await page.locator(".admin-navigation summary").click();
     const menu = page.locator(".admin-navigation");
-    assert.equal(await menu.getByRole("link").count(), 8);
+    assert.equal(await menu.getByRole("link").count(), 9);
     for(const label of ["Auditoria","Exportações","Relatórios","Retenção"])
       await menu.getByRole("link",{name:label,exact:true}).waitFor();
     assert.ok(!(await menu.innerText()).includes("Eventos"));
@@ -84,7 +84,7 @@ assert.ok(base && api && process.env.THOR_E2E_ISOLATED === "true", "Use exclusiv
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
     await page.getByRole("button", {name:"Abrir menu",exact:true}).click();
     const mobileMenu = page.getByRole("dialog", {name:"Menu",exact:true});
-    assert.equal(await mobileMenu.locator(".admin-navigation").getByRole("link").count(), 8);
+    assert.equal(await mobileMenu.locator(".admin-navigation").getByRole("link").count(), 9);
     await page.screenshot({path:path.join(os.tmpdir(),"thor-administracao-menu-mobile.png")});
     await mobileMenu.getByRole("link", {name:"Perfis",exact:true}).click();
     await page.waitForURL("**/perfis");

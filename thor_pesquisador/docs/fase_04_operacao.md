@@ -39,8 +39,9 @@ Desde a migration `20261013_000009`, Consultar/Incluir/Editar/Excluir sao
 independentes em cada CRUD, inclusive Usuarios, Perfis e Concessoes. Nenhum
 perfil padrao nao administrativo recebeu novas permissoes administrativas.
 Consulte a [matriz granular e regras de delegacao](administracao_acessos.md).
-Usuarios devem ser cadastrados antes do login gov.br; o CPF vincula a
-identidade. Perfis sao atribuidos exclusivamente por Concessoes de acesso;
+Para acesso interno, usuarios devem ser cadastrados; o CPF vincula a
+identidade. A fase 6 permite visitante gov.br sem cadastro apenas para
+consulta publicada. Perfis sao atribuidos exclusivamente por Concessoes de acesso;
 o cadastro nao concede acesso nem exige perfil global.
 
 ## Primeiro Administrador
@@ -119,11 +120,11 @@ ser fisicamente apagadas enquanto houver referencias historicas.
 
 ## Consulta e Projecao Publica
 
-Desde o refinamento de 2026-10-15, a tela `/consulta` exige sessao ativa
-via SessionGuard, assim como as demais telas; apenas `/login` fica aberta.
-Dashboard permanece a entrada autenticada padrao, preservando retorno next.
-As APIs `/api/v1/publico` continuam abertas para conteudo publicado elegivel;
-essa regra da API nao torna a tela consultiva anonima.
+Regra atual, substituida pela fase 6 em 2026-10-16: / e /consulta sao
+descoberta anonima; registros/schema/busca/facetas/galeria exigem sessao,
+inclusive na API. Identidades gov.br sem cadastro consultam apenas publicacoes,
+sem acesso interno. Veja [Operacao da fase 6](fase_06_operacao.md).
+Dashboard continua interno e autorizado; next permanece validado.
 O portal exige instrumento PUBLICO, publicacao/schema validos, registro ATIVO
 e snapshot vigente nao arquivado. Dados internos e rascunhos nunca alimentam
 a projecao publica. exibir_publico e false por padrao; aparece_busca/listagem
@@ -133,8 +134,8 @@ Campos visiveis sao a intersecao do schema do snapshot, do schema publicado
 vigente e das restricoes atuais. Desmarcar exibir_publico revoga imediatamente;
 reabilitar exige politica publicada compativel. Galeria e paginada no SQL,
 com legenda/ordem/principal do snapshot e direitos da imagem reavaliados.
-Imagem isolada PUBLICO continua anonima pela regra da fase 3; isso nao publica
-o registro vinculado. RESTRITO exige criador ou ADMIN; INTERNO exige autoria
+Desde a fase 6, imagem PUBLICO exige sessao e, para visitantes, publicacao
+elegivel. RESTRITO exige criador ou ADMIN; INTERNO exige autoria
 ou consulta autorizada. Mutacoes exigem permissao explicita e autoria, salvo ADMIN.
 
 Indice publico usa `publico_UUID_geracao`, separado do indice interno.

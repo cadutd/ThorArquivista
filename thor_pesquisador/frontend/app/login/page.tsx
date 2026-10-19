@@ -1,13 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect,useState } from "react";
 import { Archive, LogIn, ShieldCheck } from "lucide-react";
 import { safeReturnPath } from "@/lib/auth-navigation.mjs";
-import { devLogin, getGovbrStart } from "@/lib/api";
+import { devLogin, getGovbrStart,request } from "@/lib/api";
 
 export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [devEnabled,setDevEnabled]=useState(false);
+  useEffect(()=>{let live=true;request<{login_desenvolvimento:boolean}>("/auth/opcoes")
+    .then(value=>{if(live)setDevEnabled(value.login_desenvolvimento);}).catch(()=>{});
+    return()=>{live=false;};},[]);
 
   async function loginGovbr() {
     setLoading(true);
@@ -60,7 +64,7 @@ export default function LoginPage() {
             <div>
               <h2 style={{ margin: 0 }}>Acesso autenticado</h2>
               <p className="muted" style={{ margin: "8px 0 0" }}>
-                Entre com sua conta gov.br para acessar o painel.
+                Entre com sua conta gov.br para consultar os registros publicados.
               </p>
             </div>
             {error ? <p className="error">{error}</p> : null}
@@ -68,12 +72,12 @@ export default function LoginPage() {
               <LogIn size={18} />
               {loading ? "Abrindo..." : "Entrar com GOV.BR"}
             </button>
-            <button className="button secondary" disabled={loading} onClick={loginDev}>
+            {devEnabled&&<button className="button secondary" disabled={loading} onClick={loginDev}>
               Entrar em desenvolvimento
-            </button>
-            <div className="panel muted" style={{ fontSize: 12, padding: 12 }}>
+            </button>}
+            {devEnabled&&<div className="panel muted" style={{ fontSize: 12, padding: 12 }}>
               Ambiente local usa login de desenvolvimento. Em homologação e produção, configure as credenciais gov.br.
-            </div>
+            </div>}
           </div>
         </div>
       </section>

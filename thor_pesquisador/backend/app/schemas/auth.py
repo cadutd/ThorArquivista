@@ -4,10 +4,11 @@ from pydantic import BaseModel
 
 
 class UsuarioOut(BaseModel):
-    id: str
+    id: str | None
     nome: str
     email: str | None = None
     cpf: str | None = None
+    visitante: bool = False
 
 
 class AuthStartOut(BaseModel):

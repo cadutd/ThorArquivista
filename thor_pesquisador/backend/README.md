@@ -1,11 +1,39 @@
 # Backend
 
-## Atualizacao de 2026-10-16
+## Atualizacao de 2026-10-19
+
+Portal da fase 6 com catalogo publico restrito a metadados publicados,
+ranking agregado e configuracao institucional auditada. Registros e imagens
+de registros exigem sessao; visitantes gov.br nao recebem cadastros, perfis
+ou concessoes automaticamente. A area interna preserva permissoes e escopos.
+
+Consultas de instrumentos aceitam filtros combinados no servidor: Nome, Tipo,
+Status, Visibilidade e Descricao internamente; Nome, Tipo e Descricao no catalogo.
+Capas opcionais usam S3 privado, validacao de imagem e normalizacao JPEG
+960 x 540, com limite de 16 megapixels. Upload nao publica: o acesso anonimo
+depende da capa vigente no instrumento e no snapshot publicado.
+
+Head atual: 20261019_000016 (capas), apos as migrations 000014/000015 do portal.
+Fazer backup antes de executar alembic upgrade head. As migrations preservam
+cadastros existentes; downgrade de capas com referencias existentes e bloqueado.
+O seed de imigracao e exclusivo de desenvolvimento/teste, exige agente
+autorizado e publicacao explicita, e permite retomada sem duplicar registros.
+
+Validacao mais recente: 404 testes backend e 54 contratos frontend aprovados
+em Docker isolado, builds e dois fluxos E2E de portal/instrumentos aprovados.
+As validacoes institucionais de gov.br e OKD continuam pendentes.
+
+Detalhes: [Instrumentos e portal](../docs/instrumentos_portal.md),
+[Massa de imigracao](../docs/massa_teste_imigracoes.md) e
+[Operacao da fase 6](../docs/fase_06_operacao.md).
+
+## Historico de 2026-10-16
 
 Cadastro de usuarios separado das concessoes; inclusao e edicao de acessos
 compartilham pesquisa e selecao multipla. Permissoes por operacao e escopo sao
-validadas no backend. Todas as telas exigem sessao, exceto /login, com retorno
-seguro a pagina solicitada. A massa dev/test possui 60 usuarios e 24 perfis.
+validadas no backend. Landing page e catalogo de instrumentos sao anonimos;
+registros exigem sessao, inclusive para visitantes gov.br sem cadastro.
+A area interna mantem RBAC. A massa dev/test possui 60 usuarios e 24 perfis.
 
 Fase 5 implementada: auditoria unificada e imutavel, exportacoes autenticadas
 CSV/JSON/pacote, jobs recuperaveis, relatorios, logs estruturados e politicas
@@ -20,9 +48,20 @@ Detalhes, operacao, permissoes e limitacoes em
 Auditoria, Exportacoes, Relatorios e Retencao ficam em Administracao e seguem
 a identidade de Instrumentos. As APIs preservam os escopos globais/por instrumento,
 o historico imutavel e os comandos permitidos em cada estado dos jobs.
-Migrations da fase 5: 20261015_000011 a 20261015_000013; head atual 20261015_000013.
+Migrations da fase 5: 20261015_000011 a 20261015_000013.
+Fase 6: 20261016_000014/000015. Capas opcionais: 20261019_000016 (head atual).
 Os numeros de validacao nas secoes historicas abaixo referem-se as respectivas
-entregas anteriores, nao ao total atual. A fase 6 permanece planejada.
+entregas anteriores, nao ao total atual.
+
+Fase 6 implementada: landing page institucional, catalogo paginado, ranking
+agregado e identidade visual publica configuravel em Administracao.
+Consulta publicada autenticada nao cria Usuario, perfil ou concessao.
+Migrations 20261016_000014/000015 preservam sessoes e historico existentes.
+Probes, metricas protegidas, limites HTTP e manifestos OKD foram evoluidos.
+Validacao inicial da fase 6: 392 testes backend, 53 contratos frontend e 13 fluxos E2E
+passaram; builds e ensaio isolado de backup/restore tambem foram aprovados.
+Validacoes locais, operacao, auditoria de dependencias e pendencias institucionais:
+[Operacao da fase 6](../docs/fase_06_operacao.md). Nao houve rollout em cluster.
 
 API do `thor_pesquisador`, implementada com FastAPI.
 
@@ -213,7 +252,8 @@ do filesystem do container. Instrucoes para o MinIO opcional estao no README rai
 
 Metadados privados exigem autoria ou consulta autorizada por escopo.
 Mutacoes exigem permissao explicita e autoria, salvo ADMIN. Conteudo PUBLICO
-admite acesso anonimo; INTERNO exige autoria ou consulta autorizada;
+exige sessao e, para visitantes, vinculo com publicacao elegivel;
+INTERNO exige autoria ou consulta autorizada;
 RESTRITO exige criador ou ADMIN. Direitos externos continuam valendo.
 Publicacao editorial usa snapshots e reavalia os direitos atuais das imagens.
 
@@ -255,8 +295,9 @@ As rotas `/editorial/{acao}` sao aliases do mesmo servico.
 GET historico/versoes sao paginados e autorizados; `/editorial/fila` consulta
 pendencias. `/acessos`, `/usuarios` e `/papeis` atendem a gestao autorizada por operacao.
 
-`/api/v1/publico/instrumentos` oferece catalogo, detalhe, POST buscar,
-GET buscar/facetas, registro e galeria paginada sem sessao. A projecao publica
+`/api/v1/publico/instrumentos` oferece catalogo anonimo. Detalhe/schema,
+POST/GET buscar, facetas, registro e galeria paginada exigem sessao.
+A projecao publica
 e separada do indice interno. Revogacoes valem imediatamente; busca/facetas
 retornam 503 enquanto a geracao atual nao estiver indexada, sem servir dados
 antigos. Recursos nao divulgaveis retornam 404.
@@ -272,8 +313,10 @@ e um catalogo somente leitura. Perfis vinculados sao desativados em vez de
 apagados, com revogacao imediata na autorizacao e nas consultas por escopo.
 ADMIN e protegido. `/usuarios` oferece CRUD local com CPF validado/unico,
 username unico, situacao e observacoes, busca e filtros paginados.
-O login gov.br exige cadastro previo ativo e vincula pelo CPF, sem criar
-usuarios nem sobrescrever seus dados. CPF ja vinculado nao pode ser alterado.
+O login gov.br vincula pelo CPF quando existe cadastro ativo; visitantes sem
+cadastro recebem somente sessao consultiva, sem Usuario/perfil/concessao.
+Contas inativas/excluidas permanecem bloqueadas. Login nao sobrescreve dados.
+CPF ja vinculado nao pode ser alterado.
 A exclusao e logica; desativacao/exclusao revogam sessoes imediatamente.
 
 A migration `20261012_000008` torna govbr_sub opcional ate o primeiro login,
@@ -367,22 +410,37 @@ A operacao exige acessos_editar, e acessos_incluir quando gera novos vinculos.
 Duplicidades, sobreposicoes, delegacao indevida e remocao do ultimo administrador
 sao bloqueadas, com rollback de toda a operacao.
 
-Todas as telas, inclusive /consulta, verificam a sessao no backend antes de exibir
-seu conteudo. A unica tela aberta sem sessao e /login. A guarda revalida ao navegar,
-ao retornar a aba/janela e periodicamente a cada 60 segundos. Qualquer resposta
-401 dos clientes da API, incluindo imagens/upload, encaminha ao login.
+As rotas abertas sao /, /consulta e /login; registros em /consulta/{id}
+e /consulta/{id}/{registroId} exigem sessao. A guarda revalida as telas
+protegidas ao navegar, retornar a aba/janela e a cada 60 segundos.
+401 dos clientes de recursos protegidos, incluindo imagens/upload, inicia login.
+O portal usa /auth/estado para consultar sessao opcional sem redirecionamento.
 Respostas 403 indicam falta de permissao e nao encerram uma sessao valida.
 
 O parametro next preserva caminho, filtros e fragmento da pagina solicitada.
 O login de desenvolvimento e o callback gov.br so aceitam destinos internos;
 enderecos externos e retornos para login sao recusados. No gov.br, o destino
 fica em cookie HttpOnly temporario e e revalidado no callback, mantendo state,
-nonce e demais verificacoes existentes. APIs publicas de publicacoes permanecem
-inalteradas; a exigencia de sessao abrange a interface do sistema.
+nonce e demais verificacoes existentes. Desde a fase 6, as APIs de registros
+publicados tambem exigem sessao; somente a descoberta de instrumentos e anonima.
 
 Validacao: 230 testes backend e 41 contratos frontend no Docker isolado.
 Os testes sessao.smoke.cjs e concessoes-edicao.smoke.cjs verificam navegacao
 direta, expiracao durante o uso, retorno seguro e edicao desktop/mobile.
+
+## Massa de Imigracao
+
+app.scripts.seed_imigracoes gera um instrumento publico e, por padrao, 200
+registros inteiramente ficticios. Usa campos dinamicos, servicos existentes,
+snapshot/publicacao editorial e agente cadastrado com permissoes globais.
+Somente dev/test; --publicar e explicito. Preserva edicoes e historico,
+reconhece registros mesmo apos alterar seu codigo visivel e impede execucoes
+simultaneas. Nenhuma migration ou mudanca de permissao foi necessaria.
+
+Consulte [Massa de testes de imigracao](../docs/massa_teste_imigracoes.md)
+para carga, consulta, limites e teste de idempotencia/seguranca.
+Validacao em 2026-10-17: nove testes da massa e 401 testes backend na suite
+completa passaram; carga local reexecutada sem duplicar ou republicar registros.
 
 ## Licenca
 

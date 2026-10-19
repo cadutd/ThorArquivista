@@ -11,7 +11,7 @@ _client: MongoClient | None = None
 def get_mongo_client() -> MongoClient:
     global _client
     if _client is None:
-        _client = MongoClient(settings.mongodb_url)
+        _client = MongoClient(settings.mongodb_url, serverSelectionTimeoutMS=3000, connectTimeoutMS=3000)
     return _client
 
 

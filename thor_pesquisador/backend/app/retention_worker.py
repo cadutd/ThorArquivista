@@ -18,6 +18,8 @@ def rodada(max_lotes=100):
             with SessionLocal() as db:
                 expirar_exportacoes(db)
                 limpar_artefatos(db)
+                from app.services.portal_service import limpar_acessos
+                limpar_acessos(db)
                 for _ in range(max_lotes):
                     if not processar_pendente(db):
                         break

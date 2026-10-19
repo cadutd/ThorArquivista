@@ -128,7 +128,7 @@ def test_logs_minimos_e_acesso_consultivo_opcional(ctx, monkeypatch):
     secret = "CODIGO_OAUTH_NAO_LOGAR"
     anon = TestClient(create_app())
     response = anon.get("/api/v1/publico/instrumentos/" + iid + "?q=" + secret, headers={"X-Request-ID": request_id})
-    assert response.status_code == 404
+    assert response.status_code == 401
     with SessionLocal() as db:
         rows = db.scalars(select(LogRequisicao).where(LogRequisicao.request_id == request_id)).all()
         assert {r.categoria for r in rows} == {"LOG_TECNICO", "ACESSO_CONSULTIVO"}

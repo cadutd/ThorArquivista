@@ -11,6 +11,7 @@ resources:
   - retention-cronjob.yaml
   - frontend.yaml
   - routes.yaml
+  - network-policy.yaml
 configMapGenerator:
   - name: thor-pesquisador-config
     literals:

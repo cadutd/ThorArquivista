@@ -3,8 +3,10 @@
 import { Save } from "lucide-react";
 import { useState } from "react";
 import type { Instrumento } from "@/types/domain";
+import { InstrumentoCoverField } from "./instrumento-cover-field";
 
 export type InstrumentoFormData = {
+  imagem_card_id?: string | null;
   versao_editorial?: number;
   nome: string;
   tipo: Instrumento["tipo"];
@@ -22,6 +24,7 @@ const DEFAULT_FORM: InstrumentoFormData = {
 };
 
 type Props = {
+  instrumentoId?: string;
   initialValue?: Partial<InstrumentoFormData>;
   saving?: boolean;
   error?: string;
@@ -29,12 +32,14 @@ type Props = {
   onSubmit: (payload: Omit<InstrumentoFormData, "descricao"> & { descricao: string | null }) => Promise<void>;
 };
 
-export function InstrumentoForm({ initialValue, saving = false, error, submitLabel = "Salvar", onSubmit }: Props) {
+export function InstrumentoForm({ initialValue, saving = false, error, submitLabel = "Salvar", onSubmit, instrumentoId }: Props) {
   const [form, setForm] = useState<InstrumentoFormData>({ ...DEFAULT_FORM, ...initialValue });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [uploading,setUploading]=useState(false);
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
+    if(saving||uploading)return;
     const errors = validate(form);
     setFieldErrors(errors);
     if (Object.keys(errors).length) return;
@@ -64,9 +69,11 @@ export function InstrumentoForm({ initialValue, saving = false, error, submitLab
       <Field label="Descricao">
         <textarea className="textarea" value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} />
       </Field>
+      <InstrumentoCoverField value={form.imagem_card_id} onChange={id=>setForm(current=>({...current,imagem_card_id:id}))}
+        onBusy={setUploading} instrumentoId={instrumentoId} disabled={saving||uploading}/>
       {error ? <p className="error">{error}</p> : null}
       <div className="actions">
-        <button className="button" type="submit" disabled={saving}>
+        <button className="button" type="submit" disabled={saving||uploading}>
           <Save size={16} />
           {saving ? "Salvando..." : submitLabel}
         </button>

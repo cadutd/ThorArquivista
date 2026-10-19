@@ -1,11 +1,39 @@
 # Frontend
 
-## Atualizacao de 2026-10-16
+## Atualizacao de 2026-10-19
+
+A entrada publica e a landing institucional, com cards de instrumentos
+publicados e ranking agregado. O catalogo /consulta usa tabela e paginacao
+padrao Thor, com filtros Nome, Tipo e Descricao. A listagem interna acrescenta
+Status e Visibilidade. O link Instrumentos foi removido do cabecalho publico.
+
+Cadastro e edicao compartilham upload, previa e remocao de capa opcional
+960 x 540. Cards sem capa ou com falha de carregamento exibem a imagem
+institucional padrao. A capa somente fica publica pelo fluxo editorial.
+Cores do portal sao configuradas em Administracao -> Configuracao do Portal,
+sem alterar o tema interno, com validacao de contraste e permissoes proprias.
+
+Anonimos pesquisam instrumentos, mas registros exigem login. Visitantes
+gov.br sem usuario local podem consultar publicacoes elegiveis, sem obter
+acesso administrativo. O dashboard continua reservado a area interna autorizada.
+
+Validacao mais recente em Docker isolado: 54 contratos frontend, build e
+fluxos portal.smoke.cjs e instrumentos-portal.smoke.cjs aprovados, incluindo
+axe no portal, filtros, capa real em S3 e verificacoes desktop/mobile.
+O backend correspondente passou em 404 testes. Os demais E2E historicos
+nao foram todos reexecutados nesta revisao.
+
+Guias: [Instrumentos e portal](../docs/instrumentos_portal.md) e
+[Operacao da fase 6](../docs/fase_06_operacao.md).
+O backend deve estar atualizado ate a migration 20261019_000016.
+
+## Historico de 2026-10-16
 
 Cadastro de usuarios separado das concessoes; inclusao e edicao de acessos
 compartilham pesquisa e selecao multipla. Permissoes por operacao e escopo sao
-validadas no backend. Todas as telas exigem sessao, exceto /login, com retorno
-seguro a pagina solicitada. A massa dev/test possui 60 usuarios e 24 perfis.
+validadas no backend. Landing page e catalogo de instrumentos sao anonimos;
+registros exigem sessao, inclusive para visitantes gov.br sem cadastro.
+A area interna mantem RBAC. A massa dev/test possui 60 usuarios e 24 perfis.
 
 Fase 5 implementada: auditoria unificada e imutavel, exportacoes autenticadas
 CSV/JSON/pacote, jobs recuperaveis, relatorios, logs estruturados e politicas
@@ -25,14 +53,32 @@ Os demais CRUDs administrativos mantem seus popups existentes.
 Detalhes, operacao, permissoes e limitacoes em
 [Operacao da fase 5](../docs/fase_05_operacao.md).
 Os numeros de validacao nas secoes historicas abaixo referem-se as respectivas
-entregas anteriores, nao ao total atual. A fase 6 permanece planejada.
+entregas anteriores, nao ao total atual.
+
+Fase 6 implementada: landing page institucional, catalogo paginado, ranking
+agregado e identidade visual publica configuravel em Administracao.
+Consulta publicada autenticada nao cria Usuario, perfil ou concessao.
+Migrations 20261016_000014/000015 preservam sessoes e historico existentes.
+Probes, metricas protegidas, limites HTTP e manifestos OKD foram evoluidos.
+Validacao inicial da fase 6: 392 testes backend, 53 contratos frontend e 13 fluxos E2E
+passaram; builds e ensaio isolado de backup/restore tambem foram aprovados.
+Validacoes locais, operacao, auditoria de dependencias e pendencias institucionais:
+[Operacao da fase 6](../docs/fase_06_operacao.md). Nao houve rollout em cluster.
 
 Interface web do `thor_pesquisador`, implementada com Next.js, React e TypeScript.
+
+## Instrumentos e Portal em 2026-10-19
+
+/consulta usa tabela padrao, nao cards, e filtros Nome/Tipo/Descricao.
+/instrumentos acrescenta Status e Visibilidade. Cards da landing usam capa
+opcional de 960 x 540 ou imagem institucional padrao, com previa/remocao
+no formulario compartilhado. O link Instrumentos saiu do cabecalho publico.
+Veja [Instrumentos e portal](../docs/instrumentos_portal.md).
 
 ## Responsabilidades
 
 - Login institucional com gov.br e login de desenvolvimento local.
-- Dashboard inicial autenticado em `/dashboard`.
+- Dashboard interno autorizado em `/dashboard`; landing publica em `/`.
 - Shell administrativo com identidade visual alinhada ao Thor Gestor.
 - Instrumentos, campos dinamicos, registros e pesquisa.
 - Busca avancada por instrumento com filtros, facetas, ordenacao e reindexacao manual.
@@ -49,7 +95,7 @@ O frontend deve manter a mesma linguagem visual do `thor_gestor_de_arquivos_digi
 - header fixo;
 - cards de metricas;
 - tabelas e formularios objetivos;
-- dashboard como pagina inicial autenticada.
+- dashboard para usuarios com acesso interno autorizado.
 
 Os dois frontends importam uma copia identica de `app/thor-theme.css`, com
 tokens de cor e tipografia base do Thor Gestor. As copias permitem builds Docker
@@ -74,12 +120,21 @@ docker compose build frontend
 docker compose up -d
 ```
 
-Teste funcional de contrato, executado localmente como no Thor Gestor:
+Testes de contrato em container efemero, a partir da raiz do monorepo
+(o tema do Gestor e montado somente para conferir a paridade):
 
 ```bash
-npm run test:functional
-npm run test:functional:report
+docker run --rm --network none \
+  --mount type=bind,source="$PWD/thor_pesquisador/frontend",target=/workspace/thor_pesquisador/frontend,readonly \
+  --mount type=bind,source="$PWD/thor_gestor_de_arquivos_digitais/frontend/app",target=/workspace/thor_gestor_de_arquivos_digitais/frontend/app,readonly \
+  --workdir /workspace/thor_pesquisador/frontend \
+  --entrypoint node thor_pesquisador-frontend --test tests/functional/*.test.mjs
 ```
+
+Em PowerShell, substituir a continuacao de linha por backtick ou executar em
+uma linha. A imagem deve ter sido criada pelo docker compose build frontend.
+Para relatorio JUnit, o script npm run test:functional:report requer destino
+gravavel; nao usar as montagens somente leitura acima para gerar arquivos.
 
 Rotas principais:
 
@@ -189,6 +244,11 @@ npm run test:e2e:imagens
 npm run test:e2e:registros-busca
 ```
 
+Os fluxos de portal e capas sao executados diretamente com
+node tests/e2e/portal.smoke.cjs e node tests/e2e/instrumentos-portal.smoke.cjs.
+Exigem THOR_E2E_ISOLATED=true, BASE_URL=http://localhost:3001 e
+API_URL=http://localhost:8001/api/v1, apontando somente para a stack de teste.
+
 O script usa `BASE_URL` (padrao localhost:3000) e `API_URL` (padrao
 localhost:8000/api/v1), cria dados proprios e remove-os ao concluir.
 Defina BASE_URL=http://localhost:3001 e API_URL=http://localhost:8001/api/v1
@@ -207,7 +267,10 @@ externo e simulado. Capturas desktop/mobile ficam no diretorio temporario do SO.
   historico paginado e versoes publicadas consultadas sob demanda.
 - `/instrumentos/{id}/registros/{registroId}/editar`: formulario compartilhado;
   editar uma publicacao cria rascunho e preserva o snapshot vigente.
-- `/consulta`: catalogo paginado de publicacoes, filtros e detalhes do snapshot; exige sessao ativa.
+- `/`: landing page publica com pesquisa e destaques reais.
+- `/consulta`: catalogo anonimo paginado de instrumentos elegiveis.
+- `/consulta/{id}` e `/consulta/{id}/{registroId}`: busca e detalhe publicados, com sessao.
+- `/portal/configuracao`: identidade institucional, em Administracao, com permissao global.
   A galeria reutiliza RegistroImagens e MediaPreview, sem botoes de alteracao.
 
 O PermissionProvider carrega permissoes globais/por escopo; botoes respeitam
@@ -222,7 +285,7 @@ Com Chromium e Playwright ja disponiveis:
 ```bash
 BASE_URL=http://localhost:3001 API_URL=http://localhost:8001/api/v1 THOR_E2E_ISOLATED=true node tests/e2e/editorial.smoke.cjs
 BASE_URL=http://localhost:3001 API_URL=http://localhost:8001/api/v1 npm run test:e2e:registros-busca
-BASE_URL=http://localhost:3001 API_URL=http://localhost:8001/api/v1 npm run test:e2e:imagens
+BASE_URL=http://localhost:3001 API_URL=http://localhost:8001/api/v1 THOR_E2E_ISOLATED=true npm run test:e2e:imagens
 ```
 
 [Operacao da fase 4](../docs/fase_04_operacao.md) descreve inicializacao,
@@ -345,18 +408,19 @@ A operacao exige acessos_editar, e acessos_incluir quando gera novos vinculos.
 Duplicidades, sobreposicoes, delegacao indevida e remocao do ultimo administrador
 sao bloqueadas, com rollback de toda a operacao.
 
-Todas as telas, inclusive /consulta, verificam a sessao no backend antes de exibir
-seu conteudo. A unica tela aberta sem sessao e /login. A guarda revalida ao navegar,
-ao retornar a aba/janela e periodicamente a cada 60 segundos. Qualquer resposta
-401 dos clientes da API, incluindo imagens/upload, encaminha ao login.
+As rotas abertas sao /, /consulta e /login; registros em /consulta/{id}
+e /consulta/{id}/{registroId} exigem sessao. A guarda revalida as telas
+protegidas ao navegar, retornar a aba/janela e a cada 60 segundos.
+401 dos clientes de recursos protegidos, incluindo imagens/upload, inicia login.
+O portal usa /auth/estado para consultar sessao opcional sem redirecionamento.
 Respostas 403 indicam falta de permissao e nao encerram uma sessao valida.
 
 O parametro next preserva caminho, filtros e fragmento da pagina solicitada.
 O login de desenvolvimento e o callback gov.br so aceitam destinos internos;
 enderecos externos e retornos para login sao recusados. No gov.br, o destino
 fica em cookie HttpOnly temporario e e revalidado no callback, mantendo state,
-nonce e demais verificacoes existentes. APIs publicas de publicacoes permanecem
-inalteradas; a exigencia de sessao abrange a interface do sistema.
+nonce e demais verificacoes existentes. Desde a fase 6, as APIs de registros
+publicados tambem exigem sessao; somente a descoberta de instrumentos e anonima.
 
 Validacao: 230 testes backend e 41 contratos frontend no Docker isolado.
 Os testes sessao.smoke.cjs e concessoes-edicao.smoke.cjs verificam navegacao

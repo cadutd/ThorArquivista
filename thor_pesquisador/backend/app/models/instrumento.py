@@ -17,6 +17,7 @@ class Instrumento(Base):
     nome: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
     tipo: Mapped[str] = mapped_column(String(40), nullable=False)
     descricao: Mapped[str | None] = mapped_column(Text)
+    imagem_card_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("instrumento_capas.id"))
     status: Mapped[str] = mapped_column(String(40), nullable=False, default="RASCUNHO", server_default="RASCUNHO")
     visibilidade: Mapped[str] = mapped_column(String(40), nullable=False, default="INTERNO", server_default="INTERNO")
     schema_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")

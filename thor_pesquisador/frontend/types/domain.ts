@@ -13,6 +13,7 @@ export type CursorPage<T> = {
 };
 
 export type Instrumento = {
+  imagem_card_id?: string | null;
   id: string;
   nome: string;
   tipo: "GUIA" | "INVENTARIO" | "CATALOGO" | "INDICE" | "BASE_TEMATICA" | "OUTRO";

@@ -122,7 +122,7 @@ def test_acesso_restrito_e_anonimo(context):
     assert anonymous.get("/api/v1/imagens").status_code == 401
     assert anonymous.get("/api/v1/imagens/" + restricted["id"] + "/conteudo", follow_redirects=False).status_code == 401
     assert anonymous.get("/api/v1/imagens/" + internal["id"] + "/conteudo", follow_redirects=False).status_code == 401
-    assert anonymous.get("/api/v1/imagens/" + public["id"] + "/conteudo", follow_redirects=False).status_code == 307
+    assert anonymous.get("/api/v1/imagens/" + public["id"] + "/conteudo", follow_redirects=False).status_code == 401
     with SessionLocal() as db:
         other = Usuario(govbr_sub=uuid.uuid4().hex, nome="Outro usuario")
         db.add(other)

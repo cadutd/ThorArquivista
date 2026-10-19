@@ -8,8 +8,9 @@ export function SessionGuard({children}:{children:React.ReactNode}) {
   const pathname = usePathname();
   const [verified,setVerified] = useState("");
   const [error,setError] = useState("");
+  const publicRoute=pathname==="/"||pathname==="/consulta"||pathname==="/login";
   useEffect(() => {
-    if(pathname === "/login") return;
+    if(publicRoute) return;
     let current = true, checking = false, redirecting = false, validated = false;
     const controller = new AbortController();
     setError("");
@@ -22,7 +23,10 @@ export function SessionGuard({children}:{children:React.ReactNode}) {
       if(checking || redirecting) return;
       checking = true;
       try {
-        await request("/auth/me",{signal:controller.signal,cache:"no-store"});
+        const identity=await request<{visitante?:boolean}>("/auth/me",{signal:controller.signal,cache:"no-store"});
+        if(current&&identity.visitante&&!pathname.startsWith("/consulta/")) {
+          window.location.replace("/consulta");return;
+        }
         if(current && !redirecting) {validated = true;setVerified(pathname);setError("");}
       } catch(e) {
         if(!current) return;
@@ -43,8 +47,8 @@ export function SessionGuard({children}:{children:React.ReactNode}) {
       window.removeEventListener("focus",focus);window.removeEventListener("pageshow",focus);
       document.removeEventListener("visibilitychange",focus);
     };
-  },[pathname]);
-  if(pathname === "/login") return <>{children}</>;
+  },[pathname,publicRoute]);
+  if(publicRoute) return <>{children}</>;
   if(error) return <main className="container"><p className="error" role="alert">{error}</p>
     <button className="button secondary" onClick={() => window.location.reload()}>Tentar novamente</button></main>;
   if(verified !== pathname) return <main className="container"><p role="status">Verificando sessao...</p></main>;

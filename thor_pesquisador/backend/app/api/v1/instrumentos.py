@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query, Response, status
+from fastapi import APIRouter, Depends, Query, Response, status, File, Form, UploadFile
+from starlette.concurrency import run_in_threadpool
+from app.core.config import settings
 from sqlalchemy.orm import Session
 
 from app.api.deps import current_user, db_dep
 from app.models.user import Usuario
-from app.models.enums import TipoInstrumento, StatusInstrumento
+from app.models.enums import TipoInstrumento, StatusInstrumento, VisibilidadeInstrumento
 from app.schemas.busca import BuscaAvancadaIn, BuscaAvancadaOut, FacetasOut, ReindexacaoOut
 from app.schemas.instrumento import InstrumentoCreate, InstrumentoOut, InstrumentoPage, InstrumentoSchema, InstrumentoUpdate
 from app.schemas.instrumento_campo import InstrumentoCampoCreate, InstrumentoCampoOut, InstrumentoCampoUpdate
@@ -18,6 +20,23 @@ from app.services import instrumento_service, registro_service
 router = APIRouter()
 
 
+@router.post("/imagens-card", status_code=201)
+async def upload_card(arquivo: UploadFile = File(...), instrumento_id: uuid.UUID | None = Form(None),
+                      db: Session = Depends(db_dep), usuario: Usuario = Depends(current_user)):
+    from app.services.capa_instrumento_service import upload
+    try:
+        content = await arquivo.read(settings.upload_max_bytes + 1)
+        return await run_in_threadpool(upload, db, content, arquivo.content_type or "", instrumento_id)
+    finally:
+        await arquivo.close()
+
+
+@router.get("/imagens-card/{capa_id}")
+def previa_card(capa_id: uuid.UUID, db: Session = Depends(db_dep), usuario: Usuario = Depends(current_user)):
+    from app.services.capa_instrumento_service import previa
+    return previa(db, capa_id)
+
+
 @router.get("", response_model=InstrumentoPage)
 def listar_instrumentos(
     limit: int = Query(default=20, ge=1, le=100),
@@ -26,10 +45,14 @@ def listar_instrumentos(
     nome: str = "",
     tipo: TipoInstrumento | None = None,
     status: StatusInstrumento | None = None,
+    visibilidade: VisibilidadeInstrumento | None = None,
+    descricao: str = Query("", max_length=1000),
     db: Session = Depends(db_dep),
     _usuario: Usuario = Depends(current_user),
 ) -> InstrumentoPage:
-    items, total = instrumento_service.listar_instrumentos(db, limit, offset, q, nome, tipo.value if tipo else None, status.value if status else None)
+    items, total = instrumento_service.listar_instrumentos(db, limit, offset, q, nome,
+        tipo.value if tipo else None, status.value if status else None,
+        visibilidade.value if visibilidade else None, descricao)
     return InstrumentoPage(items=items, total=total, limit=limit, offset=offset)
 
 

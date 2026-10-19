@@ -2,10 +2,12 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const {execFileSync} = require('node:child_process');
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || '@playwright/test');
 
 const base = process.env.BASE_URL || 'http://localhost:3000';
 const api = process.env.API_URL || 'http://localhost:8000/api/v1';
+assert.ok(process.env.BASE_URL && process.env.API_URL && process.env.THOR_E2E_ISOLATED === 'true', 'Use somente a stack isolada.');
 const unique = 'Smoke imagens ' + Date.now();
 
 (async () => {
@@ -104,6 +106,13 @@ const unique = 'Smoke imagens ' + Date.now();
   const links=await responseJson(await context.request.get(linkPrefix));
   assert.equal(links.total,3);
   assert.notEqual(links.items[0].imagem_id,uploaded.id);
+  const indexCode = ["import json", "from app.core.config import settings",
+    "from app.services.indexacao_service import processar_mensagem",
+    "assert settings.app_env == 'test' and settings.mongodb_database.endswith('_test')",
+    "processar_mensagem(json.dumps(dict(tipo='registro',instrumento_id='" + instrument.id +
+      "',registro_id='" + registro.id + "')))"].join("\n");
+  execFileSync('docker',['compose','-f',path.resolve(__dirname,'../../../docker-compose.test.yml'),
+    'exec','-T','backend','python','-c',indexCode],{encoding:'utf8'});
   let indexed;
   for(let attempt=0;attempt<30;attempt++){
    const results=await responseJson(await context.request.post(api+'/instrumentos/'+instrument.id+'/buscar-avancado',{data:{}}));

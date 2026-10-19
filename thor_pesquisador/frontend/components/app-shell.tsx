@@ -25,7 +25,8 @@ const administration = [
   {acao:"auditoria_consultar",href:"/auditoria",prefix:"/auditoria",label:"Auditoria",icon:ShieldCheck,anyScope:true},
   {acao:"exportacoes_consultar",href:"/exportacoes",prefix:"/exportacoes",label:"Exportações",icon:Database,anyScope:true},
   {acao:"relatorios_consultar",href:"/relatorios",prefix:"/relatorios",label:"Relatórios",icon:Gauge,anyScope:true},
-  {acao:"retencao_consultar",href:"/retencao/politicas",prefix:"/retencao",label:"Retenção",icon:FileSearch,anyScope:true}
+  {acao:"retencao_consultar",href:"/retencao/politicas",prefix:"/retencao",label:"Retenção",icon:FileSearch,anyScope:true},
+  {acao:"portal_configuracao_consultar",href:"/portal/configuracao",prefix:"/portal/configuracao",label:"Configuracao do Portal",icon:Settings,anyScope:false}
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

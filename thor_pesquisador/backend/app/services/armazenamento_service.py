@@ -101,7 +101,7 @@ class ArmazenamentoS3:
         return hashlib.sha256(conteudo).hexdigest()
 
 
-def validar_imagem(conteudo: bytes, mime_type: str):
+def validar_imagem(conteudo: bytes, mime_type: str, *, max_pixels: int | None = None):
     if not conteudo or len(conteudo) > settings.upload_max_bytes:
         raise HTTPException(413, "Arquivo vazio ou maior que o limite permitido.")
     if mime_type not in settings.upload_allowed_mime_types:
@@ -112,6 +112,8 @@ def validar_imagem(conteudo: bytes, mime_type: str):
             with Image.open(BytesIO(conteudo)) as image:
                 actual_mime = Image.MIME.get(image.format)
                 largura, altura = image.size
+                if max_pixels is not None and largura * altura > max_pixels:
+                    raise HTTPException(422, "Resolucao da imagem excede o limite permitido para capas.")
                 image.verify()
             if actual_mime != mime_type:
                 raise HTTPException(422, "Conteudo do arquivo nao corresponde ao MIME informado.")

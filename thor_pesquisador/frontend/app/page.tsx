@@ -1,5 +1,2 @@
-import { redirect } from "next/navigation";
-
-export default function Home() {
-  redirect("/dashboard");
-}
+import { PortalHome } from "@/components/portal-home";
+export default function Home(){return <PortalHome/>;}

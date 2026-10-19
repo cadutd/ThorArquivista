@@ -7,13 +7,14 @@ from fastapi.responses import RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
-from app.api.deps import current_user, db_dep
+from app.api.deps import current_user, current_identity, db_dep
 from app.core.config import settings
 from app.models.user import Usuario
 from app.schemas.imagem import DireitosAcesso, ImagemCreate, ImagemOut, ImagemPage, ImagemUpdate, ReordenarIn, TipoReferencia, VinculoCreate, VinculoOut, VinculoPage, VinculoUpdate
 from app.services import imagem_service as service
 from app.services.armazenamento_service import armazenamento
 from app.services.permissao_service import require_imagens
+from app.services.auth_service import Visitante
 from app.services.auth_service import get_usuario_by_session
 
 router = APIRouter()
@@ -71,9 +72,25 @@ def excluir(imagem_id: uuid.UUID, db: Session = Depends(db_dep), usuario: Usuari
 
 @router.get("/imagens/{imagem_id}/conteudo")
 def conteudo(imagem_id: uuid.UUID, thumbnail: bool = False, db: Session = Depends(db_dep),
-             token: str | None = Cookie(None, alias=settings.session_cookie_name)):
-    usuario = get_usuario_by_session(db, token)
+             usuario=Depends(current_identity)):
     imagem = service.obter(db, imagem_id, usuario)
+    try:
+        if isinstance(usuario, Visitante):
+            raise HTTPException(403)
+        require_imagens(db, usuario, "imagens_consultar")
+    except HTTPException:
+        from sqlalchemy import select
+        from app.models.editorial import EditorialRegistro, PublicacaoImagem
+        from app.models.instrumento import Instrumento
+        allowed = db.scalar(select(PublicacaoImagem.imagem_id).join(
+            EditorialRegistro, EditorialRegistro.snapshot_id == PublicacaoImagem.snapshot_id).join(
+            Instrumento, Instrumento.id == EditorialRegistro.instrumento_id).where(
+                PublicacaoImagem.imagem_id == imagem_id, PublicacaoImagem.referencia != {},
+                EditorialRegistro.status_operacional == "ATIVO", EditorialRegistro.status_editorial != "ARQUIVADO",
+                Instrumento.visibilidade == "PUBLICO", Instrumento.publicacao_id.is_not(None),
+                Instrumento.status != "ARQUIVADO").limit(1))
+        if imagem.direitos_acesso != "PUBLICO" or not allowed:
+            raise HTTPException(404, "Imagem nao encontrada.")
     if not imagem.object_key:
         if imagem.tipo_referencia == "IIIF" and not thumbnail:
             raise HTTPException(422, "Esta referencia e um manifest IIIF, nao um arquivo.")

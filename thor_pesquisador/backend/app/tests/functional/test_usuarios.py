@@ -125,15 +125,14 @@ def test_desativacao_e_reativacao_revogam_sessoes(ctx):
     assert autenticado(user["id"]).get("/api/v1/auth/me").status_code == 200
 
 
-def test_govbr_vincula_apenas_usuario_cadastrado_sem_sobrescrever_dados(ctx):
+def test_govbr_vincula_cadastrado_e_permite_visitante_sem_sobrescrever_dados(ctx):
     admin, _, _ = ctx
     data = payload()
     user = criar(admin,data)
     with SessionLocal() as db:
         original_count = db.scalar(select(func.count()).select_from(Usuario))
-        with pytest.raises(HTTPException) as denied:
-            usuario_from_claims(db,{"sub":cpf_teste()})
-        assert denied.value.status_code == 403
+        from app.services.auth_service import Visitante
+        assert isinstance(usuario_from_claims(db,{"sub":cpf_teste()}), Visitante)
         assert db.scalar(select(func.count()).select_from(Usuario)) == original_count
         row = usuario_from_claims(db,{"sub":data["cpf"],"preferred_username":data["cpf"],
                                      "name":"Nome do provedor","email":"provider@example.org"})

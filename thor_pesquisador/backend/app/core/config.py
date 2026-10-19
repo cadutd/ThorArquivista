@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -49,6 +49,19 @@ class Settings(BaseSettings):
     s3_url_expiration: int = Field(default=300, ge=1, le=3600)
     upload_max_bytes: int = Field(default=20 * 1024 * 1024, ge=1)
     upload_allowed_mime_types: list[str] = Field(default_factory=lambda: ["image/jpeg", "image/png", "image/tiff", "image/webp"])
+
+    @model_validator(mode="after")
+    def ambiente_seguro(self):
+        if self.app_env in {"prod", "homolog"}:
+            if self.govbr_dev_login or self.auth_disabled_for_tests or self.dev_admin_enabled:
+                raise ValueError("Atalhos de autenticacao sao proibidos em homolog/prod.")
+            if not self.session_cookie_secure or len(self.app_session_secret) < 32:
+                raise ValueError("Cookie seguro e segredo de sessao com 32 caracteres sao obrigatorios.")
+            if self.govbr_client_id == "change-me" or self.govbr_client_secret == "change-me":
+                raise ValueError("Configure as credenciais gov.br antes do rollout.")
+            if not self.public_app_url.startswith("https://") or not self.govbr_redirect_uri.startswith("https://"):
+                raise ValueError("Portal e callback devem usar HTTPS.")
+        return self
 
 
 settings = Settings()

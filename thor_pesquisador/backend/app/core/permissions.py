@@ -26,6 +26,11 @@ PERMISSIONS += [
                         "exportacoes": "Exportacoes"}.items()
 ]
 PERMISSIONS += [
+    {"codigo": "portal_configuracao_" + action, "nome": label + " configuracao do portal",
+     "modulo": "Configuracao do Portal", "funcao": label, "acao": action.upper()}
+    for action, label in (("consultar", "Consultar"), ("editar", "Editar"))
+]
+PERMISSIONS += [
     {"codigo": code, "nome": label, "modulo": module, "funcao": label, "acao": action}
     for code, label, module, action in [
         ("exportacoes_incluir", "Solicitar exportacao", "Exportacoes", "INCLUIR"),

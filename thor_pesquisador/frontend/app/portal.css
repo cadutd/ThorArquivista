@@ -1,0 +1,66 @@
+.portal { min-height: 100dvh; background: hsl(var(--background)); color: hsl(var(--foreground)); }
+.portal-width { width: min(1200px, calc(100% - 48px)); margin-inline: auto; min-width: 0; }
+.portal-header { border-bottom: 1px solid hsl(var(--border)); background: hsl(var(--card)); }
+.portal-header-inner { min-height: 80px; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding-block: 12px; }
+.portal-brand { display: flex; gap: 12px; align-items: center; font-weight: 600; max-width: 420px; font-size: 18px; overflow-wrap: anywhere; min-width: 0; }
+.portal-brand svg { color: hsl(var(--primary)); flex-shrink: 0; }
+.portal-header nav { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 20px; font-size: 14px; }
+.portal-header nav > a:not(.button) { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; }
+.portal-header nav > a:hover { text-decoration: underline; }
+.portal-identity { font-size: 13px; max-width: 180px; overflow-wrap: anywhere; }
+.portal .button.secondary { background: transparent; color: hsl(var(--primary)); }
+.portal-hero { position: relative; padding: 64px 0; min-height: 360px; background: #102f35 url("/images/login_pesquisador.png") center 42% / cover; color: #ffffff; isolation: isolate; }
+.portal-hero::before { content: ""; position: absolute; inset: 0; background: rgb(0 0 0 / 0.53); z-index: -1; }
+.portal-hero h1 { max-width: 850px; font-size: 40px; line-height: 1.2; margin: 10px 0 28px; overflow-wrap: anywhere; font-weight: 600; }
+.portal-kicker { margin: 0; font-size: 15px; font-weight: 500; }
+.portal-search { display: flex; align-items: stretch; gap: 8px; max-width: 840px; background: #ffffff; padding: 8px; border-radius: 6px; }
+.portal-search-input { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; padding: 0 12px; color: #263e4b; }
+.portal-search input { width: 100%; min-width: 0; height: 44px; border: 0; background: #ffffff; color: #17232d; outline-offset: 0; }
+.portal-search .button { height: auto; min-height: 44px; }
+.portal-section { padding-block: 36px; }
+.portal-section h1 { overflow-wrap: anywhere; }
+.portal-section h2 { font-size: 24px; line-height: 32px; font-weight: 600; margin: 0; }
+.portal-text-link { color: hsl(var(--primary)); display: inline-flex; align-items: center; gap: 8px; font-size: 14px; min-height: 40px; }
+.portal-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 20px; }
+.instrumento-cover { display: block; width: 100%; aspect-ratio: 16 / 9; height: auto; object-fit: cover; border-radius: 4px; background: #f1f4f6; }
+.instrumento-cover-preview { max-width: 320px; width: 100%; }
+.portal-card { min-width: 0; display: flex; flex-direction: column; gap: 16px; min-height: 240px; padding: 24px; border: 1px solid hsl(var(--border)); border-top: 3px solid var(--portal-secondary); border-radius: 6px; background: hsl(var(--card)); transition: border-color 120ms ease, box-shadow 120ms ease; }
+.portal-card:nth-child(3n+2) { border-top-color: var(--portal-accent); }
+.portal-card:nth-child(3n) { border-top-color: hsl(var(--primary)); }
+.portal-card:hover { border-color: hsl(var(--primary)); box-shadow: 0 3px 12px rgb(0 0 0 / 0.07); }
+.portal-card h3 { margin: 0; font-size: 20px; line-height: 28px; overflow-wrap: anywhere; }
+.portal-card p { font-size: 14px; line-height: 22px; margin: 0; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.portal-card-type { display: flex; align-items: center; gap: 8px; color: var(--portal-secondary); font-size: 13px; }
+.portal-card-type svg { flex-shrink: 0; }
+.portal-card-type svg:last-child { margin-left: auto; }
+.portal-card-action { margin-top: auto; display: flex; align-items: center; gap: 8px; font-size: 14px; color: hsl(var(--primary)); font-weight: 500; padding-top: 4px; }
+.portal-footer { margin-top: 32px; border-top: 1px solid hsl(var(--border)); font-size: 13px; }
+.portal-footer > div { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; padding-block: 24px; }
+.portal-footer strong { overflow-wrap: anywhere; min-width: 0; }
+.portal-skip { position: absolute; left: 12px; top: -100px; z-index: 100; background: hsl(var(--card)); color: hsl(var(--primary)); padding: 12px; border: 1px solid; }
+.portal-skip:focus { top: 12px; }
+.portal a:focus-visible, .portal button:focus-visible, .portal input:focus-visible, .portal select:focus-visible { outline: 3px solid hsl(var(--ring)); outline-offset: 3px; }
+.portal .detail-grid { margin: 0; }
+.portal .detail-item { min-width: 0; overflow-wrap: anywhere; }
+.portal .detail-item dd { margin: 0; }
+.portal-preview { min-height: 0; padding: 20px; border: 1px solid hsl(var(--border)); border-radius: 6px; }
+.portal-preview h3 { margin: 0; font-size: 20px; }
+.portal-color-field { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.portal-color-field input[type="color"] { width: 44px; height: 40px; padding: 3px; border: 1px solid hsl(var(--border)); border-radius: 4px; background: hsl(var(--card)); cursor: pointer; flex-shrink: 0; }
+.portal-color-field .input { min-width: 0; }
+@media (max-width: 700px) {
+  .portal-width { width: calc(100% - 32px); }
+  .portal-header-inner { flex-wrap: wrap; gap: 8px; }
+  .portal-brand { max-width: 100%; font-size: 16px; }
+  .portal-header nav { width: 100%; justify-content: space-between; gap: 8px 12px; }
+  .portal-identity { display: none; }
+  .portal-hero { padding: 32px 0; min-height: 310px; }
+  .portal-hero h1 { font-size: 30px; line-height: 38px; }
+  .portal-search { flex-wrap: wrap; }
+  .portal-search-input { flex-basis: 100%; padding-inline: 8px; }
+  .portal-search .button { width: 100%; justify-content: center; }
+  .portal-section { padding-block: 28px; }
+  .portal-section h2 { font-size: 22px; line-height: 30px; }
+  .portal-card { padding: 20px; }
+}
+@media (prefers-reduced-motion: reduce) { .portal * { transition: none !important; scroll-behavior: auto !important; } }

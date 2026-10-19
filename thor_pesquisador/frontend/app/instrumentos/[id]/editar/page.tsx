@@ -21,6 +21,7 @@ export default function EditarInstrumentoPage() {
       .then((instrumento) => {
         setInitialValue({
           versao_editorial: instrumento.versao_editorial,
+          imagem_card_id: instrumento.imagem_card_id,
           nome: instrumento.nome,
           tipo: instrumento.tipo,
           descricao: instrumento.descricao ?? "",
@@ -56,7 +57,7 @@ export default function EditarInstrumentoPage() {
           <Link className="button secondary" href="/instrumentos"><ArrowLeft size={16} /> Voltar</Link>
         </div>
         {initialValue ? (
-          <InstrumentoForm initialValue={initialValue} onSubmit={submit} saving={saving} error={error} submitLabel="Salvar alteracoes" />
+          <InstrumentoForm instrumentoId={id} initialValue={initialValue} onSubmit={submit} saving={saving} error={error} submitLabel="Salvar alteracoes" />
         ) : (
           <section className="panel">{error ? <p className="error">{error}</p> : <p className="muted">Carregando instrumento...</p>}</section>
         )}

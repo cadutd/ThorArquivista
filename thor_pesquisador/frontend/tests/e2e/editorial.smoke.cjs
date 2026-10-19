@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const os = require("node:os");
 const crypto = require("node:crypto");
+const {execFileSync} = require("node:child_process");
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || "@playwright/test");
 const base = process.env.BASE_URL;
 const api = process.env.API_URL;
@@ -63,6 +64,14 @@ assert.ok(base && api && process.env.THOR_E2E_ISOLATED === "true", "Use a stack 
     await page.getByRole("button",{name:"Versoes publicadas",exact:true}).click();
     await page.getByText("Versao 2", {exact:false}).first().waitFor();
     const publicPrefix = api + "/publico" + prefix;
+    // Process only this fixture through the real worker service, independent of old test backlog.
+    const processCode = ["import uuid", "from app.core.config import settings",
+      "from app.db.session import SessionLocal", "from app.services.publicacao_service import processar_pendente",
+      "assert settings.app_env == 'test' and settings.mongodb_database.endswith('_test')",
+      "with SessionLocal() as db:", " for _ in range(100):",
+      "  if not processar_pendente(db,instrumento_id=uuid.UUID('" + instrument.id + "')): break"].join("\n");
+    execFileSync("docker", ["compose","-f",path.resolve(__dirname,"../../../docker-compose.test.yml"),
+      "exec","-T","backend","python","-c",processCode], {encoding:"utf8"});
     let ready = false;
     for(let n=0;n<180;n++) {
       const response = await context.request.get(publicPrefix + "/buscar");
@@ -72,11 +81,10 @@ assert.ok(base && api && process.env.THOR_E2E_ISOLATED === "true", "Use a stack 
     assert.ok(ready,"Worker deve concluir a projecao publica.");
     const anonymous = await browser.newContext({viewport:{width:1440,height:900}});
     const publicPage = await anonymous.newPage();
-    await publicPage.goto(base + "/consulta");
+    await publicPage.goto(base + "/consulta/" + instrument.id);
     await publicPage.waitForURL("**/login?next=*");
     await publicPage.getByRole("button",{name:"Entrar em desenvolvimento",exact:true}).click();
-    await publicPage.waitForURL("**/consulta");
-    await publicPage.getByRole("combobox").first().selectOption(instrument.id);
+    await publicPage.waitForURL("**/consulta/" + instrument.id);
     await publicPage.getByRole("link",{name:"Documento publicado",exact:true}).waitFor();
     await publicPage.getByLabel("Buscar registros publicados").fill("Documento");
     const query = publicPage.waitForResponse(r=>r.url().includes("/publico" + prefix + "/buscar") && r.url().includes("q=Documento"));
@@ -113,7 +121,7 @@ assert.ok(base && api && process.env.THOR_E2E_ISOLATED === "true", "Use a stack 
       const latest = await context.request.get(api + "/instrumentos/" + instrument.id);
       if(latest.ok()) {
         const data = await latest.json();
-        await context.request.post(api + "/instrumentos/" + instrument.id + "/arquivar", {data:{
+        await context.request.post(api + "/instrumentos/" + instrument.id + "/editorial/arquivar", {data:{
           operacao_id:crypto.randomUUID(),versao:data.versao_editorial,justificativa:"Encerramento do teste isolado",
         }});
       }

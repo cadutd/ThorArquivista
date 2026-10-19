@@ -4,6 +4,11 @@ Implementacao em 2026-10-15, exclusivamente no Thor Pesquisador. Nao altera o
 tema compartilhado, a administracao de acessos ou a politica de sessao da fase 4.
 Nao equivale a certificacao de conformidade legal.
 
+Atualizacao da fase 6 (2026-10-16): descoberta de instrumentos e anonima;
+registros, busca/facetas e conteudo de imagens exigem sessao, inclusive
+para visitante gov.br sem cadastro administrativo. Operacao atual, probes,
+metricas, migrations 014/015 e riscos em [Fase 6](fase_06_operacao.md).
+
 ## Navegacao
 
 - Auditoria: consulta paginada e pagina de detalhes, sem editar ou excluir eventos.

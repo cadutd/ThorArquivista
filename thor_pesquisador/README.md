@@ -1,11 +1,41 @@
 # Thor Pesquisador
 
-## Atualizacao de 2026-10-16
+## Atualizacao de 2026-10-19
+
+Portal consultivo da fase 6 implementado: landing com cards e ranking agregado,
+catalogo /consulta em tabela paginada e cores institucionais configuraveis.
+Somente instrumentos PUBLICO com publicacao vigente aparecem anonimamente;
+registros exigem sessao, inclusive para visitantes gov.br sem cadastro local.
+O dashboard permanece reservado a area interna autorizada.
+
+Filtros internos: Nome, Tipo, Status, Visibilidade e Descricao. No portal:
+Nome, Tipo e Descricao. Cadastro e edicao permitem capa opcional normalizada
+em 960 x 540, previa e remocao; sem capa, o card usa a imagem padrao.
+Uploads sao privados e a exposicao publica depende do fluxo editorial.
+
+Head Alembic atual: 20261019_000016. Antes de atualizar uma instalacao,
+fazer backup e executar as migrations ate head; nao basta trocar o frontend.
+O gerador de registros ficticios de imigracao cria 200 registros por padrao,
+com publicacao explicita e reexecucao sem duplicacao. Dados dos bancos locais
+nao fazem parte do repositorio.
+
+Validacao mais recente, em Docker isolado: 404 testes backend e 54 contratos
+frontend aprovados, builds aprovados e fluxos portal.smoke.cjs e
+instrumentos-portal.smoke.cjs aprovados, com verificacoes desktop/mobile.
+Os demais fluxos E2E citados no historico nao foram todos reexecutados nesta revisao.
+Nao houve rollout OKD nem homologacao do login gov.br de producao.
+
+Guias: [Instrumentos e portal](docs/instrumentos_portal.md),
+[Massa de imigracao](docs/massa_teste_imigracoes.md) e
+[Operacao da fase 6](docs/fase_06_operacao.md).
+
+## Historico de 2026-10-16
 
 Cadastro de usuarios separado das concessoes; inclusao e edicao de acessos
 compartilham pesquisa e selecao multipla. Permissoes por operacao e escopo sao
-validadas no backend. Todas as telas exigem sessao, exceto /login, com retorno
-seguro a pagina solicitada. A massa dev/test possui 60 usuarios e 24 perfis.
+validadas no backend. Landing page e catalogo de instrumentos sao anonimos;
+registros exigem sessao, inclusive para visitantes gov.br sem cadastro.
+A area interna mantem RBAC. A massa dev/test possui 60 usuarios e 24 perfis.
 
 Fase 5 implementada: auditoria unificada e imutavel, exportacoes autenticadas
 CSV/JSON/pacote, jobs recuperaveis, relatorios, logs estruturados e politicas
@@ -23,11 +53,29 @@ continuam com seus popups. Permissoes globais e por instrumento sao preservadas.
 Detalhes, operacao, permissoes e limitacoes em
 [Operacao da fase 5](docs/fase_05_operacao.md).
 Os numeros de validacao nas secoes historicas abaixo referem-se as respectivas
-entregas anteriores, nao ao total atual. A fase 6 permanece planejada.
+entregas anteriores, nao ao total atual.
+
+Fase 6 implementada: landing page institucional, catalogo paginado, ranking
+agregado e identidade visual publica configuravel em Administracao.
+Consulta publicada autenticada nao cria Usuario, perfil ou concessao.
+Migrations 20261016_000014/000015 preservam sessoes e historico existentes.
+Probes, metricas protegidas, limites HTTP e manifestos OKD foram evoluidos.
+Validacao inicial da fase 6: 392 testes backend, 53 contratos frontend e 13 fluxos E2E
+passaram; builds e ensaio isolado de backup/restore tambem foram aprovados.
+Validacoes locais, operacao, auditoria de dependencias e pendencias institucionais:
+[Operacao da fase 6](docs/fase_06_operacao.md). Nao houve rollout em cluster.
 
 Sistema web para instrumentos de pesquisa dinamicos, com autenticacao gov.br, dashboard administrativo, registros flexiveis em MongoDB e deploy preparado para Docker Compose e Kubernetes/OKD.
 
-O projeto e independente do `thor_gestor_de_arquivos_digitais`, mas mantem a mesma identidade visual: paleta, shell administrativo, cards, tabelas, login institucional e dashboard como pagina inicial autenticada.
+O projeto e independente do `thor_gestor_de_arquivos_digitais`, mas mantem a mesma identidade visual na area interna: paleta, shell administrativo, cards, tabelas e login institucional. A entrada publica e a landing; o dashboard atende usuarios com acesso administrativo autorizado.
+
+## Instrumentos e Portal em 2026-10-19
+
+Catalogo /consulta usa tabela e filtros Nome/Tipo/Descricao; filtros internos
+incluem tambem Status e Visibilidade. O cabecalho publico nao possui mais o
+link Instrumentos. Cadastro/edicao oferecem capa opcional de card 960 x 540,
+imagem padrao e upload privado, publicado pelo fluxo editorial existente.
+Detalhes em [Instrumentos e portal](docs/instrumentos_portal.md).
 
 ## Estado Atual
 
@@ -47,11 +95,12 @@ O projeto e independente do `thor_gestor_de_arquivos_digitais`, mas mantem a mes
 - Manifests Kustomize iniciais para Kubernetes/OKD.
 - Licenca AGPL-3.0, igual ao Thor Gestor.
 
-As fases 1 a 5 estao implementadas. A fase 4 inclui RBAC por instrumento,
+As fases 1 a 6 estao implementadas localmente. A fase 4 inclui RBAC por instrumento,
 revisao editorial, publicacao versionada, historico e consulta de publicacoes em
 `/consulta`. `/pesquisa` continua sendo busca interna autorizada por escopo.
 Exportacoes, auditoria, relatorios e retencao controlada foram entregues na fase 5.
-Consolidacao operacional, portal e refinamentos de desempenho ficam na fase 6.
+Portal, cores institucionais, endurecimento HTTP e ferramentas operacionais
+foram acrescentados na fase 6; homologacao OKD depende do ambiente institucional.
 Consulte [Operacao da fase 4](docs/fase_04_operacao.md) para provisionamento,
 migrations, reconciliacao e testes isolados.
 
@@ -195,6 +244,17 @@ A massa cria:
 - campos dinamicos cobrindo texto, numero, data, booleano, listas e URL;
 - registros dinamicos no MongoDB, com `texto_busca_basico` e IDs deterministicos para execucao repetida.
 
+## Massa de Imigracao
+
+O gerador seed_imigracoes cria um instrumento publico independente com 200
+registros ficticios: nome, nome da mae, nacionalidade, data/porto de chegada,
+codigo, navio, idade e observacoes. Exige usuario autorizado em dev/test;
+--publicar aplica revisao/aprovacao/publicacao sem liberar consulta anonima
+a registros. Reexecucao nao duplica nem sobrescreve edicoes.
+Comandos e cuidados em [Massa de testes de imigracao](docs/massa_teste_imigracoes.md).
+Em 2026-10-17, a carga local de 200 registros foi validada no navegador e a
+suite backend completa passou com 401 testes.
+
 ## Busca Avancada e Indexacao
 
 Registros continuam canonicos no MongoDB. Ao criar, atualizar ou excluir logicamente um registro, o backend publica um evento em Redis. O `index_worker` processa a fila e atualiza o indice Meilisearch `instrumento_{instrumento_id}`.
@@ -261,12 +321,12 @@ Os prompts em `prompts/roadmap/` orientam a evolucao:
 - Fase 3: imagens opcionais por URL, upload, IIIF e object storage. Implementada.
 - Fase 4: RBAC por escopo, revisao, publicacao versionada e consulta publica inicial, preservando ATIVO/INATIVO/EXCLUIDO como estados operacionais de registros. Implementada.
 - Fase 5: auditoria de imagens/editorial sem duplicacao, exportacoes recuperaveis, logs, relatorios e retencao controlada. Implementada.
-- Fase 6 (planejada; depende da 4 e 5): refinar portal e consolidar acessibilidade, seguranca, desempenho, observabilidade, backup/restore e operacao OKD.
+- Fase 6: portal publico de descoberta, consulta autenticada, cores institucionais, acessibilidade e evolucao operacional. Implementada e validada localmente; rollout OKD pendente.
 
 O prompt da fase 4 registra sua base historica de 2026-10-11. Os prompts das
 fases 5 e 6 foram harmonizados em 2026-10-15 com a fase 4 e os refinamentos
 de usuarios, concessoes em lote, permissoes granulares e sessao ja entregues.
-A fase 5 foi executada sobre essa base. A fase 6 continua planejada.
+A fase 5 foi executada sobre essa base. A fase 6 foi executada em 2026-10-16.
 
 Ambos exigem preservar identidade visual e comportamento em TODA funcionalidade
 nova ou alterada: AppShell/tema, paginas de criacao/edicao, popups administrativos,
@@ -343,8 +403,8 @@ arquivos invalidos. O envio e limitado e processado em memoria.
 A fase 4 integra as imagens ao RBAC existente na aplicacao: mutacoes exigem
 permissao explicita e autoria, com excecao de ADMIN. `RESTRITO` preserva
 a protecao do criador (ou ADMIN); `INTERNO` exige autoria ou consulta
-autorizada por escopo. `PUBLICO` continua permitindo conteudo anonimo de
-imagem isolada, sem equivaler a publicacao editorial do registro.
+autorizada por escopo. Desde a fase 6, conteudo de imagens exige sessao:
+visitantes acessam apenas imagens PUBLICO de publicacoes elegiveis.
 O portal apresenta somente campos e referencias de snapshots elegiveis.
 Originais e miniaturas de upload passam pelo endpoint autorizado de conteudo,
 sem expor chaves S3. Respostas privadas usam `Cache-Control: private, no-store`.
@@ -382,8 +442,9 @@ O teste de navegador `frontend/tests/e2e/imagens.smoke.cjs` usa a API e S3
 reais; somente o manifest IIIF externo e simulado. Confira os comandos no
 [README frontend](frontend/README.md).
 
-Os builds recentes reportaram alertas de dependencias npm. Eles continuam
-pendentes de revisao; nao foi aplicado `npm audit fix --force`.
+A fase 6 atualizou dependencias e gerou lockfile. O audit de producao npm
+na validacao local nao apontou vulnerabilidades; restam alertas de desenvolvimento
+e de dependencias Python sem correcao publicada, documentados no guia operacional.
 
 ## Cadastro de Usuarios
 
@@ -392,10 +453,11 @@ padrao do Gestor. A primeira coluna e o botao Visualizar abrem um popup;
 criacao e edicao usam paginas proprias. O formulario inclui nome, usuario,
 CPF, e-mail, ativo e observacoes.
 
-Todo acesso gov.br exige usuario local previamente cadastrado e ativo.
-O CPF validado e unico vincula a identidade autenticada; o login nao cria
-usuarios nem sobrescreve nome/e-mail administrativos. Desativacao e exclusao
-logica revogam sessoes, preservando identidades e historico.
+O CPF validado vincula a identidade gov.br ao cadastro, quando existente.
+Visitantes sem cadastro consultam apenas publicacoes elegiveis; nao recebem
+perfis nem acesso interno. Contas inativas/excluidas nao podem contornar o
+bloqueio como visitantes. Login nao cria Usuario nem sobrescreve nome/e-mail.
+Desativacao e exclusao logica revogam sessoes, preservando o historico.
 
 A migration `20261012_000008` preserva IDs e concessoes existentes. Cadastros
 legados sem CPF valido ou com duplicidade ficam inativos para regularizacao.
@@ -484,18 +546,19 @@ A operacao exige acessos_editar, e acessos_incluir quando gera novos vinculos.
 Duplicidades, sobreposicoes, delegacao indevida e remocao do ultimo administrador
 sao bloqueadas, com rollback de toda a operacao.
 
-Todas as telas, inclusive /consulta, verificam a sessao no backend antes de exibir
-seu conteudo. A unica tela aberta sem sessao e /login. A guarda revalida ao navegar,
-ao retornar a aba/janela e periodicamente a cada 60 segundos. Qualquer resposta
-401 dos clientes da API, incluindo imagens/upload, encaminha ao login.
+As rotas abertas sao /, /consulta e /login; registros em /consulta/{id}
+e /consulta/{id}/{registroId} exigem sessao. A guarda revalida as telas
+protegidas ao navegar, retornar a aba/janela e a cada 60 segundos.
+401 dos clientes de recursos protegidos, incluindo imagens/upload, inicia login.
+O portal usa /auth/estado para consultar sessao opcional sem redirecionamento.
 Respostas 403 indicam falta de permissao e nao encerram uma sessao valida.
 
 O parametro next preserva caminho, filtros e fragmento da pagina solicitada.
 O login de desenvolvimento e o callback gov.br so aceitam destinos internos;
 enderecos externos e retornos para login sao recusados. No gov.br, o destino
 fica em cookie HttpOnly temporario e e revalidado no callback, mantendo state,
-nonce e demais verificacoes existentes. APIs publicas de publicacoes permanecem
-inalteradas; a exigencia de sessao abrange a interface do sistema.
+nonce e demais verificacoes existentes. Desde a fase 6, as APIs de registros
+publicados tambem exigem sessao; somente a descoberta de instrumentos e anonima.
 
 Validacao: 230 testes backend e 41 contratos frontend no Docker isolado.
 Os testes sessao.smoke.cjs e concessoes-edicao.smoke.cjs verificam navegacao

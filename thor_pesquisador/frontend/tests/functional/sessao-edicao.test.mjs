@@ -12,11 +12,11 @@ test("retorno de login aceita somente destinos internos sem loops", () => {
   assert.equal(loginPath("/perfis?ativo=true"),"/login?next=%2Fperfis%3Fativo%3Dtrue");
   assert.doesNotThrow(notifySessionExpired);
 });
-test("todas as telas tem guarda de sessao e os clientes sinalizam 401", () => {
+test("rotas protegidas tem guarda e apenas descoberta e login ficam abertos", () => {
   const source=p=>readFileSync(new URL("../../"+p,import.meta.url),"utf8");
   assert.ok(source("app/layout.tsx").includes("<SessionGuard>"));
   const guard=source("components/session-guard.tsx");
-  for(const value of ['pathname === "/login"','"/auth/me"',"e.status === 401","window.location.replace","SESSION_EXPIRED",
+  for(const value of ['pathname==="/"||pathname==="/consulta"||pathname==="/login"','"/auth/me"',"e.status === 401","window.location.replace","SESSION_EXPIRED",
                       'addEventListener("focus"','addEventListener("visibilitychange"',"setInterval","controller.abort()"])
     assert.ok(guard.includes(value),value);
   for(const file of ["lib/api.ts","lib/imagens.ts"])

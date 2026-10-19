@@ -8,12 +8,14 @@ import { Permission } from "@/components/permission";
 import { CrudPagination } from "@/components/crud-pagination";
 import { deleteInstrumento, listInstrumentos } from "@/lib/api";
 import type { Instrumento } from "@/types/domain";
+const EMPTY_FILTERS={q:"",nome:"",tipo:"",status:"",visibilidade:"",descricao:""};
 
 export default function InstrumentosPage() {
   const [items, setItems] = useState<Instrumento[]>([]);
   const [total, setTotal] = useState(0);
-  const [filters, setFilters] = useState({ q: "" });
-  const [draftFilters, setDraftFilters] = useState({ q: "" });
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [draftFilters, setDraftFilters] = useState(EMPTY_FILTERS);
+  const [advanced,setAdvanced]=useState(false);
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(20);
   const [loading, setLoading] = useState(false);
@@ -24,7 +26,7 @@ export default function InstrumentosPage() {
   async function load() {
     setLoading(true);
     try {
-      const page = await listInstrumentos({ q: filters.q, limit: pageSize, offset });
+      const page = await listInstrumentos({ ...filters, limit: pageSize, offset });
       setItems(page.items);
       setTotal(page.total);
       setError("");
@@ -42,7 +44,7 @@ export default function InstrumentosPage() {
   function submitSearch(event: React.FormEvent) {
     event.preventDefault();
     setPageIndex(0);
-    setFilters({ q: draftFilters.q.trim() });
+    setFilters({ ...draftFilters,q:draftFilters.q.trim(),nome:draftFilters.nome.trim(),descricao:draftFilters.descricao.trim() });
   }
 
   async function remove(item: Instrumento) {
@@ -74,23 +76,26 @@ export default function InstrumentosPage() {
           </Link></Permission>
         </div>
         <section className="panel stack">
-          <form className="row" onSubmit={submitSearch}>
+          <form className="stack" onSubmit={submitSearch}>
+          <div className="row">
             <label className="field search-field">
               <span>Busca simples</span>
-              <input className="input" value={draftFilters.q} onChange={(event) => setDraftFilters({ q: event.target.value })} placeholder="Buscar por nome ou descricao" />
+              <input className="input" value={draftFilters.q} onChange={(event) => setDraftFilters({ ...draftFilters,q: event.target.value })} placeholder="Buscar por nome ou descricao" />
             </label>
             <div className="actions">
               <button className="button" type="submit" disabled={loading}>
                 <Search size={18} />
                 Buscar
               </button>
+              <button className="icon-button" type="button" title="Filtros avancados" aria-label="Filtros avancados"
+                aria-expanded={advanced} onClick={()=>setAdvanced(v=>!v)}><SlidersHorizontal size={18}/></button>
               <button
                 className="button secondary"
                 type="button"
                 disabled={loading}
                 onClick={() => {
-                  setDraftFilters({ q: "" });
-                  setFilters({ q: "" });
+                  setDraftFilters(EMPTY_FILTERS);
+                  setFilters(EMPTY_FILTERS);
                   setPageIndex(0);
                 }}
               >
@@ -98,6 +103,17 @@ export default function InstrumentosPage() {
                 Limpar filtros
               </button>
             </div>
+          </div>
+          {advanced&&<div className="grid">
+            <label className="field"><span>Nome</span><input className="input" maxLength={255} value={draftFilters.nome} onChange={e=>setDraftFilters({...draftFilters,nome:e.target.value})}/></label>
+            <label className="field"><span>Tipo</span><select className="select" value={draftFilters.tipo} onChange={e=>setDraftFilters({...draftFilters,tipo:e.target.value})}>
+              <option value="">Todos</option>{["GUIA","INVENTARIO","CATALOGO","INDICE","BASE_TEMATICA","OUTRO"].map(v=><option key={v}>{v}</option>)}</select></label>
+            <label className="field"><span>Status</span><select className="select" value={draftFilters.status} onChange={e=>setDraftFilters({...draftFilters,status:e.target.value})}>
+              <option value="">Todos</option>{["RASCUNHO","EM_REVISAO","APROVADO","PUBLICADO","ARQUIVADO"].map(v=><option key={v}>{v}</option>)}</select></label>
+            <label className="field"><span>Visibilidade</span><select className="select" value={draftFilters.visibilidade} onChange={e=>setDraftFilters({...draftFilters,visibilidade:e.target.value})}>
+              <option value="">Todas</option>{["PUBLICO","INTERNO","RESTRITO"].map(v=><option key={v}>{v}</option>)}</select></label>
+            <label className="field"><span>Descricao</span><input className="input" maxLength={1000} value={draftFilters.descricao} onChange={e=>setDraftFilters({...draftFilters,descricao:e.target.value})}/></label>
+          </div>}
           </form>
           {error ? <p className="error">{error}</p> : null}
           <CrudPagination

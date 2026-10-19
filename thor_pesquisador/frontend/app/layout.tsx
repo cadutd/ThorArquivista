@@ -1,4 +1,5 @@
 import "./globals.css";
+import "./portal.css";
 import { SessionGuard } from "@/components/session-guard";
 
 export const metadata = {
