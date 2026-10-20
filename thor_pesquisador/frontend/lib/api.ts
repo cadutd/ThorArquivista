@@ -131,6 +131,18 @@ export function createRegistro(id: string, payload: { dados: Record<string, unkn
   return request<Registro>(`/instrumentos/${id}/registros`, { method: "POST", body: JSON.stringify(payload) });
 }
 
+export function consultarRegistros(id: string, payload: {
+  q: string; status?: string; filtros: Record<string, unknown>; limit: number; offset: number;
+}) {
+  return request<Page<Registro>>(`/instrumentos/${id}/registros/consultar`, {
+    method: "POST", body: JSON.stringify({ ...payload, status: payload.status || null })
+  });
+}
+
+export function deleteRegistro(id: string, registroId: string) {
+  return request<void>(`/instrumentos/${id}/registros/${encodeURIComponent(registroId)}`, { method: "DELETE" });
+}
+
 export function buscarAvancado(
   id: string,
   payload: { q?: string; filters?: Record<string, unknown>; sort?: string[]; limit?: number; offset?: number }

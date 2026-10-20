@@ -13,15 +13,24 @@ Nome, Tipo e Descricao. Cadastro e edicao permitem capa opcional normalizada
 em 960 x 540, previa e remocao; sem capa, o card usa a imagem padrao.
 Uploads sao privados e a exposicao publica depende do fluxo editorial.
 
+Registros internos seguem o CRUD padrao: paginacao dupla, filtros por metadado,
+acoes com tooltip e permissoes por escopo. Inclusao e edicao compartilham
+formulario e retornam a listagem. Exclusao exige confirmacao e preserva historico.
+No portal, a pesquisa usa colunas de metadados publicados e apenas Visualizar;
+filtros tipados e navegacao nao concedem permissoes administrativas ao visitante.
+
 Head Alembic atual: 20261019_000016. Antes de atualizar uma instalacao,
 fazer backup e executar as migrations ate head; nao basta trocar o frontend.
 O gerador de registros ficticios de imigracao cria 200 registros por padrao,
 com publicacao explicita e reexecucao sem duplicacao. Dados dos bancos locais
 nao fazem parte do repositorio.
 
-Validacao mais recente, em Docker isolado: 404 testes backend e 54 contratos
-frontend aprovados, builds aprovados e fluxos portal.smoke.cjs e
-instrumentos-portal.smoke.cjs aprovados, com verificacoes desktop/mobile.
+Validacao mais recente, em Docker isolado: 423 testes backend e 60 contratos
+frontend aprovados, builds e fluxos registros-busca.smoke.cjs e
+imagens.smoke.cjs aprovados, com verificacoes desktop/mobile.
+Os fluxos de portal e capas tambem foram aprovados na entrega anterior.
+Na revisao da pesquisa publicada, 37 testes backend de portal/editorial foram
+reexecutados e portal-registros.smoke.cjs passou com axe desktop/mobile.
 Os demais fluxos E2E citados no historico nao foram todos reexecutados nesta revisao.
 Nao houve rollout OKD nem homologacao do login gov.br de producao.
 
@@ -87,7 +96,7 @@ Detalhes em [Instrumentos e portal](docs/instrumentos_portal.md).
 - Configuracao de campos dinamicos por instrumento.
 - CRUD/listagem de registros dinamicos persistidos no MongoDB.
 - Busca simples baseada em `texto_busca_basico`.
-- Busca de registros com termo aplicado e cursor preservados em Carregar mais; Enter submete e campo vazio restaura a listagem.
+- CRUD interno de registros com paginacao padrao, busca explicita, filtros por metadado e acoes autorizadas de visualizar, editar e excluir.
 - Busca avancada com Meilisearch como indice derivado.
 - Redis e `index_worker` para eventos de indexacao e reindexacao por instrumento.
 - CRUD de imagens por URL, upload S3, IIIF e repositorio externo, com vinculos compartilhados, galeria sob demanda e auditoria.
@@ -101,6 +110,8 @@ revisao editorial, publicacao versionada, historico e consulta de publicacoes em
 Exportacoes, auditoria, relatorios e retencao controlada foram entregues na fase 5.
 Portal, cores institucionais, endurecimento HTTP e ferramentas operacionais
 foram acrescentados na fase 6; homologacao OKD depende do ambiente institucional.
+Pesquisa de registros no portal usa colunas por metadado publicado, link azul,
+Visualizar com tooltip, filtros tipados e paginacao padrao, sem permitir alteracoes.
 Consulte [Operacao da fase 4](docs/fase_04_operacao.md) para provisionamento,
 migrations, reconciliacao e testes isolados.
 
@@ -338,16 +349,23 @@ comparacao com os modulos de referencia e testes desktop/mobile.
 
 Na listagem de registros, digite o termo e envie por Buscar ou Enter.
 A busca considera campos marcados com `aparece_busca`; novas buscas reiniciam
-o cursor e Carregar mais preserva o termo enviado, mesmo se o texto for editado
-sem novo envio. O estado de carregamento e explicito e respostas antigas sao
-ignoradas para evitar sobrescrever resultados.
+a pagina. As barras CrudPagination acima e abaixo da tabela preservam os filtros
+aplicados e permitem selecionar 20, 50 ou 100 registros, ir a paginas numeradas,
+primeira e ultima. Somente a pagina atual e carregada do servidor.
 
-Campo vazio restaura a listagem geral; o botao nao abre um dialog de filtros.
-Se o instrumento tem apenas um registro, a tabela pode permanecer igual.
-Filtros avancados, facetas e ordenacao estao na rota interna `/pesquisa`.
+Filtros avancados recolhidos oferecem Status e os metadados pesquisaveis,
+com valores tipados. Limpar filtros restaura a consulta geral. Edicao e inclusao
+usam o mesmo formulario em paginas proprias e retornam a listagem ao salvar.
+Acoes de linha possuem tooltip e respeitam permissoes; exclusao exige
+confirmacao e preserva historico. Imagens, editorial e retencao continuam
+na visualizacao dedicada. A pesquisa com facetas permanece em `/pesquisa`.
 
-O teste `npm run test:e2e:registros-busca` cobre clique, Enter, termo aplicado,
-cursor filtrado, ausencia de resultados e limpeza da busca com API real.
+POST /api/v1/instrumentos/{id}/registros/consultar retorna items/total/limit/offset.
+Os endpoints anteriores por cursor continuam disponiveis sem mudanca de contrato.
+O indice MongoDB idx_registros_instrumento_criado apoia a ordenacao por instrumento;
+nao ha migration SQL nova nem alteracao dos registros existentes.
+O teste `npm run test:e2e:registros-busca` cobre paginacao, filtros, CRUD e
+desktop/mobile, somente com THOR_E2E_ISOLATED=true e URLs da stack de teste.
 
 ## Imagens de Documentos (Fase 3)
 

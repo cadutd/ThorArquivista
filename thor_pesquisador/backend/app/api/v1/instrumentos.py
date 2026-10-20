@@ -13,7 +13,7 @@ from app.models.enums import TipoInstrumento, StatusInstrumento, VisibilidadeIns
 from app.schemas.busca import BuscaAvancadaIn, BuscaAvancadaOut, FacetasOut, ReindexacaoOut
 from app.schemas.instrumento import InstrumentoCreate, InstrumentoOut, InstrumentoPage, InstrumentoSchema, InstrumentoUpdate
 from app.schemas.instrumento_campo import InstrumentoCampoCreate, InstrumentoCampoOut, InstrumentoCampoUpdate
-from app.schemas.registro import RegistroCreate, RegistroOut, RegistroPage, RegistroSearch, RegistroUpdate
+from app.schemas.registro import RegistroCreate, RegistroOut, RegistroPage, RegistroSearch, RegistroUpdate, RegistroConsulta, RegistroConsultaPage
 from app.services import indexacao_service
 from app.services import instrumento_service, registro_service
 
@@ -127,6 +127,12 @@ def listar_registros(
     _usuario: Usuario = Depends(current_user),
 ):
     return registro_service.listar_registros(db, instrumento_id, page_size, cursor)
+
+
+@router.post("/{instrumento_id}/registros/consultar", response_model=RegistroConsultaPage)
+def consultar_registros(instrumento_id: uuid.UUID, payload: RegistroConsulta,
+                       db: Session = Depends(db_dep), _usuario: Usuario = Depends(current_user)):
+    return registro_service.consultar_registros(db, instrumento_id, payload)
 
 
 @router.post("/{instrumento_id}/buscar", response_model=RegistroPage)

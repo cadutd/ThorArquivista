@@ -1,73 +1,48 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
-import { DynamicField } from "@/components/registro-form";
+import { RegistroForm } from "@/components/registro-form";
 import { Permission } from "@/components/permission";
 import { createRegistro, getSchema } from "@/lib/api";
 import type { InstrumentoCampo } from "@/types/domain";
 
 export default function NovoRegistroPage() {
   const { id } = useParams<{ id: string }>();
-  const [nome, setNome] = useState("");
-  const [campos, setCampos] = useState<InstrumentoCampo[]>([]);
-  const [dados, setDados] = useState<Record<string, unknown>>({});
+  const router = useRouter();
+  const [schema, setSchema] = useState<{ nome: string; campos: InstrumentoCampo[] }>();
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const base = `/instrumentos/${id}/registros`;
 
   useEffect(() => {
-    getSchema(id)
-      .then((schema) => {
-        setNome(schema.nome);
-        setCampos(schema.campos.filter((campo) => campo.aparece_cadastro));
-      })
-      .catch((err) => setError(err instanceof Error ? err.message : "Falha ao carregar schema."));
+    let current = true;
+    setSchema(undefined); setError("");
+    getSchema(id).then(value => { if (current) setSchema(value); })
+      .catch(err => { if (current) setError(err instanceof Error ? err.message : "Falha ao carregar campos."); });
+    return () => { current = false; };
   }, [id]);
 
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
+  async function save(dados: Record<string, unknown>) {
+    if (!schema || saving) return;
+    setSaving(true); setError("");
     try {
-      await createRegistro(id, { dados: normalizeDados(campos, dados), status: "ATIVO" });
-      window.location.assign(`/instrumentos/${id}/registros`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao criar registro.");
-    }
+      await createRegistro(id, { dados, status: "ATIVO" });
+      router.push(base);
+    } catch (err) { setError(err instanceof Error ? err.message : "Falha ao criar registro."); }
+    finally { setSaving(false); }
   }
 
-  return (
-    <AppShell>
-    <div className="stack">
-      <div className="row">
-        <div className="page-heading">
-          <h1>Novo registro</h1>
-          <p className="muted">{nome}</p>
-        </div>
-        <Link className="button secondary" href={`/instrumentos/${id}/registros`}>Voltar</Link>
-      </div>
-      <Permission acao="registros_incluir" instrumentoId={id}><form className="panel stack" onSubmit={submit}>
-        <div className="grid">
-          {campos.map((campo) => (
-            <DynamicField
-              key={campo.id}
-              campo={campo}
-              value={dados[campo.chave]}
-              onChange={(value) => setDados({ ...dados, [campo.chave]: value })}
-            />
-          ))}
-        </div>
-        {error ? <p className="error">{error}</p> : null}
-        <button className="button" type="submit">Salvar registro</button>
-      </form></Permission>
+  return <AppShell><div className="stack">
+    <div className="row">
+      <div className="page-heading"><h1>Novo registro</h1><p className="muted">{schema?.nome}</p></div>
+      <Link className="button secondary" href={base}><ArrowLeft size={16}/>Voltar</Link>
     </div>
-    </AppShell>
-  );
-}
-
-function normalizeDados(campos: InstrumentoCampo[], dados: Record<string, unknown>) {
-  return Object.fromEntries(
-    campos
-      .map((campo) => [campo.chave, dados[campo.chave]])
-      .filter(([, value]) => value !== undefined && value !== "")
-  );
+    {!schema && <section className="panel">{error ? <p className="error" role="alert">{error}</p> : <p className="muted">Carregando...</p>}</section>}
+    <Permission acao="registros_incluir" instrumentoId={id}>{schema && <RegistroForm key={id}
+      campos={schema.campos} onSubmit={save} saving={saving} error={error}/>}</Permission>
+  </div></AppShell>;
 }

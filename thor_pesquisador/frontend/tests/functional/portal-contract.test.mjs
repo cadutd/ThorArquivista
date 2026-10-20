@@ -61,8 +61,31 @@ test("configuracao usa identidade interna e paleta de preview escopada",()=>{
 
 test("registros mantem filtros sob demanda e nao prebuscam conteudo protegido",()=>{
   const records=source("components/portal-records.tsx");
-  assert.ok(records.includes("if(!advanced)return")&&records.includes('path+"/facetas"'));
-  assert.ok(records.includes('path+"/acessos"')&&records.includes("counted.current"));
+  assert.match(records,/if\s*\(!advanced\)\s*return/);
+  assert.ok(records.includes('path + "/facetas"'));
+  assert.ok(records.includes('path + "/acessos"')&&records.includes("counted.current"));
   assert.equal((records.match(/<CrudPagination /g)||[]).length,2);
-  assert.ok(records.includes("prefetch={false}")&&records.includes("setFilters({...draft})"));
+  assert.ok(records.includes("prefetch={false}")&&records.includes("setFilters({ ...draft })"));
+});
+
+test("pesquisa de registros publicados segue tabela do sistema e so oferece consulta",()=>{
+  const records=source("components/portal-records.tsx");
+  assert.ok(records.includes('className="panel stack"'));
+  assert.ok(records.includes("fields.filter(field => field.aparece_listagem)"));
+  assert.ok(records.includes('className="crud-record-link"'));
+  assert.ok(records.includes('title="Visualizar registro"'));
+  assert.ok(!records.includes("Object.values(row.dados)")&&!records.includes("Metadados publicados"));
+  for(const action of ["deleteRegistro","createRegistro","Editar registro","Excluir registro","Novo registro"])
+    assert.ok(!records.includes(action),action);
+});
+
+test("filtros publicados preservam falso e zero e reiniciam a pagina ao aplicar",()=>{
+  const records=source("components/portal-records.tsx");
+  assert.ok(records.includes("field.facetavel || field.filtro_avancado"));
+  assert.ok(records.includes('field.tipo === "NUMERO" ? Number(value)'));
+  assert.ok(records.includes('field.tipo === "BOOLEANO" ? value === "true"'));
+  assert.ok(records.includes('String(value ?? "")')&&!records.includes('value || ""'));
+  assert.match(records,/onSubmit=\{buscar\}/);
+  assert.ok(records.includes("setPage(0)")&&records.includes("if (!live) return"));
+  assert.ok(records.includes("if (page > lastPage) setPage(lastPage)"));
 });

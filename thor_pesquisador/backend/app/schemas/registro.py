@@ -45,3 +45,18 @@ class RegistroSearch(BaseModel):
     q: str = Field(min_length=1)
     page_size: int = Field(default=50, ge=1, le=100)
     cursor: str | None = None
+
+
+class RegistroConsulta(BaseModel):
+    q: str = Field(default="", max_length=1000)
+    status: StatusRegistro | None = None
+    filtros: dict[str, Any] = Field(default_factory=dict, max_length=100)
+    limit: int = Field(default=20, ge=1, le=100)
+    offset: int = Field(default=0, ge=0)
+
+
+class RegistroConsultaPage(BaseModel):
+    items: list[RegistroOut]
+    total: int
+    limit: int
+    offset: int

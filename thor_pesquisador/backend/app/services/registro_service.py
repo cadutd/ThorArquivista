@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from app.db.mongo import registros_collection
 from app.models.enums import StatusRegistro, TipoCampo
 from app.models.instrumento import Instrumento, InstrumentoCampo
-from app.schemas.registro import RegistroCreate, RegistroOut, RegistroPage, RegistroUpdate
+from app.schemas.registro import RegistroCreate, RegistroOut, RegistroPage, RegistroUpdate, RegistroConsulta, RegistroConsultaPage
 from app.services.indexacao_service import enqueue_registro
 from app.services.permissao_service import require
 from app.services.editorial_service import controle, invalidar_publicacao, auditar_edicao
@@ -96,6 +96,43 @@ def buscar_registros(db: Session, instrumento_id: uuid.UUID, q: str, page_size: 
         has_more=has_more,
         next_cursor=_encode_cursor(page_docs[-1]) if has_more and page_docs else None,
     )
+
+
+def consultar_registros(db: Session, instrumento_id: uuid.UUID, payload: RegistroConsulta,
+                       collection: Collection | None = None) -> RegistroConsultaPage:
+    _require_instrumento(db, instrumento_id)
+    filtro: dict[str, Any] = {"instrumento_id": str(instrumento_id),
+                              "status": {"$ne": StatusRegistro.EXCLUIDO.value}}
+    if payload.status is not None:
+        if payload.status == StatusRegistro.EXCLUIDO:
+            raise HTTPException(422, "Registros excluidos nao fazem parte da consulta operacional.")
+        filtro["status"] = payload.status.value
+    if payload.q.strip():
+        filtro["texto_busca_basico"] = {"$regex": re.escape(payload.q.strip()), "$options": "i"}
+    if payload.filtros:
+        campos = {c.chave: c for c in db.scalars(select(InstrumentoCampo).where(
+            InstrumentoCampo.instrumento_id == instrumento_id, InstrumentoCampo.aparece_busca.is_(True)))}
+        for chave, valor in payload.filtros.items():
+            campo = campos.get(chave)
+            if campo is None:
+                raise HTTPException(422, "Filtro nao disponivel no instrumento.")
+            if _empty(valor):
+                continue
+            _validar_tipo(campo, valor)
+            if campo.tipo in {TipoCampo.NUMERO, TipoCampo.BOOLEANO}:
+                filtro["dados." + chave] = valor
+            elif campo.tipo == TipoCampo.LISTA_MULTIPLA:
+                filtro["dados." + chave] = {"$all": valor}
+            elif campo.tipo in {TipoCampo.DATA, TipoCampo.LISTA_SIMPLES}:
+                filtro["dados." + chave] = valor
+            else:
+                filtro["dados." + chave] = {"$regex": re.escape(valor.strip()), "$options": "i"}
+    coll = _collection(collection)
+    total = coll.count_documents(filtro)
+    docs = list(coll.find(filtro).sort([("criado_em", -1), ("_id", -1)])
+                .skip(payload.offset).limit(payload.limit))
+    return RegistroConsultaPage(items=_pagina_out(db, instrumento_id, docs), total=total,
+                                limit=payload.limit, offset=payload.offset)
 
 
 def obter_registro(db: Session, instrumento_id: uuid.UUID, registro_id: str, collection: Collection | None = None, consultar=True) -> RegistroOut:

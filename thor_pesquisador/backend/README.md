@@ -13,14 +13,25 @@ Capas opcionais usam S3 privado, validacao de imagem e normalizacao JPEG
 960 x 540, com limite de 16 megapixels. Upload nao publica: o acesso anonimo
 depende da capa vigente no instrumento e no snapshot publicado.
 
+O CRUD interno consulta registros com total/limit/offset em
+POST /api/v1/instrumentos/{id}/registros/consultar, preservando os endpoints
+por cursor. Filtros aceitam somente chaves pesquisaveis do instrumento,
+com validacao de tipo e permissao registros_consultar por escopo.
+A pesquisa do portal continua usando a API e o indice derivados de publicacoes;
+nenhuma permissao de escrita foi acrescentada. Esta padronizacao nao exige
+nova migration Alembic; o indice MongoDB e garantido na inicializacao.
+
 Head atual: 20261019_000016 (capas), apos as migrations 000014/000015 do portal.
 Fazer backup antes de executar alembic upgrade head. As migrations preservam
 cadastros existentes; downgrade de capas com referencias existentes e bloqueado.
 O seed de imigracao e exclusivo de desenvolvimento/teste, exige agente
 autorizado e publicacao explicita, e permite retomada sem duplicar registros.
 
-Validacao mais recente: 404 testes backend e 54 contratos frontend aprovados
-em Docker isolado, builds e dois fluxos E2E de portal/instrumentos aprovados.
+Validacao mais recente: 423 testes backend e 60 contratos frontend aprovados
+em Docker isolado, builds e fluxos E2E de registros e imagens aprovados.
+Os fluxos E2E de portal/capas foram aprovados na entrega anterior.
+Na revisao da pesquisa publicada, 37 testes de portal/editorial foram
+reexecutados; portal-registros.smoke.cjs passou com axe desktop/mobile.
 As validacoes institucionais de gov.br e OKD continuam pendentes.
 
 Detalhes: [Instrumentos e portal](../docs/instrumentos_portal.md),
@@ -121,6 +132,13 @@ Principais rotas CRUD:
 - `GET/POST /api/v1/instrumentos/{id}/campos`
 - `PUT/DELETE /api/v1/instrumentos/{id}/campos/{campo_id}`
 - `GET/POST /api/v1/instrumentos/{id}/registros`
+- `POST /api/v1/instrumentos/{id}/registros/consultar`: CRUD interno paginado,
+  com q, status ATIVO/INATIVO, filtros tipados por chave de metadado,
+  limit (1..100) e offset. Retorna items/total/limit/offset; ordenacao
+  deterministica por criado_em e id, sem carregar a colecao inteira.
+  Somente campos aparece_busca do instrumento sao aceitos. Valores sao
+  tratados como dados, nunca como operadores MongoDB. Excluidos ficam fora
+  da listagem e as permissoes registros_consultar/escopos sao preservadas.
 - `GET/PUT/DELETE /api/v1/instrumentos/{id}/registros/{registro_id}`
 
 ## Massas de Teste

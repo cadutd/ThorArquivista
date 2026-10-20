@@ -17,11 +17,23 @@ Anonimos pesquisam instrumentos, mas registros exigem login. Visitantes
 gov.br sem usuario local podem consultar publicacoes elegiveis, sem obter
 acesso administrativo. O dashboard continua reservado a area interna autorizada.
 
-Validacao mais recente em Docker isolado: 54 contratos frontend, build e
-fluxos portal.smoke.cjs e instrumentos-portal.smoke.cjs aprovados, incluindo
-axe no portal, filtros, capa real em S3 e verificacoes desktop/mobile.
-O backend correspondente passou em 404 testes. Os demais E2E historicos
+O CRUD interno de registros usa paginas proprias para incluir/editar, o mesmo
+RegistroForm e retorno a listagem ao salvar. Tabelas possuem acoes com tooltip,
+link azul e paginacao dupla; exclusao confirmada respeita permissoes por escopo.
+O portal reutiliza a identidade da listagem, mas oferece somente visualizacao
+e filtra exclusivamente metadados autorizados no schema publicado.
+
+Validacao mais recente em Docker isolado: 60 contratos frontend, build e
+fluxos registros-busca.smoke.cjs e imagens.smoke.cjs aprovados, incluindo
+paginacao, filtros, CRUD, imagens em S3 e verificacoes desktop/mobile.
+Os fluxos de portal/capas e axe foram aprovados na entrega anterior.
+O backend correspondente passou em 423 testes. Os demais E2E historicos
 nao foram todos reexecutados nesta revisao.
+
+A pesquisa /consulta/{id} tambem usa tabela por metadado publicado,
+link azul, acao Visualizar com tooltip e filtros tipados, sem acoes de alteracao.
+O fluxo portal-registros.smoke.cjs passou com visitante sem cadastro e axe
+desktop/mobile; 37 testes backend de portal/editorial foram reexecutados.
 
 Guias: [Instrumentos e portal](../docs/instrumentos_portal.md) e
 [Operacao da fase 6](../docs/fase_06_operacao.md).
@@ -160,15 +172,20 @@ O CRUD de instrumentos segue o padrao Thor CRUD Base:
 ## Busca Simples de Registros
 
 A busca simples na listagem de registros aplica o termo ao enviar pelo botao
-Buscar ou pela tecla Enter. Carregar mais preserva esse termo e o cursor;
-editar o texto sem enviar nao altera os resultados ja pesquisados.
-Enviar o campo vazio restaura a listagem geral. O teste
+Buscar ou pela tecla Enter. CrudPagination no topo e rodape preserva esse termo
+e os filtros aplicados; editar o texto sem enviar nao altera a consulta.
+Filtros avancados oferecem Status e metadados pesquisaveis, com controles
+tipados e Limpar filtros. A API retorna somente a pagina atual e o total.
+O teste
 `npm run test:e2e:registros-busca` valida esses fluxos com a API real,
-criando e removendo apenas dados proprios; requer login de desenvolvimento.
+criando e removendo apenas dados proprios; requer login de desenvolvimento,
+THOR_E2E_ISOLATED=true e URLs de frontend/API da stack isolada.
 
-Campo vazio nao abre filtros: recarrega a listagem. Com apenas um registro,
-a tabela pode continuar igual. O botao mostra o estado de carregamento;
-respostas antigas nao sobrescrevem uma consulta mais recente.
+Inclusao e edicao usam RegistroForm em paginas separadas, com obrigatorios,
+validacao e bloqueio durante salvamento; ambas retornam a listagem.
+Cada linha oferece Visualizar/Editar/Excluir com tooltip e permissao por escopo.
+Excluir exige confirmacao. A visualizacao mantem metadados, imagens, editorial
+e retencao. Respostas antigas nao sobrescrevem uma consulta mais recente.
 
 ## Busca Avancada
 
@@ -248,6 +265,8 @@ Os fluxos de portal e capas sao executados diretamente com
 node tests/e2e/portal.smoke.cjs e node tests/e2e/instrumentos-portal.smoke.cjs.
 Exigem THOR_E2E_ISOLATED=true, BASE_URL=http://localhost:3001 e
 API_URL=http://localhost:8001/api/v1, apontando somente para a stack de teste.
+O fluxo node tests/e2e/portal-registros.smoke.cjs usa as mesmas variaveis,
+alem de AXE_SCRIPT, para validar a pesquisa publicada e sua acessibilidade.
 
 O script usa `BASE_URL` (padrao localhost:3000) e `API_URL` (padrao
 localhost:8000/api/v1), cria dados proprios e remove-os ao concluir.
@@ -323,8 +342,9 @@ Consulte [Administracao](../docs/administracao_acessos.md).
 As listagens usam links azuis na primeira coluna. A barra paginada reproduz
 Unidades de Acondicionamento do Gestor: contagem, Primeira/Anterior, paginas
 numeradas com destaque da atual e reticencias, Proxima/Ultima e seletor ao final.
-Instrumentos, administracao, imagens e galerias reutilizam CrudPagination.
-Registros dinamicos preservam pagina por cursor e Carregar mais filtrado.
+Instrumentos, registros internos, administracao, imagens e galerias reutilizam
+CrudPagination. A consulta publicada do portal e os endpoints legados por
+cursor preservam seus contratos.
 
 ## Permissoes por Operacao
 

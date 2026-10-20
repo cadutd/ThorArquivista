@@ -20,6 +20,36 @@ reiniciam a pagina. Filtragem e paginacao ocorrem no servidor, com campos
 combinados por AND; o catalogo nao divulga metadados de rascunhos ou instrumentos
 INTERNO/RESTRITO, independentemente de parametros manipulados.
 
+## Pesquisa de Registros no Portal
+
+/consulta/{id} segue a identidade das listagens do sistema: busca simples,
+filtros avancados recolhidos, Limpar filtros, tabela e CrudPagination acima
+e abaixo. A API de publicacoes continua sendo a fonte da consulta, com
+apenas a pagina atual carregada. Buscar/Enter, limpeza e troca de tamanho
+reiniciam a pagina; navegacao preserva os filtros ja aplicados, nao o rascunho.
+
+Cada campo publicado marcado aparece_listagem possui sua propria coluna.
+A primeira coluna e um link azul e a acao Visualizar registro tem tooltip.
+Sem colunas configuradas, usa-se o titulo publicado como identificacao.
+Valores ausentes mostram -, booleanos Sim/Nao e listas sao separadas por virgula.
+Nao ha inclusao, edicao ou exclusao no portal.
+
+Filtros usam somente campos publicados autorizados como facetavel ou
+filtro_avancado, mantendo o contrato existente. Opcoes de facetas sao
+buscadas somente ao abrir os filtros; controles de numero, booleano e data
+enviam valores tipados, inclusive zero e falso. Campos privados e rascunhos
+nao aparecem na consulta. Falhas e respostas atrasadas tem tratamento explicito.
+Sessao continua obrigatoria, inclusive para visitantes gov.br sem cadastro.
+
+Validacao desta revisao: 60 contratos frontend, build Docker e 37 testes
+backend de portal/editorial aprovados. O fluxo portal-registros.smoke.cjs
+passou com indice Meilisearch real, 21 publicacoes, visitante, sessao,
+filtros tipados, paginacao, visualizacao e axe desktop/mobile.
+Executar somente na stack docker-compose.test.yml, com
+THOR_E2E_ISOLATED=true, BASE_URL=http://localhost:3001,
+API_URL=http://localhost:8001/api/v1 e AXE_SCRIPT apontando para axe.min.js:
+node frontend/tests/e2e/portal-registros.smoke.cjs.
+
 ## Imagem Opcional do Card
 
 Criacao e edicao de instrumento oferecem Imagem do card, previa e remocao

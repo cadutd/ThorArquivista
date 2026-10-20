@@ -26,6 +26,10 @@ def snapshots_collection() -> Collection:
 def ensure_mongo_indexes() -> None:
     snapshots_collection().create_index([("instrumento_id", ASCENDING), ("registro_id", ASCENDING), ("versao", DESCENDING)])
     collection = registros_collection()
+    collection.create_index(
+        [("instrumento_id", ASCENDING), ("criado_em", DESCENDING), ("_id", DESCENDING)],
+        name="idx_registros_instrumento_criado",
+    )
     collection.create_index([("instrumento_id", ASCENDING), ("_id", ASCENDING)],
                             name="idx_registros_instrumento_exportacao")
     collection.create_index(
