@@ -87,6 +87,12 @@ services:
       meilisearch_url: http://meilisearch:7700
       meilisearch_api_key: dev-master-key-123
       indexacao_batch_size: "500"
+      importacao_max_bytes: ${IMPORTACAO_MAX_BYTES:-2147483648}
+      importacao_max_registros: ${IMPORTACAO_MAX_REGISTROS:-1000000}
+      importacao_chunk_bytes: ${IMPORTACAO_CHUNK_BYTES:-8388608}
+      importacao_batch_size: ${IMPORTACAO_BATCH_SIZE:-1000}
+      importacao_batch_bytes: ${IMPORTACAO_BATCH_BYTES:-8388608}
+      importacao_retencao_dias: ${IMPORTACAO_RETENCAO_DIAS:-7}
       s3_endpoint_url: ${S3_ENDPOINT_URL:-http://minio:9000}
       s3_bucket: ${S3_BUCKET:-thor-pesquisador-imagens}
       s3_region: ${S3_REGION:-us-east-1}
@@ -134,6 +140,13 @@ services:
     depends_on: [backend]
     environment: *app-environment
     command: python -m app.export_worker
+
+  import_worker:
+    container_name: thor_pesquisador_import_worker
+    build: ./backend
+    depends_on: [backend]
+    environment: *app-environment
+    command: python -m app.import_worker
 
   retention_scheduler:
     container_name: thor_pesquisador_retention_scheduler

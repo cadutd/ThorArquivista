@@ -5,8 +5,12 @@ from fastapi import APIRouter
 from app.api.v1 import auth, dashboard, health, instrumentos
 from app.api.v1 import imagens, editorial, publico, administracao
 from app.api.v1 import conformidade
+from app.api.v1 import importacoes
+from app.api.v1 import importacoes_assincronas
 
 api_router = APIRouter(prefix="/api/v1")
+api_router.include_router(importacoes_assincronas.router, tags=["importacoes"])
+api_router.include_router(importacoes.router, tags=["importacoes"])
 api_router.include_router(conformidade.router, tags=["conformidade"])
 api_router.include_router(publico.router, tags=["publico"])
 api_router.include_router(editorial.router, tags=["editorial"])

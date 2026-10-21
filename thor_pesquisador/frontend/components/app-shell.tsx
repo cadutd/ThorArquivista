@@ -41,7 +41,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <PermissionProvider><div className="app-frame">
       <aside className="sidebar">
-        <Link href="/dashboard" className="sidebar-brand" aria-label="Thor Pesquisador">
+        <Link href="/dashboard" className="sidebar-brand">
           <div className="brand-mark">
             <Database size={20} />
           </div>

@@ -8,6 +8,7 @@ resources:
   - backend.yaml
   - index-worker.yaml
   - export-worker.yaml
+  - import-worker.yaml
   - retention-cronjob.yaml
   - frontend.yaml
   - routes.yaml
@@ -29,6 +30,12 @@ configMapGenerator:
       - INDEXACAO_QUEUE_NAME=thor_pesquisador:indexacao
       - MEILISEARCH_URL=http://thor-pesquisador-meilisearch:7700
       - INDEXACAO_BATCH_SIZE=500
+      - IMPORTACAO_MAX_BYTES=2147483648
+      - IMPORTACAO_MAX_REGISTROS=1000000
+      - IMPORTACAO_CHUNK_BYTES=8388608
+      - IMPORTACAO_BATCH_SIZE=1000
+      - IMPORTACAO_BATCH_BYTES=8388608
+      - IMPORTACAO_RETENCAO_DIAS=7
       - EXPORTACAO_BATCH_SIZE=100
       - EXPORTACAO_VALIDADE_HORAS=24
       - JOBS_LEASE_SEGUNDOS=180

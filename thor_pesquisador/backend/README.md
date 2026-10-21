@@ -1,6 +1,24 @@
 # Backend
 
-## Atualizacao de 2026-10-19
+## Atualizacao de 2026-10-20
+
+Head Alembic: 20261020_000018. Importacao assincrona reutiliza validacao,
+evolucao de schema, RBAC, Mongo canonico, auditoria e indexacao existentes.
+Fila duravel PostgreSQL, lease, checkpoints e import_worker dedicado
+processam fontes S3 privadas com parser streaming e lotes bulk.
+API em /api/v1/instrumentos/{id}/registros/importacoes/assincronas.
+
+Limites padrao: 2 GiB/1 milhao de registros; lotes de 1000 registros/8 MiB.
+Backup antes das migrations; subir import_worker junto aos demais servicos.
+Nao ha criacao automatica de perfis, concessoes ou publicacoes.
+[Operacao e testes de volume](../docs/importacao_assincrona.md).
+
+Suite completa em Docker: 660 testes aprovados. Ensaios canonicos SQL/Mongo/S3
+com 200000 e 500000 registros concluidos, sem usar dados locais. O ambiente
+local foi migrado apos backup PostgreSQL, preservando os oito instrumentos e
+217 registros existentes. Manifesto OKD adicionado, sem rollout institucional.
+
+## Historico de 2026-10-19
 
 Portal da fase 6 com catalogo publico restrito a metadados publicados,
 ranking agregado e configuracao institucional auditada. Registros e imagens
@@ -21,14 +39,22 @@ A pesquisa do portal continua usando a API e o indice derivados de publicacoes;
 nenhuma permissao de escrita foi acrescentada. Esta padronizacao nao exige
 nova migration Alembic; o indice MongoDB e garantido na inicializacao.
 
-Head atual: 20261019_000016 (capas), apos as migrations 000014/000015 do portal.
+Importacao CSV/JSON reutiliza os servicos de schema, registros e auditoria,
+com previa sem gravacao, validacao de todos os registros e operacao retomavel.
+Exige registros_incluir/instrumentos_consultar no escopo; novos campos
+exigem campos_incluir. Arquivo original nao e persistido e nao ha publicacao
+automatica. [API e limites](../docs/importacao_registros.md).
+
+Head atual: 20261019_000017 (importacoes), apos 000016 (capas) e 000014/000015 (portal).
 Fazer backup antes de executar alembic upgrade head. As migrations preservam
 cadastros existentes; downgrade de capas com referencias existentes e bloqueado.
 O seed de imigracao e exclusivo de desenvolvimento/teste, exige agente
 autorizado e publicacao explicita, e permite retomada sem duplicar registros.
 
-Validacao mais recente: 423 testes backend e 60 contratos frontend aprovados
+Validacao mais recente: 479 testes backend e 62 contratos frontend aprovados
 em Docker isolado, builds e fluxos E2E de registros e imagens aprovados.
+Importacao: 56 testes focados e fluxo CSV/JSON em navegador aprovados,
+incluindo retomada sem duplicacao, permissoes e preservacao de campos privados.
 Os fluxos E2E de portal/capas foram aprovados na entrega anterior.
 Na revisao da pesquisa publicada, 37 testes de portal/editorial foram
 reexecutados; portal-registros.smoke.cjs passou com axe desktop/mobile.
@@ -60,7 +86,8 @@ Auditoria, Exportacoes, Relatorios e Retencao ficam em Administracao e seguem
 a identidade de Instrumentos. As APIs preservam os escopos globais/por instrumento,
 o historico imutavel e os comandos permitidos em cada estado dos jobs.
 Migrations da fase 5: 20261015_000011 a 20261015_000013.
-Fase 6: 20261016_000014/000015. Capas opcionais: 20261019_000016 (head atual).
+Fase 6: 20261016_000014/000015. Capas opcionais: 20261019_000016.
+Importacoes de registros: 20261019_000017 (head atual).
 Os numeros de validacao nas secoes historicas abaixo referem-se as respectivas
 entregas anteriores, nao ao total atual.
 

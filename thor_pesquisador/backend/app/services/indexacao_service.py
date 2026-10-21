@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -186,11 +186,29 @@ def run_worker_once(timeout: int = 5) -> bool:
     with SessionLocal() as db:
         if processar_pendente(db):
             return True
+        if recuperar_reindexacao_pendente(db):
+            return True
     item = redis_client().blpop(settings.indexacao_queue_name, timeout=timeout)
     if not item:
         return False
     _queue, raw = item
     processar_mensagem(raw)
+    return True
+
+
+def recuperar_reindexacao_pendente(db: Session) -> bool:
+    # Redis is a wake-up channel; the SQL job remains recoverable if enqueue fails.
+    job = db.scalar(select(IndexacaoJob).where(
+        IndexacaoJob.tipo == TipoIndexacaoJob.REINDEXACAO.value,
+        IndexacaoJob.status == StatusIndexacaoJob.PENDENTE.value,
+        IndexacaoJob.criado_em <= datetime.now(UTC) - timedelta(seconds=30),
+    ).order_by(IndexacaoJob.criado_em).with_for_update(skip_locked=True).limit(1))
+    if not job:
+        return False
+    jid, iid = job.id, job.instrumento_id
+    job.status = StatusIndexacaoJob.PROCESSANDO.value
+    db.commit()
+    _reindexar(db, jid, iid)
     return True
 
 

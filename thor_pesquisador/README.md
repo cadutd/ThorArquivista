@@ -1,6 +1,30 @@
 # Thor Pesquisador
 
-## Atualizacao de 2026-10-19
+## Atualizacao de 2026-10-20
+
+Importacao assincrona disponivel em Instrumentos -> Registros -> Importacoes:
+CSV/JSON/JSONL, upload retomavel, associacao/criacao de campos, validacao
+integral em segundo plano, previa, relatorio CSV de erros e processamento em
+lotes. A pagina de acompanhamento exibe estado, progresso e permite cancelar
+ou retomar falhas sem duplicar a mesma operacao.
+
+Padrao: ate 1 milhao de registros e 2 GiB, lotes de ate 1000 registros/8 MiB.
+Arquivos privados expiram em sete dias; historico e auditoria permanecem.
+Reutiliza permissoes por escopo e nao publica os registros automaticamente.
+Requer S3, import_worker e migration 20261020_000018 (head atual).
+O fluxo sincrono anterior permanece disponivel para compatibilidade.
+Consulte [Importacao assincrona](docs/importacao_assincrona.md) para limites,
+implantacao, seguranca, estados e ensaio isolado de volume.
+
+Validacao desta entrega: 660 testes backend, 71 contratos frontend e builds
+Docker aprovados. Fluxos de navegador assincrono real e sincrono legado
+aprovados, com capturas desktop/mobile e axe no fluxo assincrono real.
+Ensaios sinteticos com 200 mil e 500 mil registros aprovados; condicoes e
+tempos no guia, sem equivalencia garantida ao desempenho em producao.
+Migration aplicada localmente apos backup; oito instrumentos e 217 registros
+existentes preservados. Nao houve rollout OKD nem publicacao automatica.
+
+## Historico de 2026-10-19
 
 Portal consultivo da fase 6 implementado: landing com cards e ranking agregado,
 catalogo /consulta em tabela paginada e cores institucionais configuraveis.
@@ -19,16 +43,24 @@ formulario e retornam a listagem. Exclusao exige confirmacao e preserva historic
 No portal, a pesquisa usa colunas de metadados publicados e apenas Visualizar;
 filtros tipados e navegacao nao concedem permissoes administrativas ao visitante.
 
-Head Alembic atual: 20261019_000016. Antes de atualizar uma instalacao,
+Importacao interna de registros por CSV/JSON: associacao a campos existentes,
+criacao opcional de novos campos privados, previa, validacao integral e
+retomada sem duplicacao da mesma operacao. Acesso pela listagem de Registros.
+Limites: 5 MiB, 1000 registros e 100 colunas. Nenhuma publicacao automatica.
+Consulte [Importacao de registros](docs/importacao_registros.md).
+
+Head Alembic atual: 20261019_000017. Antes de atualizar uma instalacao,
 fazer backup e executar as migrations ate head; nao basta trocar o frontend.
 O gerador de registros ficticios de imigracao cria 200 registros por padrao,
 com publicacao explicita e reexecucao sem duplicacao. Dados dos bancos locais
 nao fazem parte do repositorio.
 
-Validacao mais recente, em Docker isolado: 423 testes backend e 60 contratos
+Validacao mais recente, em Docker isolado: 479 testes backend e 62 contratos
 frontend aprovados, builds e fluxos registros-busca.smoke.cjs e
 imagens.smoke.cjs aprovados, com verificacoes desktop/mobile.
 Os fluxos de portal e capas tambem foram aprovados na entrega anterior.
+Importacao: importacao.smoke.cjs aprovado com CSV/JSON reais, novos campos,
+previa sem gravacao, erros bloqueantes, confirmacao e telas desktop/mobile.
 Na revisao da pesquisa publicada, 37 testes backend de portal/editorial foram
 reexecutados e portal-registros.smoke.cjs passou com axe desktop/mobile.
 Os demais fluxos E2E citados no historico nao foram todos reexecutados nesta revisao.

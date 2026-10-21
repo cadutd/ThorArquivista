@@ -1,4 +1,5 @@
 alembic==1.14.0
+ijson==3.4.0.post0
 boto3==1.43.108
 Pillow==12.3.0
 python-multipart==0.0.32

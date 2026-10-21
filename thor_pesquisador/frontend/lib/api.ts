@@ -24,7 +24,7 @@ async function requestResponse(path: string, init?: RequestInit): Promise<Respon
     ...init,
     credentials: "include",
     headers: {
-      "Content-Type": "application/json",
+      ...(init?.body instanceof FormData ? {} : { "Content-Type": "application/json" }),
       ...(init?.headers ?? {})
     }
   });

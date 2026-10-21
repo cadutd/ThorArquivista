@@ -22,7 +22,8 @@ from app.services.editorial_service import controle, invalidar_publicacao, audit
 from app.models.editorial import EditorialRegistro
 
 
-def criar_registro(db: Session, instrumento_id: uuid.UUID, payload: RegistroCreate, usuario_id: uuid.UUID | None, collection: Collection | None = None) -> RegistroOut:
+def criar_registro(db: Session, instrumento_id: uuid.UUID, payload: RegistroCreate, usuario_id: uuid.UUID | None, collection: Collection | None = None,
+                   *, registro_id: str | None = None) -> RegistroOut:
     require(db, "registros_incluir", instrumento_id)
     if payload.status and payload.status.value == "EXCLUIDO":
         require(db, "registros_excluir", instrumento_id)
@@ -30,7 +31,7 @@ def criar_registro(db: Session, instrumento_id: uuid.UUID, payload: RegistroCrea
     _validar(campos, payload.dados)
     now = datetime.now(UTC)
     documento = {
-        "_id": str(uuid.uuid4()),
+        "_id": registro_id or str(uuid.uuid4()),
         "_revision": 1,
         "instrumento_id": str(instrumento_id),
         "schema_version": instrumento.schema_version,

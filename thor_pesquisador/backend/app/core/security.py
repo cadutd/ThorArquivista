@@ -2,6 +2,7 @@
 from time import monotonic
 import hmac
 import hashlib
+import re
 from collections import OrderedDict
 from threading import Lock
 from starlette.responses import JSONResponse
@@ -22,6 +23,10 @@ class SecurityMiddleware:
         method, path = scope["method"], scope["path"]
         limit = settings.upload_max_bytes + 1048576 if path in {
             "/api/v1/imagens/upload", "/api/v1/instrumentos/imagens-card"} else 1048576
+        if re.fullmatch(r"/api/v1/instrumentos/[0-9a-fA-F-]{36}/registros/importacoes(?:/(?:analisar|validar))?", path):
+            limit = 6 * 1024 * 1024
+        if re.fullmatch(r"/api/v1/instrumentos/[0-9a-fA-F-]{36}/registros/importacoes/assincronas/[0-9a-fA-F-]{36}/partes", path):
+            limit = settings.importacao_chunk_bytes + 1024**2
         try:
             length = int(headers.get(b"content-length", b"0"))
         except ValueError:

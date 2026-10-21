@@ -80,6 +80,10 @@ services:
     <<: *backend
     profiles: [e2e]
     command: python -m app.export_worker
+  import_worker:
+    <<: *backend
+    profiles: [e2e]
+    command: python -m app.import_worker
   retention_worker:
     <<: *backend
     profiles: [jobs]

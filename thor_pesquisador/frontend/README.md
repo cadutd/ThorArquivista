@@ -1,6 +1,29 @@
 # Frontend
 
-## Atualizacao de 2026-10-19
+## Atualizacao de 2026-10-20
+
+Registros -> Importacoes abre a central assincrona com busca, filtros,
+paginacao dupla Thor, links azuis e acoes com tooltip. Nova importacao e
+acompanhamento usam paginas dedicadas. Upload CSV/JSON/JSONL retomavel,
+associacao de colunas, novos campos privados, validacao e previa antecedem
+a confirmacao. Acompanhamento consulta somente jobs ativos a cada tres
+segundos, suspendendo atualizacoes em aba oculta ou pagina desmontada.
+
+Cancelamento preserva os registros confirmados; retomada esta disponivel
+para FALHOU/PAUSADA, nao para CANCELADA. Permissoes por instrumento continuam
+validadas na API. Requer backend na migration 20261020_000018 e import_worker.
+O fluxo sincrono legado permanece acessivel pela central.
+[Guia da importacao assincrona](../docs/importacao_assincrona.md).
+
+Validacao: 71 contratos aprovados e build Docker concluido. Navegador:
+importacoes-assincronas.smoke.cjs cobre estados controlados, interrupcao de
+upload, retomada, paginacao, permissoes e suspensao de polling;
+importacoes-assincronas-real.smoke.cjs passou com API/worker/S3/SQL/Mongo
+reais, CSV/JSON/JSONL, erros CSV e axe desktop/mobile. O fluxo legado
+importacao.smoke.cjs tambem passou novamente. O nome acessivel do link da
+marca usa seu texto visivel completo, sem alteracao visual do cabecalho.
+
+## Historico de 2026-10-19
 
 A entrada publica e a landing institucional, com cards de instrumentos
 publicados e ranking agregado. O catalogo /consulta usa tabela e paginacao
@@ -23,11 +46,11 @@ link azul e paginacao dupla; exclusao confirmada respeita permissoes por escopo.
 O portal reutiliza a identidade da listagem, mas oferece somente visualizacao
 e filtra exclusivamente metadados autorizados no schema publicado.
 
-Validacao mais recente em Docker isolado: 60 contratos frontend, build e
+Validacao mais recente em Docker isolado: 62 contratos frontend, build e
 fluxos registros-busca.smoke.cjs e imagens.smoke.cjs aprovados, incluindo
 paginacao, filtros, CRUD, imagens em S3 e verificacoes desktop/mobile.
 Os fluxos de portal/capas e axe foram aprovados na entrega anterior.
-O backend correspondente passou em 423 testes. Os demais E2E historicos
+O backend correspondente passou em 479 testes. Os demais E2E historicos
 nao foram todos reexecutados nesta revisao.
 
 A pesquisa /consulta/{id} tambem usa tabela por metadado publicado,
@@ -37,7 +60,17 @@ desktop/mobile; 37 testes backend de portal/editorial foram reexecutados.
 
 Guias: [Instrumentos e portal](../docs/instrumentos_portal.md) e
 [Operacao da fase 6](../docs/fase_06_operacao.md).
-O backend deve estar atualizado ate a migration 20261019_000016.
+O backend deve estar atualizado ate a migration 20261019_000017.
+
+Registros -> Importar registros abre uma pagina propria com arquivo CSV/JSON,
+associacao de colunas, criacao opcional de campos, conferencia e resultado.
+Previa nao grava; a confirmacao exige dados validos. Permissoes governam a
+importacao e os novos campos. Historico recente permite retomar falhas com
+o mesmo arquivo. [Operacao e formatos](../docs/importacao_registros.md).
+Teste de navegador: node tests/e2e/importacao.smoke.cjs, somente na stack
+isolada com THOR_E2E_ISOLATED=true e BASE_URL/API_URL de localhost:3001/8001.
+Esse fluxo passou com upload CSV/JSON, associacao, novos campos privados,
+previa, erros bloqueantes, confirmacao e verificacoes desktop/mobile.
 
 ## Historico de 2026-10-16
 

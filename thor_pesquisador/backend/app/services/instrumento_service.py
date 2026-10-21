@@ -94,6 +94,12 @@ def excluir_instrumento(db: Session, instrumento_id: uuid.UUID, usuario_id=None)
     instrumento = db.scalar(select(Instrumento).where(Instrumento.id == instrumento_id).with_for_update())
     if not instrumento:
         raise HTTPException(status_code=404, detail="Instrumento nao encontrado.")
+    from app.models.importacao import ImportacaoRegistros
+    from app.models.importacao_async import ImportacaoAsync
+    if db.scalar(select(ImportacaoAsync.id).where(ImportacaoAsync.instrumento_id == instrumento_id).limit(1)):
+        raise HTTPException(409, "Instrumento com historico de importacao deve ser arquivado.")
+    if db.scalar(select(ImportacaoRegistros.id).where(ImportacaoRegistros.instrumento_id == instrumento_id).limit(1)):
+        raise HTTPException(409, "Instrumento com historico de importacao deve ser arquivado.")
     if instrumento.publicacao_id or db.scalar(select(EventoEditorial.id).where(
             EventoEditorial.instrumento_id == instrumento_id, EventoEditorial.acao.in_(TRANSICOES)).limit(1)):
         raise HTTPException(409, "Instrumento com historico editorial deve ser arquivado.")

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Edit, Eye, Plus, Search, SlidersHorizontal, Trash2 } from "lucide-react";
+import { ArrowLeft, Edit, Eye, FileUp, Plus, Search, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
@@ -98,6 +98,9 @@ function RegistrosList({ id }: { id: string }) {
         <p className="muted">{loading ? "Carregando..." : `${total} registros encontrados`}</p></div>
       <div className="actions">
         <Link className="button secondary" href="/instrumentos"><ArrowLeft size={16}/>Voltar</Link>
+        <Permission acao="registros_incluir" instrumentoId={id}>
+          <Link className="button secondary" href={base + "/importacoes"} title="Importacoes"><FileUp size={18}/>Importacoes</Link>
+        </Permission>
         <Permission acao="registros_incluir" instrumentoId={id}>
           <Link className="button" href={base + "/novo"}><Plus size={18}/>Novo registro</Link>
         </Permission>

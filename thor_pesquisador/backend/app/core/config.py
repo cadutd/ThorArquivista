@@ -32,6 +32,12 @@ class Settings(BaseSettings):
     meilisearch_url: str = "http://meilisearch:7700"
     meilisearch_api_key: str = "dev-master-key"
     indexacao_batch_size: int = 500
+    importacao_max_bytes: int = Field(default=2 * 1024**3, ge=1, le=100 * 1024**3)
+    importacao_max_registros: int = Field(default=1000000, ge=1, le=10000000)
+    importacao_chunk_bytes: int = Field(default=8 * 1024**2, ge=1024, le=16 * 1024**2)
+    importacao_batch_size: int = Field(default=1000, ge=1, le=1000)
+    importacao_batch_bytes: int = Field(default=8 * 1024**2, ge=1024, le=16 * 1024**2)
+    importacao_retencao_dias: int = Field(default=7, ge=1, le=90)
     exportacao_batch_size: int = Field(default=100, ge=1, le=1000)
     exportacao_max_referencias_lote: int = Field(default=5000, ge=1, le=50000)
     exportacao_validade_horas: int = Field(default=24, ge=1, le=168)
