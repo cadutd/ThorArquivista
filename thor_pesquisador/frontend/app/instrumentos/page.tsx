@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Edit, Eye, FileText, Plus, Search, SlidersHorizontal, Trash2 } from "lucide-react";
+import { Edit, Eye, FileText, Plus, Search, SlidersHorizontal } from "lucide-react";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Permission } from "@/components/permission";
 import { CrudPagination } from "@/components/crud-pagination";
-import { deleteInstrumento, listInstrumentos } from "@/lib/api";
+import { listInstrumentos } from "@/lib/api";
+import { StatusBadge } from "@/components/status-badge";
 import type { Instrumento } from "@/types/domain";
 const EMPTY_FILTERS={q:"",nome:"",tipo:"",status:"",visibilidade:"",descricao:""};
 
@@ -47,21 +48,6 @@ export default function InstrumentosPage() {
     setFilters({ ...draftFilters,q:draftFilters.q.trim(),nome:draftFilters.nome.trim(),descricao:draftFilters.descricao.trim() });
   }
 
-  async function remove(item: Instrumento) {
-    const confirmed = window.confirm(`Excluir o instrumento "${item.nome}"? Esta acao tambem remove campos e registros vinculados.`);
-    if (!confirmed) return;
-    setLoading(true);
-    try {
-      await deleteInstrumento(item.id);
-      if (items.length === 1 && pageIndex > 0) setPageIndex(pageIndex - 1);
-      else await load();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao excluir instrumento.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return (
     <AppShell>
       <div className="stack">
@@ -76,7 +62,7 @@ export default function InstrumentosPage() {
           </Link></Permission>
         </div>
         <section className="panel stack">
-          <form className="stack" onSubmit={submitSearch}>
+          <form className="stack crud-search-form" onSubmit={submitSearch}>
           <div className="row">
             <label className="field search-field">
               <span>Busca simples</span>
@@ -135,7 +121,7 @@ export default function InstrumentosPage() {
                   <th>Tipo</th>
                   <th>Status</th>
                   <th>Visibilidade</th>
-                  <th>Acoes</th>
+                  <th className="crud-actions-heading">Acoes</th>
                 </tr>
               </thead>
               <tbody>
@@ -146,15 +132,14 @@ export default function InstrumentosPage() {
                       {item.descricao ? <><br /><span className="muted">{item.descricao}</span></> : null}
                     </td>
                     <td>{item.tipo}</td>
-                    <td>{item.status}</td>
-                    <td>{item.visibilidade}</td>
-                    <td className="actions">
-                      <Link className="icon-button" title="Visualizar" href={`/instrumentos/${item.id}`}><Eye size={16} /></Link>
-                      <Permission acao="instrumentos_editar" instrumentoId={item.id}><Link className="icon-button" title="Editar" href={`/instrumentos/${item.id}/editar`}><Edit size={16} /></Link></Permission>
-                      <Link className="icon-button" title="Campos" href={`/instrumentos/${item.id}/campos`}><SlidersHorizontal size={16} /></Link>
-                      <Link className="icon-button" title="Registros" href={`/instrumentos/${item.id}/registros`}><FileText size={16} /></Link>
-                      <Permission acao="instrumentos_excluir" instrumentoId={item.id}><button className="icon-button danger" type="button" title="Excluir" disabled={loading} onClick={() => remove(item)}><Trash2 size={16} /></button></Permission>
-                    </td>
+                    <td><StatusBadge value={item.status}/></td>
+                    <td><StatusBadge value={item.visibilidade}/></td>
+                    <td><div className="actions">
+                      <Link className="icon-button" title="Visualizar" aria-label="Visualizar" href={`/instrumentos/${item.id}`}><Eye size={16} /></Link>
+                      <Permission acao="instrumentos_editar" instrumentoId={item.id}><Link className="icon-button" title="Editar" aria-label="Editar" href={`/instrumentos/${item.id}/editar`}><Edit size={16} /></Link></Permission>
+                      <Permission acao="campos_consultar" instrumentoId={item.id}><Link className="icon-button" title="Campos" aria-label="Campos" href={`/instrumentos/${item.id}/campos`}><SlidersHorizontal size={16} /></Link></Permission>
+                      <Permission acao="registros_consultar" instrumentoId={item.id}><Link className="icon-button" title="Registros" aria-label="Registros" href={`/instrumentos/${item.id}/registros`}><FileText size={16} /></Link></Permission>
+                    </div></td>
                   </tr>
                 ))}
                 {!items.length ? (

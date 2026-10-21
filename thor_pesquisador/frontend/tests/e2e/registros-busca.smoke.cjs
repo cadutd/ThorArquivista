@@ -94,7 +94,7 @@ assert.ok(base && api && process.env.THOR_E2E_ISOLATED === "true", "Use somente 
     assert.equal(metadata.data.total, 1);
     await expect(page.locator("tbody tr")).toHaveCount(1);
     await expect(page.locator("tbody").getByRole("link", { name: "Correspondencia 17", exact: true })).toHaveClass("crud-record-link");
-    for (const label of ["Visualizar registro", "Editar registro", "Excluir registro"])
+    for (const label of ["Visualizar registro", "Editar registro"])
       await expect(page.locator("tbody").getByLabel(label, { exact: true })).toHaveAttribute("title", label);
     await screenshot("lista-desktop");
     await page.setViewportSize({ width: 390, height: 844 }); await screenshot("lista-mobile");
@@ -123,12 +123,15 @@ assert.ok(base && api && process.env.THOR_E2E_ISOLATED === "true", "Use somente 
     await screenshot("detalhes-mobile");
     await page.getByRole("link", { name: "Voltar", exact: true }).click(); await ready();
     await submit("Registro editado no formulario");
+    await expect(page.locator("tbody").getByTitle("Excluir registro", { exact: true })).toHaveCount(0);
+    await page.getByRole("link", { name: "Visualizar registro", exact: true }).click();
     page.once("dialog", dialog => dialog.dismiss());
-    await page.getByRole("button", { name: "Excluir registro", exact: true }).click();
-    await expect(page.locator("tbody tr")).toHaveCount(1);
+    await page.getByTitle("Excluir registro", { exact: true }).click();
+    await expect(page.getByRole("tabpanel")).toContainText("Registro editado no formulario");
     page.once("dialog", dialog => dialog.accept());
-    const deleted = await change(() => page.getByRole("button", { name: "Excluir registro", exact: true }).click());
-    assert.equal(deleted.data.total, 0);
+    await page.getByTitle("Excluir registro", { exact: true }).click();
+    await expect(page).toHaveURL(base + listPath); await ready();
+    await submit("Registro editado no formulario");
     await expect(page.getByText("Nenhum registro encontrado.")).toBeVisible();
     assert.deepEqual(errors, []);
     assert.deepEqual(await page.locator(".error").allTextContents(), []);

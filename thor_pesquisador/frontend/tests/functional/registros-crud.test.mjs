@@ -19,10 +19,10 @@ test("listagem tem busca explicita, filtros, limpar e acoes autorizadas", () => 
   assert.match(list, /onSubmit=\{buscar\}/);
   assert.match(list, /Filtros avancados/);
   assert.match(list, /campo\.aparece_busca/);
-  for (const action of ["incluir", "editar", "excluir"]) assert.match(list, new RegExp('acao="registros_' + action + '"'));
-  for (const title of ["Visualizar registro", "Editar registro", "Excluir registro"])
+  for (const action of ["incluir", "editar"]) assert.match(list, new RegExp('acao="registros_' + action + '"'));
+  for (const title of ["Visualizar registro", "Editar registro"])
     assert.ok(list.includes('title="' + title + '"'));
-  assert.match(list, /window\.confirm/);
+  assert.doesNotMatch(list, /deleteRegistro|window\.confirm|Excluir registro/);
   assert.match(list, /crud-record-link/);
 });
 

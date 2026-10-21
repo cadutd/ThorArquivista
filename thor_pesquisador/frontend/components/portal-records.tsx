@@ -134,7 +134,7 @@ function Records({ id }: { id: string }) {
       <div className="table-wrap"><table className="table" aria-busy={loading}>
         <thead><tr>
           {columns.length ? columns.map(field => <th key={field.chave}>{field.nome}</th>) : <th>Registro</th>}
-          <th>Acoes</th>
+          <th className="crud-actions-heading">Acoes</th>
         </tr></thead>
         <tbody>{items.map(row => {
           const detailPath = listPath + "/" + encodeURIComponent(row.id);

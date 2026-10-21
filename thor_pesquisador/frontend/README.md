@@ -1,5 +1,27 @@
 # Frontend
 
+## Identidade CRUD
+
+Revisao com a skill thor-crud-base, tomando Unidades de Acondicionamento do
+Thor Gestor como referencia: acoes ghost de 40 px com icones de 16 px e
+tooltips, links azuis, pagina inferior/superior e formularios responsivos com
+duas colunas para campos curtos. Descricoes longas usam a largura disponivel.
+O tema compartilhado nao foi alterado.
+
+Visualizar instrumento apresenta todos os metadados da API, inclusive
+identificadores, versoes editorial/schema, publicacao e imagem do card.
+Sem imagem informada, apresenta a imagem padrao. Mantem revisao/publicacao.
+Exclusoes de instrumentos, registros e imagens ficam no cabecalho dos detalhes
+e sempre exigem confirmacao. Usuarios, perfis e concessoes preservam exclusao
+no popup. Acoes de descarte/expurgo/desativacao de conformidade ficam nos
+detalhes e continuam com confirmacao. RBAC e bloqueios do backend permanecem.
+
+Pesquisa avancada usa a mesma tabela e paginacao no servidor, preservando os
+criterios aplicados ao navegar. Validacao da revisao: 76 contratos frontend,
+build Docker, crud-identidade.smoke.cjs com axe desktop/mobile e os fluxos
+registros-busca.smoke.cjs e usuarios.smoke.cjs. O ensaio de paginacao avancada
+no novo fluxo usa respostas controladas; demais operacoes CRUD usam API real.
+
 ## Atualizacao de 2026-10-20
 
 Registros -> Importacoes abre a central assincrona com busca, filtros,

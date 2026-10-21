@@ -35,7 +35,7 @@ export function ConformidadeDetail({tipo,id,fonte}:{tipo:Kind;id:string;fonte?:s
       <div className="actions">
         <Link className="button secondary" href={cfg.path}><ArrowLeft size={16}/>Voltar</Link>
         <button className="icon-button" title="Atualizar" aria-label="Atualizar" disabled={loading} onClick={()=>setRefresh(v=>v+1)}><RefreshCw size={16}/></button>
-        {data&&<ConformidadeActions tipo={tipo} row={data} onChanged={()=>setRefresh(v=>v+1)}/>}
+        {data&&<ConformidadeActions tipo={tipo} row={data} detail onChanged={()=>setRefresh(v=>v+1)}/>}
       </div>
     </div>
     <section className="panel stack">

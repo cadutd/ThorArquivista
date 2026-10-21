@@ -1,11 +1,11 @@
 "use client";
 import Link from "next/link";
-import { Eye,Edit,Trash2,Plus,Search,SlidersHorizontal,Image as ImageIcon } from "lucide-react";
+import { Eye,Edit,Plus,Search,SlidersHorizontal,Image as ImageIcon } from "lucide-react";
 import { useEffect,useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { ImagePermission, Permission } from "@/components/permission";
 import { CrudPagination } from "@/components/crud-pagination";
-import { listImagens,deleteImagem,mediaUrl,type Imagem } from "@/lib/imagens";
+import { listImagens,mediaUrl,type Imagem } from "@/lib/imagens";
 import { me } from "@/lib/api";
 
 export default function ImagensPage(){
@@ -15,7 +15,6 @@ export default function ImagensPage(){
  useEffect(()=>{me().then(u=>setUsuario(u.id)).catch(()=>{});},[]);
  async function load(){setLoading(true);try{const result=await listImagens({...filters,limit:String(pageSize),offset:String(pageIndex*pageSize)});setItems(result.items);setTotal(result.total);setError("");}catch(e){setError(e instanceof Error?e.message:"Falha ao carregar.");}finally{setLoading(false);}}
  useEffect(()=>{load();},[filters,pageIndex,pageSize]);
- async function remove(item:Imagem){if(!window.confirm('Excluir a imagem "'+item.titulo+'"?'))return;setLoading(true);try{await deleteImagem(item.id);if(items.length===1&&pageIndex>0)setPageIndex(pageIndex-1);else await load();}catch(e){setError(e instanceof Error?e.message:"Falha ao excluir.");}finally{setLoading(false);}}
  const pagination={total,pageIndex,pageSize,loading,onPageChange:setPageIndex,onPageSizeChange:(n:number)=>{setPageSize(n);setPageIndex(0);}};
  return <AppShell><div className="stack"><div className="row"><div className="page-heading"><h1>Imagens</h1><p>{total} imagens encontradas</p></div><Permission acao="imagens_incluir" anyScope><Link className="button" href="/imagens/novo"><Plus size={16}/>Nova imagem</Link></Permission></div>
   <section className="panel stack">
@@ -25,7 +24,7 @@ export default function ImagensPage(){
    </form>
    {error&&<p className="error" role="alert">{error}</p>}
    <CrudPagination {...pagination}/>
-   <div className="table-wrap"><table className="table"><thead><tr><th>Imagem</th><th>Referencia</th><th>Acesso</th><th>Criado em</th><th>Acoes</th></tr></thead><tbody>{items.map(i=><tr key={i.id}><td><div className="image-title">{i.thumbnail_uri?<img className="image-thumb" src={mediaUrl(i.thumbnail_uri)} alt="" loading="lazy"/>:<ImageIcon size={28}/>}<Link className="crud-record-link" href={"/imagens/"+i.id}>{i.titulo}</Link></div></td><td>{i.tipo_referencia}</td><td>{i.direitos_acesso}</td><td>{new Date(i.criado_em).toLocaleDateString("pt-BR")}</td><td><div className="actions"><Link className="icon-button" title="Visualizar" aria-label="Visualizar" href={"/imagens/"+i.id}><Eye size={16}/></Link><ImagePermission owner={i.criado_por===usuario}><Link className="icon-button" title="Editar" aria-label="Editar" href={"/imagens/"+i.id+"/editar"}><Edit size={16}/></Link></ImagePermission><ImagePermission acao="imagens_excluir" owner={i.criado_por===usuario}><button className="icon-button danger" title="Excluir" aria-label="Excluir" disabled={loading} onClick={()=>remove(i)}><Trash2 size={16}/></button></ImagePermission></div></td></tr>)}{!items.length&&<tr><td colSpan={5} className="muted">{loading?"Carregando...":error?"Listagem indisponivel.":"Nenhuma imagem encontrada."}</td></tr>}</tbody></table></div>
+   <div className="table-wrap"><table className="table" aria-busy={loading}><thead><tr><th>Imagem</th><th>Referencia</th><th>Acesso</th><th>Criado em</th><th className="crud-actions-heading">Acoes</th></tr></thead><tbody>{items.map(i=><tr key={i.id}><td><div className="image-title">{i.thumbnail_uri?<img className="image-thumb" src={mediaUrl(i.thumbnail_uri)} alt="" loading="lazy"/>:<ImageIcon size={28}/>}<Link className="crud-record-link" href={"/imagens/"+i.id}>{i.titulo}</Link></div></td><td>{i.tipo_referencia}</td><td>{i.direitos_acesso}</td><td>{new Date(i.criado_em).toLocaleDateString("pt-BR")}</td><td><div className="actions"><Link className="icon-button" title="Visualizar" aria-label="Visualizar" href={"/imagens/"+i.id}><Eye size={16}/></Link><ImagePermission owner={i.criado_por===usuario}><Link className="icon-button" title="Editar" aria-label="Editar" href={"/imagens/"+i.id+"/editar"}><Edit size={16}/></Link></ImagePermission></div></td></tr>)}{!items.length&&<tr><td colSpan={5} className="muted">{loading?"Carregando...":error?"Listagem indisponivel.":"Nenhuma imagem encontrada."}</td></tr>}</tbody></table></div>
    <CrudPagination {...pagination}/>
   </section>
  </div></AppShell>;

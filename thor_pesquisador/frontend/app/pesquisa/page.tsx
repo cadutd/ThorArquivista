@@ -1,13 +1,16 @@
 "use client";
 
-import { RefreshCw, Search } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Eye, RefreshCw, Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { Permission } from "@/components/permission";
+import { CrudPagination } from "@/components/crud-pagination";
+import { StatusBadge } from "@/components/status-badge";
 import Link from "next/link";
 import { mediaUrl } from "@/lib/imagens";
 import { buscarAvancado, getFacetas, getSchema, listInstrumentos, reindexarInstrumento } from "@/lib/api";
 import type { BuscaAvancadaResultado, FacetasResultado, Instrumento, InstrumentoCampo } from "@/types/domain";
+type Query = { q: string; filters: Record<string, unknown>; sort: string[] };
 
 export default function PesquisaPage() {
   const [instrumentos, setInstrumentos] = useState<Instrumento[]>([]);
@@ -20,6 +23,9 @@ export default function PesquisaPage() {
   const [facetas, setFacetas] = useState<FacetasResultado | null>(null);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
+  const [pageIndex, setPageIndex] = useState(0), [pageSize, setPageSize] = useState(20);
+  const [loading, setLoading] = useState(false), [applied, setApplied] = useState<Query>();
+  const requestVersion = useRef(0);
 
   useEffect(() => {
     listInstrumentos({ limit: 100 })
@@ -32,36 +38,44 @@ export default function PesquisaPage() {
 
   useEffect(() => {
     if (!instrumentoId) return;
+    let current = true;
+    requestVersion.current += 1;
+    setResultado(null); setApplied(undefined); setPageIndex(0); setLoading(false);
+    setCampos([]); setFacetas(null); setFilters({}); setSort(""); setStatus(""); setError("");
     Promise.all([getSchema(instrumentoId), getFacetas(instrumentoId).catch(() => null)])
       .then(([schema, facetData]) => {
+        if (!current) return;
         setCampos(schema.campos);
         setFacetas(facetData);
-        setFilters({});
-        setResultado(null);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : "Falha ao carregar schema."));
+      .catch((err) => { if (current) setError(err instanceof Error ? err.message : "Falha ao carregar schema."); });
+    return () => { current = false; requestVersion.current += 1; };
   }, [instrumentoId]);
 
   const filterable = useMemo(() => campos.filter((campo) => campo.filtro_avancado), [campos]);
   const sortable = useMemo(() => campos.filter((campo) => campo.ordenavel), [campos]);
 
-  async function pesquisar(event?: React.FormEvent) {
-    event?.preventDefault();
-    if (!instrumentoId) return;
+  async function consultarPagina(query: Query, page: number, size: number) {
+    if (!instrumentoId || loading) return;
+    const version = ++requestVersion.current;
+    setLoading(true);
     try {
-      const cleanFilters = Object.fromEntries(Object.entries(filters).filter(([, value]) => value !== ""));
       const data = await buscarAvancado(instrumentoId, {
-        q,
-        filters: cleanFilters,
-        sort: sort ? [sort] : [],
-        limit: 20,
-        offset: 0
+        ...query, limit: size, offset: page * size
       });
+      if (version !== requestVersion.current) return;
       setResultado(data);
+      setApplied(query); setPageIndex(page); setPageSize(size);
       setError("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha na busca avancada.");
-    }
+      if (version === requestVersion.current) setError(err instanceof Error ? err.message : "Falha na busca avancada.");
+    } finally { if (version === requestVersion.current) setLoading(false); }
+  }
+  function pesquisar(event?: React.FormEvent) {
+    event?.preventDefault();
+    return consultarPagina({ q: q.trim(),
+      filters: Object.fromEntries(Object.entries(filters).filter(([, value]) => value !== "")),
+      sort: sort ? [sort] : [] }, 0, pageSize);
   }
 
   async function reindexar() {
@@ -75,12 +89,14 @@ export default function PesquisaPage() {
     }
   }
 
+  const pagination = <CrudPagination total={resultado?.total ?? 0} pageIndex={pageIndex} pageSize={pageSize}
+    loading={loading || !resultado} onPageChange={page => { if (applied) void consultarPagina(applied, page, pageSize); }}
+    onPageSizeChange={size => { if (applied) void consultarPagina(applied, 0, size); }}/>;
   return (
     <AppShell>
       <div className="stack">
         <div className="page-heading">
           <h1>Pesquisa</h1>
-          <p>Busca avancada em indice Meilisearch derivado dos registros dinamicos.</p>
         </div>
 
         <form className="panel stack" onSubmit={pesquisar}>
@@ -118,7 +134,7 @@ export default function PesquisaPage() {
           ) : null}
 
           <div className="actions">
-            <button className="button" type="submit"><Search size={16} /> Pesquisar</button>
+            <button className="button" type="submit" disabled={loading}><Search size={16} />{loading ? "Pesquisando..." : "Pesquisar"}</button>
             <Permission acao="reindexar" instrumentoId={instrumentoId}><button className="button secondary" type="button" onClick={reindexar}><RefreshCw size={16} /> Reindexar instrumento</button></Permission>
           </div>
           {status ? <p className="muted">{status}</p> : null}
@@ -147,25 +163,29 @@ export default function PesquisaPage() {
               <div>
                 <h2 style={{ margin: 0 }}>Resultados</h2>
                 <p className="muted" style={{ margin: "4px 0 0" }}>
-                  {resultado ? `${resultado.total} resultado(s). ${resultado.indice_defasado ? "Indice ainda sem reindexacao concluida." : ""}` : "Execute uma busca para listar registros indexados."}
+                  {resultado ? `${resultado.total} resultado(s). ${resultado.indice_defasado ? "Indice ainda sem reindexacao concluida." : ""}` : "Nenhuma pesquisa realizada."}
                 </p>
               </div>
             </div>
+            {pagination}
             <div className="table-wrap">
-              <table className="table">
-                <thead><tr><th>Titulo</th><th>Status</th><th>Atualizado em</th></tr></thead>
+              <table className="table" aria-busy={loading}>
+                <thead><tr><th>Titulo</th><th>Status</th><th>Atualizado em</th><th className="crud-actions-heading">Acoes</th></tr></thead>
                 <tbody>
                   {(resultado?.items ?? []).map((item) => (
                     <tr key={item.id}>
-                      <td><div className="image-title">{item.imagem_principal_thumbnail&&<img className="image-thumb" src={mediaUrl(item.imagem_principal_thumbnail)} alt="" loading="lazy"/>}<div><Link className="record-link" href={`/instrumentos/${item.instrumento_id}/registros/${encodeURIComponent(item.id)}`}>{item.titulo}</Link><br/><span className="muted">{item.texto_geral}</span>{item.possui_imagens&&<p className="muted">{item.total_imagens} imagem(ns)</p>}</div></div></td>
-                      <td>{item.status}</td>
+                      <td><div className="image-title">{item.imagem_principal_thumbnail&&<img className="image-thumb" src={mediaUrl(item.imagem_principal_thumbnail)} alt="" loading="lazy"/>}<div><Link className="crud-record-link" href={`/instrumentos/${item.instrumento_id}/registros/${encodeURIComponent(item.id)}`}>{item.titulo}</Link><br/><span className="muted">{item.texto_geral}</span>{item.possui_imagens&&<p className="muted">{item.total_imagens} imagem(ns)</p>}</div></div></td>
+                      <td><StatusBadge value={item.status}/></td>
                       <td>{String(item.atualizado_em).slice(0, 10)}</td>
+                      <td><div className="actions"><Link className="icon-button" title="Visualizar registro" aria-label="Visualizar registro"
+                        href={`/instrumentos/${item.instrumento_id}/registros/${encodeURIComponent(item.id)}`}><Eye size={16}/></Link></div></td>
                     </tr>
                   ))}
-                  {resultado && !resultado.items.length ? <tr><td colSpan={3} className="muted">Nenhum registro encontrado.</td></tr> : null}
+                  {resultado && !resultado.items.length ? <tr><td colSpan={4} className="muted">Nenhum registro encontrado.</td></tr> : null}
                 </tbody>
               </table>
             </div>
+            {pagination}
           </div>
         </section>
       </div>

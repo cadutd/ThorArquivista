@@ -70,7 +70,7 @@ export function AccessList({usuarioId,readonly=false,acessoInicial,hideHeading=f
     <div className="table-wrap"><table className="table concessoes-table" aria-busy={loading}>
       <colgroup><col className="concessoes-user"/><col className="concessoes-profile"/>
         <col className="concessoes-scope"/><col className="concessoes-instrument"/><col className="concessoes-actions"/></colgroup>
-      <thead><tr><th>Usuario</th><th>Perfil</th><th>Escopo</th><th>Instrumento</th><th>Acoes</th></tr></thead>
+      <thead><tr><th>Usuario</th><th>Perfil</th><th>Escopo</th><th>Instrumento</th><th className="crud-actions-heading">Acoes</th></tr></thead>
       <tbody>{rows.map(row => <tr key={row.id}><td><a className="crud-record-link" href={"/acessos/" + row.id}
         onClick={e => {e.preventDefault();setSelected(row.id);}}>{row.nome}</a></td>
         <td>{row.perfil_nome || row.papel}</td><td>{row.instrumento_id ? "Por instrumento" : "Global"}</td>

@@ -41,10 +41,10 @@ function Catalog(){
     </form>
     {error&&<p className="error" role="alert">{error}</p>}
     <CrudPagination {...pagination}/>
-    <div className="table-wrap"><table className="table" aria-busy={loading}><thead><tr><th>Nome</th><th>Tipo</th><th>Descricao</th><th>Acoes</th></tr></thead>
+    <div className="table-wrap"><table className="table" aria-busy={loading}><thead><tr><th>Nome</th><th>Tipo</th><th>Descricao</th><th className="crud-actions-heading">Acoes</th></tr></thead>
       <tbody>{items.map(item=><tr key={item.id}><td><Link className="crud-record-link" prefetch={false} href={"/consulta/"+item.id}>{item.nome}</Link></td>
         <td>{types[item.tipo]||item.tipo}</td><td className="break-text">{item.descricao||"-"}</td>
-        <td><Link className="icon-button" title="Consultar registros" aria-label="Consultar registros" prefetch={false} href={"/consulta/"+item.id}><Eye size={16}/></Link></td></tr>)}
+        <td className="crud-actions-cell"><Link className="icon-button" title="Consultar registros" aria-label="Consultar registros" prefetch={false} href={"/consulta/"+item.id}><Eye size={16}/></Link></td></tr>)}
         {!items.length&&<tr><td colSpan={4}>{loading?"Carregando...":error?"Consulta indisponivel.":"Nenhum instrumento encontrado."}</td></tr>}
       </tbody></table></div>
     <CrudPagination {...pagination}/>

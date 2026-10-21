@@ -21,7 +21,8 @@ test("CRUD de imagens tem pagina completa, filtros, paginacao dupla e confirmaca
  assert.match(table,/setPageIndex\(0\)/);
  assert.match(table,/aria-expanded=\{advanced\}/);
  assert.equal((table.match(/<CrudPagination/g)||[]).length,2);
- assert.match(table,/window.confirm/);
+ assert.doesNotMatch(table,/window.confirm|deleteImagem/);
+ assert.match(read("app/imagens/[id]/page.tsx"),/window.confirm/);
  assert.match(table,/title="Visualizar"/);
  assert.match(table,/title="Editar"/);
  assert.match(read("app/imagens/novo/page.tsx"),/ImagemForm/);

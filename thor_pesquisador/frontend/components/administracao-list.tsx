@@ -80,7 +80,7 @@ export function AdministracaoList({tipo,usuarioInicial,perfilInicial}: {tipo: Ki
     {error && <p className="error" role="alert">{error}</p>}
     <CrudPagination {...pagination}/>
     <div className="table-wrap"><table className="table" aria-busy={loading}><thead><tr>
-      {columns[tipo].map(([key,label]) => <th key={key}>{label}</th>)}<th>Acoes</th></tr></thead><tbody>
+      {columns[tipo].map(([key,label]) => <th key={key}>{label}</th>)}<th className="crud-actions-heading">Acoes</th></tr></thead><tbody>
       {rows.map(row => {const id = String(row.id || row.codigo);const path = "/" + tipo + "/" + encodeURIComponent(id);
         return <tr key={id}>{columns[tipo].map(([key]) => <td key={key}>
           {key === "nome" ? tipo === "usuarios" ?

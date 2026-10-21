@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowLeft, Eye, FileUp, Plus, RefreshCw, RotateCcw, Search, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { CrudPagination } from "./crud-pagination";
+import { StatusBadge } from "./status-badge";
 import { usePermission } from "./permission";
 import { acionarImportacao, listarImportacoesAssincronas, podeCancelarImportacao, podeRetomarImportacao, statusImportacao } from "@/lib/importacoes-assincronas";
 import type { JobImportacao } from "@/lib/importacoes-assincronas";
@@ -69,10 +70,10 @@ export function ImportacoesLista({ instrumentoId: id }: { instrumentoId: string 
       {error && <p className="error" role="alert">{error}</p>}
       {pagination}
       <div className="table-wrap"><table className="table" aria-label="Importacoes" aria-busy={busy}>
-        <thead><tr><th>Arquivo</th><th>Status</th><th>Importados</th><th>Criada em</th><th>Acoes</th></tr></thead>
+        <thead><tr><th>Arquivo</th><th>Status</th><th>Importados</th><th>Criada em</th><th className="crud-actions-heading">Acoes</th></tr></thead>
         <tbody>{items.map(job => <tr key={job.id}>
           <td className="break-text"><Link className="crud-record-link" href={base + "/importacoes/" + encodeURIComponent(job.id)}>{job.nome_arquivo}</Link></td>
-          <td>{job.status.replaceAll("_", " ")}</td><td>{job.processados} de {job.total}</td>
+          <td><StatusBadge value={job.status}/></td><td>{job.processados} de {job.total}</td>
           <td>{new Date(job.criado_em).toLocaleString("pt-BR")}</td><td><div className="actions">
             <Link className="icon-button" title="Visualizar importacao" aria-label="Visualizar importacao"
               href={base + "/importacoes/" + encodeURIComponent(job.id)}><Eye size={16}/></Link>

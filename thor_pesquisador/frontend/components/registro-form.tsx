@@ -30,7 +30,7 @@ export function RegistroForm({campos, initial = {}, onSubmit, saving, error}: {
   return <form className="panel stack" onSubmit={submit}>
     <fieldset className="registro-fields" disabled={saving}>
     <div className="grid">{campos.filter(c => c.aparece_cadastro).map(c =>
-      <div key={c.id}><DynamicField campo={c} value={dados[c.chave]} onChange={v => setDados({...dados, [c.chave]: v})}/>
+      <div key={c.id} className={c.tipo === "TEXTO_LONGO" ? "crud-field-wide" : undefined}><DynamicField campo={c} value={dados[c.chave]} onChange={v => setDados({...dados, [c.chave]: v})}/>
         {fieldErrors[c.chave] && <p className="error" role="alert">{fieldErrors[c.chave]}</p>}</div>)}</div>
     </fieldset>
     {error && <p className="error" role="alert">{error}</p>}

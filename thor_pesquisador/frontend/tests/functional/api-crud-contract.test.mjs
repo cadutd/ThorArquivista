@@ -69,13 +69,14 @@ test("crud de instrumentos segue paginas completas e paginacao do padrao Thor", 
   assert.match(instrumentos, /pageIndex/);
   assert.match(instrumentos, /pageSize/);
   assert.match(instrumentos, /Pagination/);
-  assert.match(instrumentos, /deleteInstrumento/);
-  assert.match(instrumentos, /window\.confirm/);
+  assert.doesNotMatch(instrumentos, /deleteInstrumento|window\.confirm/);
+  assert.match(detalheInstrumento, /deleteInstrumento/);
+  assert.match(detalheInstrumento, /window\.confirm/);
   assert.ok(instrumentos.includes("/editar"));
   assert.match(novoInstrumento, /InstrumentoForm/);
   assert.match(editarInstrumento, /getInstrumento/);
   assert.match(editarInstrumento, /updateInstrumento/);
-  assert.match(detalheInstrumento, /Visualizacao/);
+  assert.match(detalheInstrumento, /Visualizar instrumento/);
   assert.match(instrumentoForm, /Informe o nome do instrumento/);
   assert.match(instrumentoForm, /Salvando\.\.\./);
 });
@@ -93,7 +94,7 @@ test("pagina de pesquisa usa busca avancada e reindexacao", () => {
   assert.match(pesquisa, /buscarAvancado/);
   assert.match(pesquisa, /getFacetas/);
   assert.match(pesquisa, /reindexarInstrumento/);
-  assert.match(pesquisa, /Busca avancada/);
+  assert.match(pesquisa, /<CrudPagination/);
 });
 
 test("login preserva identidade visual e imagem do pesquisador", () => {

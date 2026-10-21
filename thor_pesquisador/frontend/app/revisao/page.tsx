@@ -21,12 +21,14 @@ export default function ReviewQueue() {
       .finally(() => { if(current) setLoading(false); });
     return () => { current = false; };
   }, [offset, pageSize]);
+  const pagination = <CrudPagination total={total} pageIndex={Math.floor(offset/pageSize)} pageSize={pageSize} loading={loading}
+    onPageChange={n => setOffset(n * pageSize)} onPageSizeChange={n => { setPageSize(n); setOffset(0); }}/>;
   return <AppShell><div className="stack"><h1>Fila de revisao</h1>{error && <p className="error">{error}</p>}
-    <div className="table-wrap"><table className="table"><thead><tr><th>Instrumento</th><th>Registro</th><th>Versao</th><th>Acoes</th></tr></thead>
+    {pagination}
+    <div className="table-wrap"><table className="table" aria-busy={loading}><thead><tr><th>Instrumento</th><th>Registro</th><th>Versao</th><th className="crud-actions-heading">Acoes</th></tr></thead>
       <tbody>{items.map(i => <tr key={i.instrumento_id + i.registro_id}><td><Link className="crud-record-link" href={"/instrumentos/" + i.instrumento_id + (i.registro_id ? "/registros/" + encodeURIComponent(i.registro_id) : "")}>{i.nome}</Link></td><td>{i.registro_id || "Schema"}</td><td>{i.versao}</td>
-        <td><Link className="icon-button" title="Visualizar" href={"/instrumentos/" + i.instrumento_id +
+        <td className="crud-actions-cell"><Link className="icon-button" title="Visualizar" aria-label="Visualizar" href={"/instrumentos/" + i.instrumento_id +
           (i.registro_id ? "/registros/" + encodeURIComponent(i.registro_id) : "")}><Eye size={16}/></Link></td></tr>)}</tbody></table></div>
-    <CrudPagination total={total} pageIndex={Math.floor(offset/pageSize)} pageSize={pageSize} loading={loading}
-      onPageChange={n => setOffset(n * pageSize)} onPageSizeChange={n => { setPageSize(n); setOffset(0); }}/>
+    {pagination}
   </div></AppShell>;
 }

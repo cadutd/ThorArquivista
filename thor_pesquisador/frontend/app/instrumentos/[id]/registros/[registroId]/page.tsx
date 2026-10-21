@@ -54,7 +54,7 @@ export default function RegistroDetail() {
         <Link className="button secondary" href={base}><ArrowLeft size={16}/>Voltar</Link>
         {registro && registro.status !== "EXCLUIDO" && <>
           {registro.status_editorial !== "ARQUIVADO" && <Permission acao="registros_editar" instrumentoId={id}>
-            <Link className="button" title="Editar registro" href={path + "/editar"}><Edit size={16}/>Editar</Link>
+            <Link className="button secondary" title="Editar registro" href={path + "/editar"}><Edit size={16}/>Editar</Link>
           </Permission>}
           <Permission acao="registros_excluir" instrumentoId={id}>
             <button className="button danger" type="button" title="Excluir registro" disabled={removing} onClick={remove}>

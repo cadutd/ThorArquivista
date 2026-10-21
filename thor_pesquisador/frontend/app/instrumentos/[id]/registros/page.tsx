@@ -1,14 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Edit, Eye, FileUp, Plus, Search, SlidersHorizontal, Trash2 } from "lucide-react";
+import { ArrowLeft, Edit, Eye, FileUp, Plus, Search, SlidersHorizontal } from "lucide-react";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { CrudPagination } from "@/components/crud-pagination";
 import { Permission } from "@/components/permission";
 import { DynamicField } from "@/components/registro-form";
-import { consultarRegistros, deleteRegistro, getSchema } from "@/lib/api";
+import { consultarRegistros, getSchema } from "@/lib/api";
+import { StatusBadge } from "@/components/status-badge";
 import type { InstrumentoCampo, Registro } from "@/types/domain";
 
 type Filters = { q: string; status: string; filtros: Record<string, unknown> };
@@ -30,11 +31,9 @@ function RegistrosList({ id }: { id: string }) {
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(20);
   const [loading, setLoading] = useState(true);
-  const [removing, setRemoving] = useState(false);
-  const [revision, setRevision] = useState(0);
   const [error, setError] = useState("");
   const [schemaError, setSchemaError] = useState("");
-  const busy = loading || removing;
+  const busy = loading;
   const base = `/instrumentos/${id}/registros`;
 
   useEffect(() => {
@@ -63,7 +62,7 @@ function RegistrosList({ id }: { id: string }) {
       })
       .finally(() => { if (current) setLoading(false); });
     return () => { current = false; };
-  }, [id, filters, pageIndex, pageSize, revision]);
+  }, [id, filters, pageIndex, pageSize]);
 
   function buscar(event: React.FormEvent) {
     event.preventDefault();
@@ -74,18 +73,6 @@ function RegistrosList({ id }: { id: string }) {
 
   function clear() {
     setDraftFilters(EMPTY_FILTERS); setFilters({ ...EMPTY_FILTERS }); setPageIndex(0);
-  }
-
-  async function remove(item: Registro) {
-    if (busy || !window.confirm("Excluir este registro? Seu historico sera preservado e ele deixara de aparecer na consulta.")) return;
-    setRemoving(true); setError("");
-    try {
-      await deleteRegistro(id, item.id);
-      if (items.length === 1 && pageIndex > 0) setPageIndex(pageIndex - 1);
-      else setRevision(value => value + 1);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao excluir registro.");
-    } finally { setRemoving(false); }
   }
 
   const listagem = campos.filter(campo => campo.aparece_listagem);
@@ -133,7 +120,7 @@ function RegistrosList({ id }: { id: string }) {
       {pagination}
       <div className="table-wrap"><table className="table" aria-busy={busy}>
         <thead><tr>{listagem.length ? listagem.map(campo => <th key={campo.id}>{campo.nome}</th>) : <th>Registro</th>}
-          <th>Status</th><th>Acoes</th></tr></thead>
+          <th>Status</th><th className="crud-actions-heading">Acoes</th></tr></thead>
         <tbody>{items.map(item => {
           const path = base + "/" + encodeURIComponent(item.id);
           return <tr key={item.id}>
@@ -141,16 +128,12 @@ function RegistrosList({ id }: { id: string }) {
               <Link className="crud-record-link" href={path}>{formatValue(item.dados[campo.chave])}</Link> :
               formatValue(item.dados[campo.chave])}</td>) :
               <td><Link className="crud-record-link" href={path}>{item.id}</Link></td>}
-            <td>{item.status}</td>
+            <td><StatusBadge value={item.status}/></td>
             <td><div className="actions">
               <Link className="icon-button" title="Visualizar registro" aria-label="Visualizar registro" href={path}><Eye size={16}/></Link>
               {item.status_editorial !== "ARQUIVADO" && <Permission acao="registros_editar" instrumentoId={id}>
                 <Link className="icon-button" title="Editar registro" aria-label="Editar registro" href={path + "/editar"}><Edit size={16}/></Link>
               </Permission>}
-              <Permission acao="registros_excluir" instrumentoId={id}>
-                <button className="icon-button danger" type="button" title="Excluir registro" aria-label="Excluir registro"
-                  disabled={busy} onClick={() => remove(item)}><Trash2 size={16}/></button>
-              </Permission>
             </div></td>
           </tr>;
         })}

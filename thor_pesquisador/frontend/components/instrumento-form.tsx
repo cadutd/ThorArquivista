@@ -48,9 +48,10 @@ export function InstrumentoForm({ initialValue, saving = false, error, submitLab
 
   return (
     <form className="panel stack" onSubmit={submit}>
+      <fieldset className="registro-fields stack" disabled={saving}>
       <div className="grid">
         <Field label="Nome" required error={fieldErrors.nome}>
-          <input className="input" required value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
+          <input className="input" required maxLength={255} aria-invalid={!!fieldErrors.nome} value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
         </Field>
         <Field label="Tipo" required error={fieldErrors.tipo}>
           <select className="select" value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value as Instrumento["tipo"] })}>
@@ -71,7 +72,8 @@ export function InstrumentoForm({ initialValue, saving = false, error, submitLab
       </Field>
       <InstrumentoCoverField value={form.imagem_card_id} onChange={id=>setForm(current=>({...current,imagem_card_id:id}))}
         onBusy={setUploading} instrumentoId={instrumentoId} disabled={saving||uploading}/>
-      {error ? <p className="error">{error}</p> : null}
+      </fieldset>
+      {error ? <p className="error" role="alert">{error}</p> : null}
       <div className="actions">
         <button className="button" type="submit" disabled={saving||uploading}>
           <Save size={16} />

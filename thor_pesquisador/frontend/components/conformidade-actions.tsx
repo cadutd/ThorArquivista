@@ -9,7 +9,7 @@ import { downloadFile,request } from "@/lib/api";
 import { ExportJob,Policy,RetentionJob } from "@/lib/conformidade";
 import { Kind,Row,config } from "@/lib/conformidade-view";
 
-export function ConformidadeActions({tipo,row,onChanged}:{tipo:Kind;row:Row;onChanged?:()=>void}) {
+export function ConformidadeActions({tipo,row,onChanged,detail=false}:{tipo:Kind;row:Row;onChanged?:()=>void;detail?:boolean}) {
   const router=useRouter();
   const cfg=config[tipo];
   const [busy,setBusy]=useState(false),[error,setError]=useState("");
@@ -35,7 +35,7 @@ export function ConformidadeActions({tipo,row,onChanged}:{tipo:Kind;row:Row;onCh
       return <>
         {j.status==="CONCLUIDA"&&Date.parse(j.expira_em)>Date.now()&&<button className="icon-button" disabled={busy} title="Baixar arquivo" aria-label="Baixar arquivo" onClick={()=>command(row,"download")}><Download size={16}/></button>}
         {j.status==="FALHOU"&&<Permission acao="exportacoes_repetir" instrumentoId={j.instrumento_id}><button className="icon-button" disabled={busy} title="Repetir" aria-label="Repetir" onClick={()=>command(row,"repetir")}><RefreshCw size={16}/></button></Permission>}
-        {["PENDENTE","PROCESSANDO","FALHOU","CONCLUIDA"].includes(j.status)&&<Permission acao="exportacoes_excluir" instrumentoId={j.instrumento_id}>
+        {detail&&["PENDENTE","PROCESSANDO","FALHOU","CONCLUIDA"].includes(j.status)&&<Permission acao="exportacoes_excluir" instrumentoId={j.instrumento_id}>
           <button className="icon-button danger" disabled={busy} title={["PENDENTE","PROCESSANDO"].includes(j.status)?"Cancelar":"Descartar arquivo"}
             aria-label={["PENDENTE","PROCESSANDO"].includes(j.status)?"Cancelar":"Descartar arquivo"}
             onClick={()=>setConfirmation({row,action:"cancelar",label:["PENDENTE","PROCESSANDO"].includes(j.status)?"Cancelar exportacao":"Descartar arquivo"})}><Trash2 size={16}/></button></Permission>}
@@ -46,8 +46,8 @@ export function ConformidadeActions({tipo,row,onChanged}:{tipo:Kind;row:Row;onCh
       return <>
         <Permission acao="retencao_editar" instrumentoId={p.instrumento_id||undefined}><Link className="icon-button" title="Editar" aria-label="Editar" href={"/retencao/politicas/"+p.id+"/editar"}><Edit size={16}/></Link></Permission>
         {p.ativo&&!p.bloqueada&&<Permission acao="retencao_simular" instrumentoId={p.instrumento_id||undefined}><button className="icon-button" disabled={busy} title="Simular" aria-label="Simular" onClick={()=>command(row,"simular")}><Play size={16}/></button></Permission>}
-        {p.ativo&&!p.bloqueada&&p.permitir_expurgo&&<Permission acao="retencao_executar" instrumentoId={p.instrumento_id||undefined}><button className="icon-button danger" disabled={busy} title="Executar retencao" aria-label="Executar retencao" onClick={()=>setConfirmation({row,action:"executar",label:"Executar retencao definitiva"})}><Trash2 size={16}/></button></Permission>}
-        {p.ativo&&<Permission acao="retencao_excluir" instrumentoId={p.instrumento_id||undefined}><button className="icon-button" disabled={busy} title="Desativar" aria-label="Desativar" onClick={()=>setConfirmation({row,action:"desativar",label:"Desativar politica"})}><Pause size={16}/></button></Permission>}
+        {detail&&p.ativo&&!p.bloqueada&&p.permitir_expurgo&&<Permission acao="retencao_executar" instrumentoId={p.instrumento_id||undefined}><button className="icon-button danger" disabled={busy} title="Executar retencao" aria-label="Executar retencao" onClick={()=>setConfirmation({row,action:"executar",label:"Executar retencao definitiva"})}><Trash2 size={16}/></button></Permission>}
+        {detail&&p.ativo&&<Permission acao="retencao_excluir" instrumentoId={p.instrumento_id||undefined}><button className="icon-button" disabled={busy} title="Desativar" aria-label="Desativar" onClick={()=>setConfirmation({row,action:"desativar",label:"Desativar politica"})}><Pause size={16}/></button></Permission>}
       </>;
     }
     if(tipo==="execucoes") {

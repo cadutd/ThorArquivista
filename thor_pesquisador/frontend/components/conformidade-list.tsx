@@ -38,7 +38,7 @@ export function ConformidadeList({tipo}:{tipo:Kind}) {
       </div>
     </div>
     <section className="panel stack">
-      <form className="stack" onSubmit={e=>{e.preventDefault();setFilters({...draft});setPage(0);setRefresh(v=>v+1);}}>
+      <form className="stack crud-search-form" onSubmit={e=>{e.preventDefault();setFilters({...draft});setPage(0);setRefresh(v=>v+1);}}>
         <div className="row">
           <label className="field search-field"><span>Busca simples</span><input className="input" placeholder="Buscar registros" value={draft.q||""} onChange={e=>setDraft({...draft,q:e.target.value})}/></label>
           <div className="actions">
@@ -57,7 +57,7 @@ export function ConformidadeList({tipo}:{tipo:Kind}) {
       </form>
       {error&&<p className="error" role="alert">{error}</p>}
       <CrudPagination {...pagination}/>
-      <div className="table-wrap"><table className="table" aria-busy={loading}><thead><tr>{cfg.columns.map(([key,label])=><th key={key}>{label}</th>)}<th>Acoes</th></tr></thead><tbody>
+      <div className="table-wrap"><table className="table" aria-busy={loading}><thead><tr>{cfg.columns.map(([key,label])=><th key={key}>{label}</th>)}<th className="crud-actions-heading">Acoes</th></tr></thead><tbody>
         {rows.map(row=><tr key={("fonte" in row?row.fonte:"")+row.id}>{cfg.columns.map(([key],index)=><td key={key}>{index===0?
           <Link className="crud-record-link" href={detailPath(tipo,row)}>{display(key,(row as unknown as Record<string,unknown>)[key])}</Link>:display(key,(row as unknown as Record<string,unknown>)[key])}</td>)}
           <td><div className="actions"><Link className="icon-button" title="Visualizar" aria-label="Visualizar" href={detailPath(tipo,row)}><Eye size={16}/></Link><ConformidadeActions tipo={tipo} row={row} onChanged={()=>setRefresh(v=>v+1)}/></div></td></tr>)}
