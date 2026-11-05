@@ -1,0 +1,19 @@
+{
+	admin off
+	auto_https disable_redirects
+	skip_install_trust
+	# Proxy errors can include OAuth callback query strings; log only in the app.
+	log {
+		output discard
+	}
+}
+
+https://localhost {
+	tls internal
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

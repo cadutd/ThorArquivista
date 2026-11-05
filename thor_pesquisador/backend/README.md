@@ -1,6 +1,16 @@
 # Backend
 
-## Atualizacao de 2026-10-20
+## Gov.br Local
+
+GOVBR_CLIENT_SECRET_FILE le o segredo montado em /run/secrets e tem prioridade
+sobre GOVBR_CLIENT_SECRET. O segredo usa SecretStr, nao aparece na URL de
+autorizacao e mensagens de erro nao retornam respostas brutas do provedor.
+PKCE/S256, state, nonce, assinatura, emissor e audiencia continuam validados.
+O callback aceita o retorno HTTPS local, preservando CPF, RBAC e visitantes.
+Nenhuma nova migration e necessaria.
+[Operacao local HTTPS](../docs/govbr_local.md).
+
+## Historico de 2026-10-20
 
 Head Alembic: 20261020_000018. Importacao assincrona reutiliza validacao,
 evolucao de schema, RBAC, Mongo canonico, auditoria e indexacao existentes.

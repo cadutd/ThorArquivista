@@ -59,12 +59,15 @@ async def govbr_callback(
     request: Request,
     code: str = Query(default=""),
     state: str = Query(default=""),
+    error: str = Query(default=""),
     db: Session = Depends(db_dep),
 ) -> RedirectResponse:
     expected_state = request.cookies.get("thor_auth_state")
     verifier = request.cookies.get("thor_auth_verifier")
     if not expected_state or not secrets.compare_digest(expected_state, state) or not verifier:
         raise HTTPException(status_code=400, detail="Estado de autenticacao invalido.")
+    if error:
+        raise HTTPException(400, "Autenticacao gov.br cancelada ou nao autorizada. Reinicie o login.")
     claims = await exchange_code_for_claims(code, verifier)
     expected_nonce = request.cookies.get("thor_auth_nonce")
     if not expected_nonce or not isinstance(claims.get("nonce"), str) or not secrets.compare_digest(expected_nonce, claims["nonce"]):

@@ -22,7 +22,7 @@ services:
       POSTGRES_USER: thor
       POSTGRES_PASSWORD: thor
     ports:
-      - "5434:5432"
+      - "127.0.0.1:5434:5432"
     volumes:
       - thor_pesquisador_postgres:/var/lib/postgresql/data
     healthcheck:
@@ -35,7 +35,7 @@ services:
     container_name: thor_pesquisador_mongo
     image: mongo:7
     ports:
-      - "27018:27017"
+      - "127.0.0.1:27018:27017"
     volumes:
       - thor_pesquisador_mongo:/data/db
 
@@ -43,7 +43,7 @@ services:
     container_name: thor_pesquisador_redis
     image: redis:7-alpine
     ports:
-      - "6380:6379"
+      - "127.0.0.1:6380:6379"
 
   meilisearch:
     container_name: thor_pesquisador_meilisearch
@@ -52,7 +52,7 @@ services:
       MEILI_ENV: development
       MEILI_MASTER_KEY: dev-master-key-123
     ports:
-      - "7700:7700"
+      - "127.0.0.1:7700:7700"
     volumes:
       - thor_pesquisador_meili:/meili_data
 
@@ -74,14 +74,18 @@ services:
       database_url: postgresql+psycopg://thor:thor@postgres:5432/thor_pesquisador
       mongodb_url: mongodb://mongo:27017/thor_pesquisador
       mongodb_database: thor_pesquisador
-      cors_origins: '["http://localhost:3000"]'
-      public_app_url: http://localhost:3000
-      govbr_redirect_uri: http://localhost:8000/api/v1/auth/govbr/callback
-      govbr_client_id: change-me
-      govbr_client_secret: change-me
-      app_session_secret: dev-change-me
-      govbr_dev_login: "true"
-      dev_admin_enabled: "true"
+      cors_origins: ${CORS_ORIGINS:-["http://localhost:3000"]}
+      public_app_url: ${PUBLIC_APP_URL:-http://localhost:3000}
+      govbr_redirect_uri: ${GOVBR_REDIRECT_URI:-http://localhost:8000/api/v1/auth/govbr/callback}
+      govbr_authorize_url: ${GOVBR_AUTHORIZE_URL:-https://sso.staging.acesso.gov.br/authorize}
+      govbr_token_url: ${GOVBR_TOKEN_URL:-https://sso.staging.acesso.gov.br/token}
+      govbr_jwks_url: ${GOVBR_JWKS_URL:-https://sso.staging.acesso.gov.br/jwk}
+      govbr_client_id: ${GOVBR_CLIENT_ID:-change-me}
+      govbr_client_secret: ${GOVBR_CLIENT_SECRET:-change-me}
+      app_session_secret: ${APP_SESSION_SECRET:-dev-change-me}
+      govbr_dev_login: ${GOVBR_DEV_LOGIN:-true}
+      dev_admin_enabled: ${DEV_ADMIN_ENABLED:-true}
+      session_cookie_secure: ${SESSION_COOKIE_SECURE:-false}
       redis_url: redis://redis:6379/0
       indexacao_queue_name: thor_pesquisador:indexacao
       meilisearch_url: http://meilisearch:7700
@@ -102,7 +106,7 @@ services:
       upload_max_bytes: "20971520"
       upload_allowed_mime_types: '["image/jpeg","image/png","image/tiff","image/webp"]'
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     command: >
       sh -c "
       alembic -c alembic.ini upgrade head &&
@@ -174,7 +178,7 @@ services:
     environment:
       NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api/v1
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
 
 volumes:
   thor_pesquisador_minio:

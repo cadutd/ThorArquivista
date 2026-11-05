@@ -242,7 +242,7 @@ def test_expiracao_limpa_arquivos_mas_preserva_historico(ctx):
     jid = ready(client, iid)
     with SessionLocal() as db:
         job = db.get(Job, uuid.UUID(jid))
-        job.expira_em = datetime.now(UTC) - timedelta(days=1)
+        job.expira_em = datetime(2000, 1, 1, tzinfo=UTC)
         db.commit()
         assert worker.limpar_expirado(db)
         db.refresh(job)

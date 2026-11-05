@@ -65,6 +65,19 @@ def code_challenge(verifier: str) -> str:
 
 
 async def exchange_code_for_claims(code: str, code_verifier: str) -> dict:
+    if not code:
+        raise HTTPException(400, "Codigo de autenticacao gov.br ausente.")
+    try:
+        return await _exchange_code_for_claims(code, code_verifier)
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code in {400, 401, 403}:
+            raise HTTPException(401, "Autenticacao gov.br recusada. Reinicie o login ou confira a credencial cadastrada.") from None
+        raise HTTPException(502, "Servico gov.br indisponivel. Tente novamente.") from None
+    except (httpx.RequestError, ValueError, TypeError, KeyError):
+        raise HTTPException(502, "Nao foi possivel validar a resposta do gov.br. Tente novamente.") from None
+
+
+async def _exchange_code_for_claims(code: str, code_verifier: str) -> dict:
     async with httpx.AsyncClient(timeout=15) as client:
         token_response = await client.post(
             settings.govbr_token_url,
@@ -74,7 +87,7 @@ async def exchange_code_for_claims(code: str, code_verifier: str) -> dict:
                 "redirect_uri": settings.govbr_redirect_uri,
                 "code_verifier": code_verifier,
             },
-            auth=(settings.govbr_client_id, settings.govbr_client_secret),
+            auth=(settings.govbr_client_id, settings.govbr_client_secret.get_secret_value()),
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
         token_response.raise_for_status()
@@ -92,9 +105,11 @@ async def exchange_code_for_claims(code: str, code_verifier: str) -> dict:
 
 def validate_jwt(token: str, jwks: dict) -> dict:
     try:
+        if not isinstance(token, str) or not isinstance(jwks, dict) or not isinstance(jwks.get("keys"), list):
+            raise JWTError("Resposta invalida.")
         header = jwt.get_unverified_header(token)
         kid = header.get("kid")
-        key = next((item for item in jwks.get("keys", []) if item.get("kid") == kid), None)
+        key = next((item for item in jwks["keys"] if isinstance(item, dict) and item.get("kid") == kid), None)
         if not key:
             raise JWTError("kid nao encontrado no JWK.")
         claims = jwt.decode(
@@ -110,7 +125,7 @@ def validate_jwt(token: str, jwks: dict) -> dict:
             raise JWTError("Emissor invalido.")
         return claims
     except JWTError as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Token gov.br invalido: {exc}") from exc
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token gov.br invalido.") from exc
 
 
 def usuario_from_claims(db: Session, claims: dict) -> Usuario | Visitante:

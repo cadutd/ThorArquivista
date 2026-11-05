@@ -1,6 +1,24 @@
 # Thor Pesquisador
 
-## Atualizacao de 2026-10-20
+## Gov.br Local - 2026-11-04
+
+Perfil Docker HTTPS em https://localhost:8443, com callback
+https://localhost:8443/api/v1/auth/govbr/callback.
+O proxy encaminha frontend e API pela mesma origem; cookies usam Secure,
+HttpOnly e SameSite=Lax. Segredo do cliente via Docker secret, fora do Git.
+Nao houve alteracao de schema ou de permissoes.
+
+O callback precisa ser cadastrado na credencial do gov.br. O perfil usa
+endpoints de homologacao por padrao e nao confirma o ambiente de emissao
+da credencial. A CA local deve ser confiada conscientemente no navegador.
+Autenticacao real com o provedor ainda depende dessas etapas externas.
+[Configuracao, comandos e certificado](docs/govbr_local.md).
+
+Validacao em Docker: 683 testes backend e 76 contratos frontend aprovados.
+CA instalada no usuario atual apenas apos autorizacao; Chromium validou o
+HTTPS local normalmente. O ensaio do provedor foi controlado, sem login real.
+
+## Historico de 2026-10-20
 
 Importacao assincrona disponivel em Instrumentos -> Registros -> Importacoes:
 CSV/JSON/JSONL, upload retomavel, associacao/criacao de campos, validacao

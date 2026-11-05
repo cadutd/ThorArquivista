@@ -9,3 +9,5 @@ test-reports/
 .env
 .env.*
 !.env.example
+.secrets/
+.local/

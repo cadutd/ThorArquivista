@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from pydantic import Field, model_validator
+from pathlib import Path
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", hide_input_in_errors=True)
 
     app_name: str = "Thor Pesquisador"
     app_env: str = "dev"
@@ -22,7 +23,8 @@ class Settings(BaseSettings):
     govbr_token_url: str = "https://sso.staging.acesso.gov.br/token"
     govbr_jwks_url: str = "https://sso.staging.acesso.gov.br/jwk"
     govbr_client_id: str = "change-me"
-    govbr_client_secret: str = "change-me"
+    govbr_client_secret: SecretStr = SecretStr("change-me")
+    govbr_client_secret_file: str | None = None
     govbr_redirect_uri: str = "http://localhost:8000/api/v1/auth/govbr/callback"
     govbr_dev_login: bool = True
     dev_admin_enabled: bool = False
@@ -58,12 +60,23 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def ambiente_seguro(self):
+        if self.govbr_client_secret_file:
+            try:
+                path = Path(self.govbr_client_secret_file)
+                if path.stat().st_size > 8192:
+                    raise ValueError("Arquivo de segredo gov.br invalido.")
+                value = path.read_text(encoding="utf-8").strip()
+            except (OSError, UnicodeError):
+                raise ValueError("Arquivo de segredo gov.br indisponivel.") from None
+            if not value or value == "change-me":
+                raise ValueError("Arquivo de segredo gov.br nao configurado.")
+            self.govbr_client_secret = SecretStr(value)
         if self.app_env in {"prod", "homolog"}:
             if self.govbr_dev_login or self.auth_disabled_for_tests or self.dev_admin_enabled:
                 raise ValueError("Atalhos de autenticacao sao proibidos em homolog/prod.")
             if not self.session_cookie_secure or len(self.app_session_secret) < 32:
                 raise ValueError("Cookie seguro e segredo de sessao com 32 caracteres sao obrigatorios.")
-            if self.govbr_client_id == "change-me" or self.govbr_client_secret == "change-me":
+            if not self.govbr_client_id.strip() or self.govbr_client_id == "change-me" or self.govbr_client_secret.get_secret_value() in {"", "change-me"}:
                 raise ValueError("Configure as credenciais gov.br antes do rollout.")
             if not self.public_app_url.startswith("https://") or not self.govbr_redirect_uri.startswith("https://"):
                 raise ValueError("Portal e callback devem usar HTTPS.")

@@ -1,5 +1,14 @@
 # Frontend
 
+## Gov.br Local
+
+No perfil docker-compose.govbr-local.yml, frontend e API usam a mesma origem
+https://localhost:8443. Rebuild necessario para incorporar a URL da API.
+O botao existente Entrar com GOV.BR e a identidade visual foram preservados.
+govbr-local.smoke.cjs verifica TLS com a CA local, cookies e PKCE, interceptando
+o provedor para nao usar credenciais reais. Nao e homologacao gov.br.
+[Instrucoes e callback para cadastro](../docs/govbr_local.md).
+
 ## Identidade CRUD
 
 Revisao com a skill thor-crud-base, tomando Unidades de Acondicionamento do
