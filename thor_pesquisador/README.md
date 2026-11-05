@@ -1,5 +1,34 @@
 # Thor Pesquisador
 
+Para instalar fora do computador local, siga o
+[passo a passo de homologacao e gov.br](#deploy-em-homologacao-e-configuracao-do-govbr).
+O guia abaixo usa os manifests OKD existentes; nao publica automaticamente
+nenhum ambiente nem conclui o cadastro externo no provedor.
+
+## Configuracao Inicial - 2026-11-05
+
+Script disponivel em `backend/app/scripts/configurar_sistema.py` para gerar
+configuracao privada de dev/homolog/prod e criar o primeiro administrador,
+com validacao de ambiente, idempotencia, transacao e auditoria.
+Nao altera configuracoes existentes, nao aplica migrations e nao emite sessao.
+Consulte o [guia completo e exemplos por ambiente](docs/configuracao_inicial.md).
+Validacao em Docker: 732 testes backend (49 do novo fluxo), 76 contratos
+frontend e build backend aprovados. Sem rollout ou bootstrap operacional.
+
+Inicio rapido para uma instalacao nova em desenvolvimento:
+
+```bash
+python backend/app/scripts/configurar_sistema.py gerar-config --ambiente dev --destino .local/dev-inicial
+docker compose --env-file .local/dev-inicial/.env --profile storage up -d --build minio backend frontend index_worker export_worker import_worker
+docker compose --env-file .local/dev-inicial/.env exec backend python -m app.scripts.init_storage
+docker compose --env-file .local/dev-inicial/.env exec backend python -m app.scripts.configurar_sistema administrador --ambiente dev --local --operador "Operador local / DEV-001" --confirmar
+```
+
+Depois, abrir http://localhost:3000/login e usar Entrar em desenvolvimento.
+O perfil HTTPS local ja existente deve continuar com seus dois arquivos Compose;
+nao substituir seu `.env` por este inicio rapido. Homolog/prod usam CPF real,
+login gov.br e o Job manual `deploy/jobs/bootstrap-admin.yaml`, sem flags dev.
+
 ## Gov.br Local - 2026-11-04
 
 Perfil Docker HTTPS em https://localhost:8443, com callback
@@ -224,25 +253,313 @@ Em desenvolvimento, a tela de login oferece `Entrar em desenvolvimento`. Em homo
 
 ## Kubernetes/OKD
 
-Os manifests ficam em `deploy/` e podem ser aplicados com Kustomize:
+### Deploy em homologacao e configuracao do gov.br
+
+Procedimento revisado em 2026-11-05. Execute os comandos a partir de
+`thor_pesquisador`, em Bash no host/runner de deploy, com Docker, Git e `oc`
+autenticado no cluster correto. Nao executar os comandos de cluster no
+ambiente local de testes. Em Kubernetes sem OKD, substituir as Routes por
+Ingress/TLS institucional antes de aplicar; estes exemplos usam OKD.
+
+#### 1. Preparar infraestrutura e janela de implantacao
+
+Defina dois hosts HTTPS do mesmo dominio institucional, por exemplo:
+
+| Uso | Exemplo a substituir |
+| --- | --- |
+| Portal e login | `https://pesquisador-hml.instituicao.gov.br` |
+| API | `https://pesquisador-api-hml.instituicao.gov.br/api/v1` |
+| Callback gov.br | `https://pesquisador-api-hml.instituicao.gov.br/api/v1/auth/govbr/callback` |
+
+Configure DNS, Routes e certificados com cadeia confiavel nos navegadores.
+Nao reutilize a CA local, `localhost:8443`, o Caddy de desenvolvimento nem
+`docker-compose.govbr-local.yml`. Manter os hosts no mesmo site evita o
+bloqueio de cookies `SameSite=Lax`; CORS sozinho nao resolve hosts cross-site.
+O cookie pode permanecer restrito ao host da API: nao e necessario definir
+`SESSION_COOKIE_DOMAIN` para compartilhar a sessao com o frontend.
+
+Providencie PostgreSQL, MongoDB autenticado, Redis, Meilisearch e bucket S3
+privado, separados do desenvolvimento, com credenciais e backups proprios.
+Libere do backend/workers somente a conectividade necessaria: DNS, dependencias
+e HTTPS de saida para os endpoints gov.br. Sincronize o relogio dos nos.
+Revise StorageClass, quotas, recursos, NetworkPolicy, SCC e acesso ao registry.
+As imagens rodam sem root/UID fixo obrigatorio; nao conceda SCC privilegiada.
+
+Antes de atualizar ambiente existente: pause novas mutacoes, aguarde ou
+registre os jobs em andamento, pare workers/API e suspenda a retencao.
+Gere backup consistente de PostgreSQL, MongoDB e objetos S3, registre o head
+Alembic e valide restauracao. Nao use `down -v`, apague PVCs ou rode seeds de
+teste. Detalhes em [continuidade e operacao](docs/fase_06_operacao.md).
+
+#### 2. Obter a credencial e cadastrar o retorno no gov.br
+
+Solicite ou ajuste a integracao pelo canal institucional indicado em
+[Solicitar credencial do Login Unico](https://acesso.gov.br/roteiro-tecnico/solicitacaocredencialprocesso.html).
+Confirme explicitamente que o `client_id` e o `client_secret` foram emitidos
+pelo Login Unico para **homologacao/teste**; um identificador isolado nao
+comprova o provedor ou o ambiente. Rotacione o segredo compartilhado em conversa.
+
+Cadastre exatamente o callback HTTPS da tabela, incluindo host e caminho,
+sem barra final adicional. A URL precisa coincidir no cadastro e em
+`GOVBR_REDIRECT_URI`; criar a rota no Thor nao altera o cadastro no gov.br.
+Nao reutilize a URL externa inicialmente informada sem confirmacao do provedor.
+Confirme a habilitacao dos escopos `openid email profile`, solicitados hoje
+pelo Thor, e de contas autorizadas a testar no ambiente de homologacao.
+Outros escopos do roteiro dependem de autorizacao e de evolucao do codigo;
+nao ha variavel de configuracao para troca de escopos nesta versao.
+
+Endpoints usados nesta homologacao:
+
+| Variavel | Valor |
+| --- | --- |
+| `GOVBR_AUTHORIZE_URL` | `https://sso.staging.acesso.gov.br/authorize` |
+| `GOVBR_TOKEN_URL` | `https://sso.staging.acesso.gov.br/token` |
+| `GOVBR_JWKS_URL` | `https://sso.staging.acesso.gov.br/jwk` |
+
+O fluxo e Authorization Code com PKCE/S256, state, nonce e validacao de token
+no backend. As exigencias de HTTPS, retorno cadastrado e parametros estao no
+[roteiro oficial de integracao](https://acesso.gov.br/roteiro-tecnico/iniciarintegracao.html).
+Credenciais de producao exigem cadastro e endpoints correspondentes; nao
+misture segredos de producao com os endpoints de staging.
+
+#### 3. Construir e publicar as imagens da mesma versao
+
+Use uma tag imutavel aprovada, por exemplo o SHA completo do commit:
 
 ```bash
-oc new-project thor-pesquisador
-oc apply -k deploy/overlays/dev
+set -euo pipefail
+export REGISTRY=registry.instituicao.gov.br/arquivologia
+export TAG=$(git rev-parse HEAD)
+docker login registry.instituicao.gov.br
+docker build -t "$REGISTRY/thor-pesquisador-backend:$TAG" backend
+docker build --build-arg NEXT_PUBLIC_API_BASE_URL=https://pesquisador-api-hml.instituicao.gov.br/api/v1 -t "$REGISTRY/thor-pesquisador-frontend:$TAG" frontend
+docker push "$REGISTRY/thor-pesquisador-backend:$TAG"
+docker push "$REGISTRY/thor-pesquisador-frontend:$TAG"
 ```
 
-Ajuste antes de usar fora do desenvolvimento:
+Substitua os exemplos de registry/dominio pelos reais. A URL publica da API
+e incorporada ao JavaScript no build Next.js: mudar somente a variavel de
+runtime nao a corrige. Nao colocar segredos em `NEXT_PUBLIC_*` ou build args.
+API, migrations, import-worker, index-worker, export-worker e retencao usam
+a mesma imagem backend/tag. Configure imagePullSecret se o registry for privado.
+Execute os blocos seguintes na mesma sessao Bash para preservar as variaveis;
+nao continue apos uma falha. Segredos ficam em arquivos/cofre, nao no historico.
 
-- dominio das Routes;
-- `PUBLIC_APP_URL`;
-- `GOVBR_REDIRECT_URI`;
-- credenciais gov.br;
-- credenciais PostgreSQL/MongoDB/Meilisearch;
-- Secrets e ConfigMaps por ambiente.
+#### 4. Personalizar os manifests sem versionar segredos
 
-As imagens foram preparadas para rodar sem root e com UID arbitrario. O frontend standalone copia `public/` para preservar assets como `login_pesquisador.png`.
+Nao aplique `deploy/overlays/dev` em homologacao. A base atual possui exemplos
+inseguros de desenvolvimento, como PostgreSQL `thor/thor` e Mongo sem auth;
+o overlay homolog desliga atalhos, mas nao endurece essas dependencias sozinho.
+Prepare uma copia privada da estrutura existente, preservando caminhos relativos:
 
-O deploy inclui `index-worker`, Redis e Meilisearch para desenvolvimento/homologacao. Em producao, Redis e Meilisearch podem ser substituidos por servicos externos/gerenciados mantendo as mesmas variaveis.
+```bash
+umask 077
+mkdir -p .local
+cp -R deploy .local/deploy-homolog
+export OVERLAY=.local/deploy-homolog/overlays/homolog
+```
+
+Use diretorio novo a cada release, ou revise a copia existente antes de copiar.
+`.local/` e ignorado pelo Git; aplique protecao equivalente no workspace/runner.
+Nesta copia, remova de `base/kustomization.yaml` os recursos `postgres.yaml`,
+`mongo.yaml`, `redis.yaml` e `meilisearch.yaml` se usar os servicos institucionais
+provisionados no passo 1. Nao remova bancos/PVCs existentes do cluster; uma
+substituicao de banco exige migracao de dados planejada, nao apenas troca de URL.
+
+No `kustomization.yaml` do overlay privado, mantenha `resources: [../../base]`.
+Configure `namespace: thor-pesquisador-homolog` e substitua/complete os generators:
+
+```yaml
+configMapGenerator:
+  - name: thor-pesquisador-config
+    behavior: merge
+    envs: [config.env]
+secretGenerator:
+  - name: thor-pesquisador-secrets
+    behavior: merge
+    envs: [secrets.env]
+images:
+  - name: thor-pesquisador-backend
+    newName: registry.instituicao.gov.br/arquivologia/thor-pesquisador-backend
+    newTag: SUBSTITUIR_PELO_SHA_DA_RELEASE
+  - name: thor-pesquisador-frontend
+    newName: registry.instituicao.gov.br/arquivologia/thor-pesquisador-frontend
+    newTag: SUBSTITUIR_PELO_SHA_DA_RELEASE
+```
+
+O script de [configuracao inicial](docs/configuracao_inicial.md) gera estes
+arquivos com validacoes. Coloque-os ao lado desse kustomization e revise os
+enderecos institucionais. Se preparar manualmente, use os exemplos abaixo:
+
+```dotenv
+APP_ENV=homolog
+GOVBR_DEV_LOGIN=false
+DEV_ADMIN_ENABLED=false
+AUTH_DISABLED_FOR_TESTS=false
+SESSION_COOKIE_SECURE=true
+PUBLIC_APP_URL=https://pesquisador-hml.instituicao.gov.br
+CORS_ORIGINS=["https://pesquisador-hml.instituicao.gov.br"]
+GOVBR_REDIRECT_URI=https://pesquisador-api-hml.instituicao.gov.br/api/v1/auth/govbr/callback
+GOVBR_AUTHORIZE_URL=https://sso.staging.acesso.gov.br/authorize
+GOVBR_TOKEN_URL=https://sso.staging.acesso.gov.br/token
+GOVBR_JWKS_URL=https://sso.staging.acesso.gov.br/jwk
+MONGODB_DATABASE=thor_pesquisador_homolog
+REDIS_URL=redis://redis-hml.instituicao:6379/0
+MEILISEARCH_URL=https://busca-hml.instituicao
+S3_ENDPOINT_URL=https://s3-hml.instituicao
+S3_BUCKET=thor-pesquisador-homolog
+S3_REGION=us-east-1
+S3_FORCE_PATH_STYLE=true
+```
+
+Adapte protocolo/TLS/autenticacao dos servicos conforme o provisionamento.
+Se `REDIS_URL` incluir senha, mova-a para `secrets.env`, sem duplicar a chave.
+Crie `secrets.env` privado com as chaves abaixo e valores reais, nunca os exemplos:
+
+```dotenv
+DATABASE_URL=postgresql+psycopg://USUARIO:SENHA@HOST:5432/thor_pesquisador_homolog
+MONGODB_URL=mongodb://USUARIO:SENHA@HOST:27017/thor_pesquisador_homolog?authSource=admin
+MEILISEARCH_API_KEY=SUBSTITUIR_POR_CHAVE_DO_SERVICO
+GOVBR_CLIENT_ID=SUBSTITUIR_POR_CLIENT_ID_DE_HOMOLOGACAO
+GOVBR_CLIENT_SECRET=SUBSTITUIR_POR_SEGREDO_DE_HOMOLOGACAO
+APP_SESSION_SECRET=SUBSTITUIR_POR_VALOR_ALEATORIO_COM_PELO_MENOS_32_CARACTERES
+S3_ACCESS_KEY_ID=SUBSTITUIR_POR_CHAVE_S3
+S3_SECRET_ACCESS_KEY=SUBSTITUIR_POR_SEGREDO_S3
+```
+
+Percent-encode caracteres especiais de usuario/senha em URLs de conexao.
+Gere o segredo de sessao com fonte criptografica e guarde-o no cofre institucional;
+mantenha o mesmo valor entre API/workers e replicas. Troca-lo afeta sessoes
+existentes. Kubernetes Secret usa base64, nao criptografia por si so: proteja
+etcd, RBAC, arquivos e logs. Nao imprimir manifests expandidos em CI.
+Os manifests atuais injetam `GOVBR_CLIENT_SECRET` por Secret/env. O mecanismo
+alternativo `GOVBR_CLIENT_SECRET_FILE` exige montar um arquivo tambem em todos
+os consumidores de Settings; nao basta copiar o caminho do Docker local.
+
+Ainda na copia privada, ajuste `base/routes.yaml`: `spec.host` de cada Route
+para o host correspondente, TLS institucional e `insecureEdgeTerminationPolicy:
+Redirect`. Ajuste a URL de runtime em `base/frontend.yaml` para coincidir com
+o build. Confira os seletores da NetworkPolicy com a equipe do cluster.
+
+Para impedir execucao antes da migration, configure inicialmente
+`spec.replicas: 0` nos cinco Deployments backend/frontend/index-worker/
+export-worker/import-worker e `spec.suspend: true` no CronJob de retencao.
+Nao aplique a copia enquanto restarem placeholders ou dependencias de dev.
+
+#### 5. Aplicar configuracao e executar Alembic antes do rollout
+
+```bash
+export NS=thor-pesquisador-homolog
+oc whoami
+oc project "$NS"
+# Apenas na primeira instalacao, se o projeto ainda nao existir:
+# oc new-project "$NS"
+oc apply --dry-run=server -k "$OVERLAY" >/dev/null
+oc apply -k "$OVERLAY"
+```
+
+O dry-run valida recursos, nao testa credenciais, banco ou gov.br. Em atualizacao,
+confirme que os pods anteriores e jobs de retencao ja encerraram antes de migrar.
+Aplique os Secrets/ConfigMaps reais antes de criar o Job. Prepare uma copia de
+`deploy/jobs/migration.yaml` em `.local/migration-homolog.yaml`, substituindo
+`image` pela mesma imagem backend/tag e adicionando imagePullSecret se necessario.
+O Job tem `generateName`: use `create`, nao `apply`.
+
+```bash
+JOB=$(oc -n "$NS" create -f .local/migration-homolog.yaml -o name)
+oc -n "$NS" wait --for=condition=complete "$JOB" --timeout=660s
+oc -n "$NS" logs "$JOB"
+```
+
+Nao avance se o Job falhar. Ele deve executar `alembic upgrade head`; o head
+atual e `20261020_000018`. Nao executar migrations simultaneamente nas replicas.
+Nao registrar segredos/codigos de autorizacao nos logs ou evidencias.
+
+#### 6. Iniciar API, workers e frontend
+
+Depois da migration, altere `spec.replicas` para a quantidade aprovada (1 no
+ensaio inicial) nos cinco Deployments da copia privada e reaplique:
+
+```bash
+oc apply -k "$OVERLAY"
+for component in backend index-worker export-worker import-worker frontend; do
+  oc -n "$NS" rollout status "deployment/thor-pesquisador-$component" --timeout=300s || exit 1
+done
+oc -n "$NS" get pods
+oc -n "$NS" get routes
+curl --fail https://pesquisador-api-hml.instituicao.gov.br/api/v1/health
+curl --fail https://pesquisador-api-hml.instituicao.gov.br/api/v1/ready
+curl --fail https://pesquisador-api-hml.instituicao.gov.br/api/v1/auth/opcoes
+```
+
+Qualquer falha de rollout impede liberacao; investigue antes de continuar.
+Readiness deve retornar 200 e opcoes deve indicar `login_desenvolvimento:false`.
+Health sozinho nao verifica bancos nem migration. Valide filas, Meilisearch e
+upload/download S3 separadamente; readiness nao atesta todos esses servicos.
+Habilite a retencao apenas depois de revisar politicas, simulacoes e autorizacao
+de expurgo: mude `spec.suspend` para false na copia privada e reaplique.
+Sem essa decisao, mantenha o CronJob suspenso; nao habilite expurgo por conveniencia.
+
+#### 7. Provisionar o primeiro administrador e testar o login real
+
+Use `python -m app.scripts.configurar_sistema administrador --ambiente homolog`
+com `--operador` e `--confirmar`, apos as migrations. Os dados da pessoa real
+podem vir de formulario interativo, JSON privado ou Secret montado no Job
+`deploy/jobs/bootstrap-admin.yaml`; o [guia](docs/configuracao_inicial.md)
+detalha execucao antes de subir a API ou com `oc exec` apos o rollout.
+O script valida CPF/username/email e o perfil ADMIN, cria a concessao global
+MANUAL e registra auditoria na mesma transacao, sem emitir sessao. Nao reativa
+bloqueados, nao duplica contas e recusa outro administrador se ja houver um ativo.
+Depois do bootstrap, usar os CRUDs de Usuarios e Concessoes de acesso para os
+demais cadastros; nunca habilitar `DEV_ADMIN_ENABLED` ou dev-login em homologacao.
+
+Em janela anonima, abra o portal e confirme a seguinte sequencia:
+
+1. A landing e o catalogo mostram apenas instrumentos publicos publicados;
+   acessar registros sem sessao encaminha para login.
+2. A tela nao mostra Entrar em desenvolvimento; um POST em
+   `/api/v1/auth/dev-login` retorna 404, nao cria sessao.
+3. Entrar com GOV.BR abre o provedor de homologacao e retorna ao callback
+   cadastrado, sem aviso TLS. O cookie da API e Secure/HttpOnly/SameSite=Lax.
+4. CPF cadastrado e ativo vincula ao usuario; a area interna depende das
+   permissoes/concessoes. Visitante sem cadastro acessa somente a consulta
+   publicada, sem criar Usuario ou receber ADMIN automaticamente.
+5. Usuario inativo/excluido nao entra; usuario sem permissao nao acessa CRUDs.
+   O logout invalida a sessao do Thor; nao encerra a sessao global gov.br.
+6. Teste consulta, publicacao, imagem privada, indexacao, importacao/exportacao
+   e suas autorizacoes. Nao use somente uma conta ADMIN para validar restricoes.
+
+Registre versao, head, data, resultados e aprovacao sem tokens, segredo, CPF
+ou codigos OAuth. Os testes locais anteriores com provedor simulado nao
+substituem esse aceite: login gov.br real e rollout OKD ainda nao foram
+validados nesta entrega.
+
+#### 8. Diagnosticar problemas e preparar reversao
+
+| Sintoma | Conferir |
+| --- | --- |
+| Retorno/redirect recusado | Callback exato cadastrado, host HTTPS e ambiente da credencial. |
+| Autenticacao recusada/401 | Credencial e secret vigentes; emissor/audiencia/nonce e relogio; reiniciar login, sem reutilizar codigo. |
+| Erro 502 no callback | DNS/egress HTTPS, endpoints token/JWK e disponibilidade do provedor. |
+| Estado/nonce invalido | Login iniciado no mesmo navegador/site, cookies permitidos e fluxo nao expirado; iniciar novamente. |
+| Callback conclui, mas sessao nao persiste | Cookie no host da API, HTTPS, hosts same-site, CORS exato e URL de API compilada. |
+| Aplicacao nao inicia | Flags dev desligadas, segredo de sessao >=32 caracteres, Secret correto e readiness/head. |
+| Publicacao/importe nao aparece | Workers, jobs e projecoes de busca; nao publicar ou conceder acesso automaticamente. |
+
+Nao desligue TLS, validacao de token ou permissoes para contornar erro.
+Configure ingress/observabilidade para nao gravar query strings do callback,
+Authorization, cookies ou respostas do provedor; o proxy local nao configura
+automaticamente os logs do ingress institucional.
+Para reverter: mantenha a janela fechada, suspenda workers/retencao, confira
+compatibilidade de schema antes de voltar imagens e restaure backup somente
+com aprovacao e plano consistente PostgreSQL/Mongo/S3. Rollback de Deployment
+nao desfaz migrations; nao executar downgrade ou apagar historico automaticamente.
+
+Guias complementares: [gov.br local](docs/govbr_local.md),
+[operacao da fase 6](docs/fase_06_operacao.md) e
+[importacao assincrona](docs/importacao_assincrona.md).
+
+### Convencoes de deploy
 
 Convencao de nomes:
 

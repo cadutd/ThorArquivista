@@ -1,0 +1,51 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  generateName: thor-pesquisador-bootstrap-
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 300
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: bootstrap
+          image: thor-pesquisador-backend:latest
+          command: ["python", "-m", "app.scripts.configurar_sistema"]
+          args:
+            - administrador
+            - --ambiente
+            - $(APP_ENV)
+            - --arquivo
+            - /bootstrap/admin.json
+            - --operador
+            - $(BOOTSTRAP_OPERADOR)
+            - --confirmar
+          envFrom:
+            - configMapRef: {name: thor-pesquisador-config}
+            - secretRef: {name: thor-pesquisador-secrets}
+          env:
+            - name: BOOTSTRAP_OPERADOR
+              valueFrom:
+                secretKeyRef: {name: thor-pesquisador-bootstrap-admin, key: operador}
+          volumeMounts:
+            - {name: bootstrap, mountPath: /bootstrap, readOnly: true}
+          resources:
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 512Mi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+      volumes:
+        - name: bootstrap
+          secret:
+            secretName: thor-pesquisador-bootstrap-admin
+            defaultMode: 292 # 0444: supports arbitrary non-root UIDs.
+            items:
+              - {key: admin.json, path: admin.json}

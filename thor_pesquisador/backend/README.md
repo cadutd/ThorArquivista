@@ -1,5 +1,14 @@
 # Backend
 
+## Configuracao Inicial
+
+`python -m app.scripts.configurar_sistema` fornece `modelo`, `gerar-config` e
+`administrador` para dev/homolog/prod. Geracao nao precisa carregar Settings
+ou conectar ao banco. Bootstrap exige migrations em head, ambiente confirmado,
+operador, conta valida e perfil ADMIN ativo; concessao e auditoria sao atomicas.
+Nao fabrica sessao, reativa contas ou restaura perfis. `--local` e exclusivo de dev.
+[Guia de configuracao e bootstrap](../docs/configuracao_inicial.md).
+
 ## Gov.br Local
 
 GOVBR_CLIENT_SECRET_FILE le o segredo montado em /run/secrets e tem prioridade
