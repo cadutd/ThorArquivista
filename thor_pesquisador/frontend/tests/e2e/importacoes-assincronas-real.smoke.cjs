@@ -82,7 +82,25 @@ assert.ok(process.env.THOR_E2E_ISOLATED === "true" && base === "http://localhost
     await json(await context.request.post(prefix + "/campos", { data: {
       nome: "Nome completo", chave: "titulo", tipo: "TEXTO_CURTO", obrigatorio: true
     } }));
+    await json(await context.request.post(prefix + "/campos", { data: {
+      nome: "Campo temporario", chave: "campo_temporario", tipo: "TEXTO_CURTO", obrigatorio: false
+    } }));
     const csv = await upload("pessoas.csv", "Nome;Idade\nAna;0\nMaria;2,5");
+    await page.getByRole("button", { name: "Editar campo Campo temporario", exact: true }).click();
+    const fieldDialog = page.getByRole("dialog", { name: "Editar campo Campo temporario", exact: true });
+    await fieldDialog.getByLabel("Nome *", { exact: true }).fill("Campo temporario editado");
+    await fieldDialog.getByLabel("Tipo *", { exact: true }).selectOption("TEXTO_LONGO");
+    await fieldDialog.getByRole("button", { name: "Salvar alteracoes", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Excluir campo Campo temporario editado", exact: true })).toBeVisible();
+    const editedSchema = await json(await context.request.get(prefix + "/schema"));
+    const editedField = editedSchema.campos.find(field => field.chave === "campo_temporario");
+    assert.equal(editedField.nome, "Campo temporario editado");
+    assert.equal(editedField.tipo, "TEXTO_LONGO");
+    page.once("dialog", dialog => dialog.accept());
+    await page.getByRole("button", { name: "Excluir campo Campo temporario editado", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Editar campo Campo temporario editado", exact: true })).toHaveCount(0);
+    const deletedSchema = await json(await context.request.get(prefix + "/schema"));
+    assert.ok(!deletedSchema.campos.some(field => field.chave === "campo_temporario"));
     await page.getByLabel("Associar Nome", { exact: true }).selectOption("titulo");
     await page.getByLabel("Associar Idade", { exact: true }).selectOption("__novo");
     await expect(page.getByLabel("Tipo do campo Idade", { exact: true })).toHaveValue("NUMERO");

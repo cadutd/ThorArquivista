@@ -8,6 +8,7 @@ import { Permission } from "./permission";
 import { InstrumentoLookup } from "./instrumento-lookup";
 import { ApiError,request } from "@/lib/api";
 import { categories,Policy } from "@/lib/conformidade";
+import { criarUuid } from "@/lib/uuid";
 
 const empty:Policy={id:"",nome:"",categoria:"LOG_TECNICO",dias:30,instrumento_id:null,ativo:true,permitir_expurgo:false,bloqueada:false};
 
@@ -61,7 +62,7 @@ export function ExportacaoEditor() {
   const [format,setFormat]=useState("JSON"),[scope,setScope]=useState("ADMINISTRATIVO");
   const [saving,setSaving]=useState(false),[error,setError]=useState("");
   const operation=useRef("");
-  useEffect(()=>{operation.current=crypto.randomUUID();},[]);
+  useEffect(()=>{operation.current=criarUuid();},[]);
   async function save(){
     if(saving)return;
     if(!instrument){setError("Selecione um instrumento.");return;}
@@ -78,10 +79,10 @@ export function ExportacaoEditor() {
     <section className="panel stack">
       <form className="stack" onSubmit={e=>{e.preventDefault();save();}}>
         <fieldset className="stack conformidade-fields" disabled={saving}>
-          <InstrumentoLookup required value={instrument} label={name} acao="exportacoes_incluir" onChange={(value,label)=>{setInstrument(value);setName(label);operation.current=crypto.randomUUID();}}/>
+          <InstrumentoLookup required value={instrument} label={name} acao="exportacoes_incluir" onChange={(value,label)=>{setInstrument(value);setName(label);operation.current=criarUuid();}}/>
           <div className="grid">
-            <label className="field"><span>Escopo <span className="administracao-required">*</span></span><select className="select" required value={scope} onChange={e=>{setScope(e.target.value);if(e.target.value!=="PUBLICADO"&&format==="PACOTE")setFormat("JSON");operation.current=crypto.randomUUID();}}><option value="ADMINISTRATIVO">Dados administrativos</option><option value="PUBLICADO">Publicacao vigente</option></select></label>
-            <label className="field"><span>Formato <span className="administracao-required">*</span></span><select className="select" required value={format} onChange={e=>{setFormat(e.target.value);operation.current=crypto.randomUUID();}}><option value="JSON">JSON</option><option value="CSV">CSV</option>{scope==="PUBLICADO"&&<option value="PACOTE">Pacote de publicacao</option>}</select></label>
+            <label className="field"><span>Escopo <span className="administracao-required">*</span></span><select className="select" required value={scope} onChange={e=>{setScope(e.target.value);if(e.target.value!=="PUBLICADO"&&format==="PACOTE")setFormat("JSON");operation.current=criarUuid();}}><option value="ADMINISTRATIVO">Dados administrativos</option><option value="PUBLICADO">Publicacao vigente</option></select></label>
+            <label className="field"><span>Formato <span className="administracao-required">*</span></span><select className="select" required value={format} onChange={e=>{setFormat(e.target.value);operation.current=criarUuid();}}><option value="JSON">JSON</option><option value="CSV">CSV</option>{scope==="PUBLICADO"&&<option value="PACOTE">Pacote de publicacao</option>}</select></label>
           </div>
         </fieldset>{error&&<p className="error" role="alert">{error}</p>}<div className="actions"><button className="button" disabled={saving}><Save size={16}/>{saving?"Solicitando...":"Solicitar exportacao"}</button></div>
       </form>

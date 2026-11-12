@@ -6,6 +6,9 @@ assert.ok(base && api && process.env.THOR_E2E_ISOLATED === "true", "Use somente 
   const browser = await chromium.launch({ headless: true }), context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const page = await context.newPage(), errors = [];
   let iid;
+  await context.addInitScript(() => {
+    Object.defineProperty(Crypto.prototype, "randomUUID", { configurable: true, value: undefined });
+  });
   page.on("pageerror", error => errors.push(error.message));
   async function json(response) { assert.ok(response.ok(), response.status() + ": " + await response.text()); return response.json(); }
   async function upload(name, content) {
@@ -36,6 +39,7 @@ assert.ok(base && api && process.env.THOR_E2E_ISOLATED === "true", "Use somente 
     await page.getByRole("link", { name: "Importacoes", exact: true }).click();
     await page.getByRole("link", { name: "Importacao sincrona", exact: true }).click();
     await expect(page).toHaveURL(base + listPath + "/importar");
+    assert.equal(await page.evaluate(() => typeof crypto.randomUUID), "undefined");
     await upload("pessoas.csv", "Nome;Idade;Chegada;Confirmado;Ignorada\nAna;0;31/12/1900;Sim;SEGREDO\nMaria;2,5;01/01/1901;Não;OUTRO");
     await page.getByLabel("Associar Nome", { exact: true }).selectOption("titulo");
     await page.getByRole("button", { name: "Criar campos nao associados", exact: true }).click();

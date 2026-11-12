@@ -6,7 +6,7 @@ test("acoes editoriais tem operacao idempotente, versao, justificativa e permiss
   const panel = read("components/editorial-panel.tsx");
   for(const action of ["enviar-revisao", "aprovar", "devolver", "publicar", "arquivar", "reabrir"])
     assert.ok(panel.includes(action));
-  assert.match(panel, /operacao_id: crypto.randomUUID/);
+  assert.match(panel, /operacao_id: criarUuid\(\)/);
   assert.match(panel, /versao, justificativa/);
   assert.match(panel, /permissions.includes/);
   assert.match(panel, /historico\?limit=20&offset=/);

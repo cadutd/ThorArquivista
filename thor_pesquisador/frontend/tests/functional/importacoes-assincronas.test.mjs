@@ -19,6 +19,8 @@ const hook = registerHooks({
     if (context.parentURL?.includes("/lib/importacao-upload.ts")) {
       if (specifier === "./api") return { url: transport, shortCircuit: true };
       if (specifier === "./importacoes-assincronas") return { url: uploadTransport, shortCircuit: true };
+      if (specifier === "./uuid")
+        return { url: new URL("uuid.ts", context.parentURL).href, shortCircuit: true };
     }
     return next(specifier, context);
   },

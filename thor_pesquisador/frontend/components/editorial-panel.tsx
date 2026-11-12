@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Archive, Check, RotateCcw, Send, Upload } from "lucide-react";
 import { request } from "@/lib/api";
+import { criarUuid } from "@/lib/uuid";
 
 type Event = { id: string; data: string; agente: string; acao: string; estado_novo: string; justificativa?: string };
 const actions = [
@@ -53,7 +54,7 @@ export function EditorialPanel({ instrumentoId, registroId, status, versao, onCh
     setBusy(true); setError("");
     try {
       await request(path + "/editorial/" + action, { method: "POST", body: JSON.stringify({
-        operacao_id: crypto.randomUUID(), versao, justificativa: comment.trim() || null,
+        operacao_id: criarUuid(), versao, justificativa: comment.trim() || null,
       }) });
       setComment(""); setOffset(0); setRefresh(v => v + 1); onChange();
     } catch (e) { setError(e instanceof Error ? e.message : "Falha na operacao."); }

@@ -8,6 +8,7 @@ import { AdministracaoDetails } from "./administracao-details";
 import { downloadFile,request } from "@/lib/api";
 import { ExportJob,Policy,RetentionJob } from "@/lib/conformidade";
 import { Kind,Row,config } from "@/lib/conformidade-view";
+import { criarUuid } from "@/lib/uuid";
 
 export function ConformidadeActions({tipo,row,onChanged,detail=false}:{tipo:Kind;row:Row;onChanged?:()=>void;detail?:boolean}) {
   const router=useRouter();
@@ -20,7 +21,7 @@ export function ConformidadeActions({tipo,row,onChanged,detail=false}:{tipo:Kind
       if(action==="download") await downloadFile("/exportacoes/"+row.id+"/download","exportacao-"+row.id+((row as ExportJob).formato==="CSV"?".csv":".json"));
       else if(action==="simular"||action==="executar") {
         const job=await request<RetentionJob>("/retencao/politicas/"+row.id+"/execucoes",{
-          method:"POST",body:JSON.stringify({operacao_id:crypto.randomUUID(),simulacao:action==="simular"})});
+          method:"POST",body:JSON.stringify({operacao_id:criarUuid(),simulacao:action==="simular"})});
         setConfirmation(undefined);router.push("/retencao/execucoes/"+job.id);
         return;
       }
