@@ -3,7 +3,9 @@ import Link from "next/link";
 import { ArrowLeft, Check, FileUp, Plus, RotateCcw, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { usePermission } from "./permission";
+import { ImportacaoCamposSchema } from "./importacao-campos-schema";
 import { enviarImportacao, listarImportacoes } from "@/lib/importacoes";
+import { criarUuid } from "@/lib/uuid";
 import type { AnaliseImportacao, ConfiguracaoImportacao, Importacao, Mapeamento, NovoCampo, RelatorioImportacao } from "@/lib/importacoes";
 import type { TipoCampo } from "@/types/domain";
 
@@ -13,6 +15,7 @@ const nomesTipos: Record<TipoCampo, string> = { TEXTO_CURTO: "Texto curto", TEXT
 
 export function ImportacaoRegistros({ instrumentoId: id }: { instrumentoId: string }) {
   const canImport = usePermission("registros_incluir", id), canCreateFields = usePermission("campos_incluir", id);
+  const canEditFields = usePermission("campos_editar", id), canDeleteFields = usePermission("campos_excluir", id);
   const [file, setFile] = useState<File>();
   const [analysis, setAnalysis] = useState<AnaliseImportacao>();
   const [mappings, setMappings] = useState<Mapeamento[]>([]);
@@ -43,7 +46,7 @@ export function ImportacaoRegistros({ instrumentoId: id }: { instrumentoId: stri
     setBusy(true); setError(""); setReport(undefined); setResult(undefined);
     try {
       const value = await enviarImportacao<AnaliseImportacao>(id, "analisar", file);
-      setAnalysis(value); setOperation(resume?.id || crypto.randomUUID());
+      setAnalysis(value); setOperation(resume?.id || criarUuid());
       setMappings(resume ? resume.configuracao.mapeamentos : value.colunas.map(column => {
         const existing = value.campos.find(field => field.chave === column.chave_sugerida ||
           field.nome.localeCompare(column.origem, "pt-BR", { sensitivity: "base" }) === 0);
@@ -60,6 +63,13 @@ export function ImportacaoRegistros({ instrumentoId: id }: { instrumentoId: stri
   function change(index: number, value: Mapeamento) {
     setMappings(previous => previous.map((mapping, position) => position === index ? value : mapping));
     setReport(undefined); setResult(undefined);
+  }
+  function schemaChanged(schema: { schema_version: number; campos: AnaliseImportacao["campos"] },
+                        previous: AnaliseImportacao["campos"][number], updated?: AnaliseImportacao["campos"][number]) {
+    setAnalysis(current => current ? { ...current, schema_version: schema.schema_version, campos: schema.campos } : current);
+    setMappings(current => current.map(mapping => mapping.destino === previous.chave
+      ? { ...mapping, destino: updated?.chave || "" } : mapping));
+    setReport(undefined); setResult(undefined); setError("");
   }
   function configuration(): ConfiguracaoImportacao {
     return { operacao_id: operation, schema_version: resume?.configuracao.schema_version || analysis!.schema_version,
@@ -98,6 +108,9 @@ export function ImportacaoRegistros({ instrumentoId: id }: { instrumentoId: stri
       <Link className="button secondary" href={base}><ArrowLeft size={16}/>Voltar</Link></div>
     <ol className="importacao-steps">{["Arquivo", "Associacao", "Conferencia", "Resultado"].map((label, index) =>
       <li key={label} aria-current={step === index ? "step" : undefined}>{index + 1}. {label}</li>)}</ol>
+      {analysis && !result && <ImportacaoCamposSchema instrumentoId={id} campos={analysis.campos}
+        canEdit={canEditFields} canDelete={canDeleteFields} disabled={busy || !!resume}
+        onBusyChange={setBusy} onSchemaChange={schemaChanged}/>}
     {!analysis && <form className="panel stack" onSubmit={analyze}>
       {resume && <div className="row"><p>Retomar importacao: {resume.processados} de {resume.total} registros</p>
         <button className="button secondary" type="button" onClick={reset} disabled={busy}><RotateCcw size={16}/>Nova importacao</button></div>}

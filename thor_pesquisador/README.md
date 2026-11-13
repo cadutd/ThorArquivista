@@ -1,5 +1,14 @@
 # Thor Pesquisador
 
+O Thor Pesquisador e uma plataforma de pesquisa em diversos acervos, organizada
+por instrumentos configuraveis para representar colecoes e conjuntos
+documentais. Oferece painel administrativo para gestao de usuarios, permissoes
+e instrumentos; cadastro de campos e registros com metadados; importacao de
+dados; fluxo de revisao editorial e publicacao versionada; busca interna e
+portal publico para consulta do conteudo publicado. A aplicacao combina
+PostgreSQL e MongoDB, usa um indice de busca derivado e pode ser executada com
+Docker Compose ou implantada em Kubernetes/OKD.
+
 Para instalar fora do computador local, siga o
 [passo a passo de homologacao e gov.br](#deploy-em-homologacao-e-configuracao-do-govbr).
 O guia abaixo usa os manifests OKD existentes; nao publica automaticamente
@@ -215,8 +224,17 @@ Meilisearch guarda apenas uma projecao de busca, eventualmente consistente e rec
 
 ```bash
 cd thor_pesquisador
-docker compose up --build
+docker compose --profile storage up -d --build
+docker compose exec backend python -m app.scripts.init_storage
 ```
+
+Importacao assincrona e imagens precisam do armazenamento S3. No ambiente
+local, o perfil `storage` inicia o MinIO e `init_storage` cria o bucket privado
+de forma idempotente.
+
+O frontend e entregue como uma imagem com o build do Next.js. Depois de alterar
+o codigo frontend, atualize o container com `docker compose up -d --build frontend`
+para nao continuar usando um build anterior.
 
 URLs:
 

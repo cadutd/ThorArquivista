@@ -9,8 +9,8 @@ services:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-thor-minio}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-thor-minio-dev-only}
     ports:
-      - "127.0.0.1:9000:9000"
-      - "127.0.0.1:9001:9001"
+      - "0.0.0.0:9000:9000"
+      - "0.0.0.0:9001:9001"
     volumes:
       - thor_pesquisador_minio:/data
 
@@ -22,7 +22,7 @@ services:
       POSTGRES_USER: thor
       POSTGRES_PASSWORD: thor
     ports:
-      - "127.0.0.1:5434:5432"
+      - "0.0.0.0:5434:5432"
     volumes:
       - thor_pesquisador_postgres:/var/lib/postgresql/data
     healthcheck:
@@ -35,7 +35,7 @@ services:
     container_name: thor_pesquisador_mongo
     image: mongo:7
     ports:
-      - "127.0.0.1:27018:27017"
+      - "0.0.0.0:27018:27017"
     volumes:
       - thor_pesquisador_mongo:/data/db
 
@@ -43,7 +43,7 @@ services:
     container_name: thor_pesquisador_redis
     image: redis:7-alpine
     ports:
-      - "127.0.0.1:6380:6379"
+      - "0.0.0.0:6380:6379"
 
   meilisearch:
     container_name: thor_pesquisador_meilisearch
@@ -52,7 +52,7 @@ services:
       MEILI_ENV: development
       MEILI_MASTER_KEY: dev-master-key-123
     ports:
-      - "127.0.0.1:7700:7700"
+      - "0.0.0.0:7700:7700"
     volumes:
       - thor_pesquisador_meili:/meili_data
 
@@ -74,9 +74,9 @@ services:
       database_url: postgresql+psycopg://thor:thor@postgres:5432/thor_pesquisador
       mongodb_url: mongodb://mongo:27017/thor_pesquisador
       mongodb_database: thor_pesquisador
-      cors_origins: ${CORS_ORIGINS:-["http://localhost:3000"]}
-      public_app_url: ${PUBLIC_APP_URL:-http://localhost:3000}
-      govbr_redirect_uri: ${GOVBR_REDIRECT_URI:-http://localhost:8000/api/v1/auth/govbr/callback}
+      cors_origins: ${CORS_ORIGINS:-["http://10.6.40.69","http://10.6.40.69:3000"]}
+      public_app_url: ${PUBLIC_APP_URL:-http://10.6.40.69:3000}
+      govbr_redirect_uri: ${GOVBR_REDIRECT_URI:-http://10.6.40.69:8000/api/v1/auth/govbr/callback}
       govbr_authorize_url: ${GOVBR_AUTHORIZE_URL:-https://sso.staging.acesso.gov.br/authorize}
       govbr_token_url: ${GOVBR_TOKEN_URL:-https://sso.staging.acesso.gov.br/token}
       govbr_jwks_url: ${GOVBR_JWKS_URL:-https://sso.staging.acesso.gov.br/jwk}
@@ -106,7 +106,7 @@ services:
       upload_max_bytes: "20971520"
       upload_allowed_mime_types: '["image/jpeg","image/png","image/tiff","image/webp"]'
     ports:
-      - "127.0.0.1:8000:8000"
+      - "0.0.0.0:8000:8000"
     command: >
       sh -c "
       alembic -c alembic.ini upgrade head &&
@@ -172,13 +172,13 @@ services:
     build:
       context: ./frontend
       args:
-        NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api/v1
+        NEXT_PUBLIC_API_BASE_URL: http://10.6.40.69:8000/api/v1
     depends_on:
       - backend
     environment:
-      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000/api/v1
+      NEXT_PUBLIC_API_BASE_URL: http://10.6.40.69:8000/api/v1
     ports:
-      - "127.0.0.1:3000:3000"
+      - "0.0.0.0:3000:3000"
 
 volumes:
   thor_pesquisador_minio:

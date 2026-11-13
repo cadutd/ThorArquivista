@@ -58,7 +58,7 @@ def _url(value, schemes, publica=False):
             raise ValueError
         return parsed
     except ValueError:
-        raise ValueError("URL invalida; confira protocolo, host e caminho.") from None
+        raise ValueError(f"URL invalida; confira protocolo, host e caminho. URL:{value}") from None
 
 
 def preparar_config(ambiente, entrada):

@@ -1,4 +1,5 @@
 import { ApiError } from "./api";
+import { criarUuid } from "./uuid";
 import { acionarImportacao, CHUNK_BYTES, MAX_CHUNK_BYTES, criarImportacao, enviarParteImportacao, obterImportacao } from "./importacoes-assincronas";
 import type { JobImportacao } from "./importacoes-assincronas";
 
@@ -25,7 +26,7 @@ export async function uploadImportacao({ iid, file, storage, signal, chunkBytes 
   if (jobId && saved?.jobId !== jobId) saved = undefined;
   const size = Math.floor(Math.min(MAX_CHUNK_BYTES, chunkBytes));
   if (!Number.isFinite(size) || size < 1) throw new Error("Limite de bloco invalido.");
-  saved ??= { operacao_id: crypto.randomUUID(), ...(jobId ? { jobId } : {}), chunkBytes: size };
+  saved ??= { operacao_id: criarUuid(), ...(jobId ? { jobId } : {}), chunkBytes: size };
   if (saved.chunkBytes > size) throw new Error("O limite de bloco mudou. Consulte a importacao antes de retomar o envio.");
   salvar(storage, key, saved);
   let job: JobImportacao;

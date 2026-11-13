@@ -11,3 +11,4 @@ test-reports/
 !.env.example
 .secrets/
 .local/
+cookies.txt

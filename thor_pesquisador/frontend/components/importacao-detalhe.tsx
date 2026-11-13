@@ -3,11 +3,14 @@ import Link from "next/link";
 import { ArrowLeft, Check, Download, RefreshCw, RotateCcw, Search, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePermission } from "./permission";
+import { ImportacaoCamposSchema } from "./importacao-campos-schema";
 import { Fact, ImportacaoEnvio, ImportacaoProgresso, tamanhoArquivo } from "./importacao-envio";
 import { displayImportacao, ImportacaoMapeamento, sugerirMapeamentos } from "./importacao-mapeamento";
 import { acionarImportacao, baixarErrosImportacao, importacaoAtiva, obterImportacao, podeCancelarImportacao, podeRetomarImportacao } from "@/lib/importacoes-assincronas";
+import { getSchema } from "@/lib/api";
 import type { AcaoImportacao, JobImportacao } from "@/lib/importacoes-assincronas";
 import type { ConfiguracaoImportacao, Mapeamento } from "@/lib/importacoes";
+import type { InstrumentoCampo } from "@/types/domain";
 
 function useImportacao(id: string, jobId: string, enabled: boolean, suspended: boolean) {
   const [job, setJob] = useState<JobImportacao>(), [error, setError] = useState("");
@@ -47,9 +50,12 @@ function useImportacao(id: string, jobId: string, enabled: boolean, suspended: b
 }
 export function ImportacaoDetalhe({ instrumentoId: id, jobId }: { instrumentoId: string; jobId: string }) {
   const canImport = usePermission("registros_incluir", id), canCreateFields = usePermission("campos_incluir", id);
+  const canEditFields = usePermission("campos_editar", id), canDeleteFields = usePermission("campos_excluir", id);
   const [busy, setBusy] = useState(false), [uploadBusy, setUploadBusy] = useState(false), [error, setError] = useState("");
   const { job, setJob, error: loadError, refresh } = useImportacao(id, jobId, canImport, busy || uploadBusy);
   const [mappings, setMappings] = useState<Mapeamento[]>([]), [dirty, setDirty] = useState(false);
+  const [schemaOverride, setSchemaOverride] = useState<{ schema_version: number; campos: InstrumentoCampo[] }>();
+  const [schemaReady, setSchemaReady] = useState(false), [schemaRevision, setSchemaRevision] = useState(0);
   const initialized = useRef(false), actionController = useRef<AbortController | null>(null);
   const base = "/instrumentos/" + id + "/registros/importacoes";
   useEffect(() => () => actionController.current?.abort(), []);
@@ -59,9 +65,41 @@ export function ImportacaoDetalhe({ instrumentoId: id, jobId }: { instrumentoId:
       initialized.current = true;
     }
   }, [job]);
+  useEffect(() => {
+    if (!job?.analise || !["AGUARDANDO_MAPA", "ERROS_VALIDACAO", "AGUARDANDO_CONFIRMACAO"].includes(job.status)) {
+      setSchemaReady(false);
+      return;
+    }
+    let live = true;
+    setSchemaReady(false);
+    getSchema(id).then(schema => {
+      if (live) {
+        const analyzedFields = job.analise!.campos;
+        const expectedVersion = job.configuracao?.schema_version ?? job.analise!.schema_version;
+        setMappings(current => current.map(mapping => {
+          if (!mapping.destino || mapping.novo) return mapping;
+          const analyzedField = analyzedFields.find(field => field.chave === mapping.destino);
+          const currentField = analyzedField && schema.campos.find(field => field.id === analyzedField.id);
+          return analyzedField ? { ...mapping, destino: currentField?.chave || "" } : mapping;
+        }));
+        if (schema.schema_version !== expectedVersion) {
+          setDirty(true);
+          setError("O schema do instrumento mudou. Revise as associacoes e valide novamente.");
+        }
+        setSchemaOverride({ schema_version: schema.schema_version, campos: schema.campos });
+        setSchemaReady(true);
+      }
+    }).catch(err => {
+      if (live) setError(err instanceof Error ? err.message : "Falha ao carregar campos do instrumento.");
+    });
+    return () => { live = false; };
+  }, [id, job?.id, job?.status, job?.analise?.schema_version, schemaRevision]);
+  const analysis = job?.analise && schemaOverride
+    ? { ...job.analise, schema_version: schemaOverride.schema_version, campos: schemaOverride.campos }
+    : job?.analise;
   const hasNewFields = mappings.some(item => item.novo);
   const confirmationNeedsFields = job?.configuracao?.mapeamentos.some(item => item.novo) || false;
-  const canMutate = canImport && !busy && !uploadBusy;
+  const canMutate = canImport && !busy && !uploadBusy && (!job?.analise || schemaReady);
   async function action(acao: AcaoImportacao, configuration?: ConfiguracaoImportacao) {
     if (!job || !canMutate) return;
     if (((acao === "validar" && hasNewFields) || (acao === "confirmar" && confirmationNeedsFields)) && !canCreateFields) {
@@ -81,13 +119,21 @@ export function ImportacaoDetalhe({ instrumentoId: id, jobId }: { instrumentoId:
   }
   function validar(event: React.FormEvent) {
     event.preventDefault();
-    if (!job?.analise) return;
+    if (!job || !analysis) return;
     const selected = mappings.filter(item => item.destino || item.novo);
     if (!selected.length) { setError("Associe ao menos uma coluna."); return; }
     const keys = selected.map(item => item.destino || item.novo!.chave);
     if (new Set(keys).size !== keys.length) { setError("Associe cada campo a apenas uma coluna."); return; }
     void action("validar", { operacao_id: job.configuracao?.operacao_id || job.id,
-      schema_version: job.analise.schema_version, mapeamentos: selected });
+      schema_version: analysis.schema_version, mapeamentos: selected });
+  }
+  function schemaChanged(schema: { schema_version: number; campos: InstrumentoCampo[] },
+                        previous: InstrumentoCampo, updated?: InstrumentoCampo) {
+    setSchemaOverride({ schema_version: schema.schema_version, campos: schema.campos });
+    setSchemaReady(true);
+    setMappings(current => current.map(mapping => mapping.destino === previous.chave
+      ? { ...mapping, destino: updated?.chave || "" } : mapping));
+    setDirty(true); setError("");
   }
   async function download() {
     if (!canMutate) return;
@@ -103,7 +149,8 @@ export function ImportacaoDetalhe({ instrumentoId: id, jobId }: { instrumentoId:
   return <div className="stack">
     <div className="row"><div className="page-heading"><h1>Importacao</h1><p className="muted break-text">{job?.nome_arquivo}</p></div>
       <div className="actions"><Link className="button secondary" href={base}><ArrowLeft size={16}/>Voltar</Link>
-        <button className="icon-button" title="Atualizar importacao" aria-label="Atualizar importacao" disabled={!canMutate} onClick={refresh}><RefreshCw size={16}/></button>
+        <button className="icon-button" title="Atualizar importacao e campos" aria-label="Atualizar importacao e campos"
+          disabled={!canImport || busy || uploadBusy} onClick={() => { refresh(); setSchemaRevision(value => value + 1); }}><RefreshCw size={16}/></button>
         {job && podeRetomarImportacao(job.status) && <button className="icon-button" title="Retomar importacao" aria-label="Retomar importacao"
           disabled={!canMutate} onClick={() => action("retomar")}><RotateCcw size={16}/></button>}
         {job && podeCancelarImportacao(job.status) && <button className="icon-button danger" title="Cancelar importacao" aria-label="Cancelar importacao"
@@ -127,8 +174,12 @@ export function ImportacaoDetalhe({ instrumentoId: id, jobId }: { instrumentoId:
         {job.status === "CONCLUIDA" && <div className="actions"><Link className="button" href={"/instrumentos/" + id + "/registros"}><Check size={16}/>Ver registros</Link></div>}
       </section>
       {job.status === "RECEBENDO" && <ImportacaoEnvio instrumentoId={id} job={job} onBusy={setUploadBusy} onDone={value => { setJob(value); refresh(); }}/>}
-      {editable && job.analise && <form className="panel stack" onSubmit={validar}>
-        <ImportacaoMapeamento analise={job.analise} value={mappings} canCreateFields={canCreateFields} disabled={!canMutate}
+      {editable && job.analise && !schemaReady && <p role="status">Atualizando campos do instrumento...</p>}
+      {editable && analysis && <ImportacaoCamposSchema instrumentoId={id} campos={analysis.campos}
+        canEdit={canEditFields} canDelete={canDeleteFields} disabled={!canMutate}
+        onBusyChange={setBusy} onSchemaChange={schemaChanged}/>}
+      {editable && analysis && <form className="panel stack" onSubmit={validar}>
+        <ImportacaoMapeamento analise={analysis} value={mappings} canCreateFields={canCreateFields} disabled={!canMutate}
           onChange={value => { setMappings(value); setDirty(true); setError(""); }}/>
         <div className="actions"><button className="button" type="submit" disabled={!canMutate || (hasNewFields && !canCreateFields)}>
           <Search size={16}/>{busy ? "Aguarde..." : "Validar importacao"}</button></div>
