@@ -332,15 +332,61 @@ Campos e ações principais:
 - **Verificar integridade**: enfileira `BACKUP_VERIFY`, que encontra os manifestos por origem e identifica seus algoritmos automaticamente.
 - **Histórico**: lista checkpoints, relatórios, manifestos atuais e históricos.
 
-Funcionamento do incremental:
+#### Backup incremental a partir da segunda execução
 
-- O campo `name` de cada origem define sua pasta no destino, após normalização dos caracteres do nome.
-- Arquivos novos e alterados são copiados para `<destino>/<origem>/`, preservando subpastas e conferindo o hash após a cópia.
-- A versão anterior de um arquivo alterado é movida para `thor-backup/versoes/<execucao>/<origem>/`.
-- Arquivos removidos da origem permanecem no destino e no respectivo manifesto, com a ocorrência registrada no relatório.
-- Arquivos iguais são identificados comparando o hash da origem com o manifesto do destino. Seu conteúdo no destino não é verificado novamente durante o incremental; use **Verificar integridade** para detectar ausência ou corrupção.
-- Cada execução concluída guarda cópias dos manifestos em `thor-backup/historico/<execucao>/<origem>/`, além de `alteracoes.json` e relatório TXT.
-- Os manifestos são gravados em arquivo temporário e substituídos após a escrita.
+Na primeira execução para um destino vazio, a função copia todos os arquivos elegíveis das origens e cria seus manifestos. O campo `name` de cada origem define sua pasta no destino, após normalização dos caracteres do nome.
+
+A partir da segunda execução, basta executar novamente o plano usando o mesmo destino. A função recalcula os hashes de todos os arquivos elegíveis das origens e os compara com os manifestos atuais em `thor-backup/manifests/<origem>/manifest-<algoritmo>.txt`. Somente os arquivos novos ou alterados são copiados. **Executar** inicia esse novo incremental; **Retomar** serve para continuar uma execução interrompida.
+
+| Situação | Comportamento |
+|---|---|
+| Arquivo novo | Copia para `<destino>/<origem>/`, confere o hash da cópia e adiciona a entrada ao manifesto da origem. |
+| Arquivo alterado | Move a versão anterior para `thor-backup/versoes/<execucao>/<origem>/`, copia o arquivo completo atualizado, confere seu hash e atualiza a entrada no manifesto. |
+| Arquivo igual ao manifesto | Não copia novamente e mantém a entrada no manifesto. |
+| Arquivo removido da origem | Mantém o arquivo no destino e sua entrada no manifesto; registra a ausência no relatório. |
+
+A cópia é incremental por arquivo, mas a análise lê toda a origem para recalcular os hashes a cada execução. O conteúdo dos arquivos classificados como iguais não é verificado novamente no destino durante o incremental. Use **Verificar integridade** para detectar ausência ou corrupção desses arquivos no backup.
+
+#### Atualização dos manifestos
+
+Cada origem possui um manifesto independente, com caminhos relativos à sua pasta no destino. Depois de copiar e conferir o hash de um arquivo novo ou alterado, a função grava os manifestos atuais com a nova entrada ou o hash atualizado, mantendo os demais registros. A gravação usa um arquivo temporário, substituído após a escrita.
+
+Por exemplo, ao adicionar `D:/Acervo/Documentos/contratos/novo.pdf` antes da segunda execução, o incremental cria:
+
+```text
+E:/Backup/documentos/contratos/novo.pdf
+```
+
+E acrescenta ao arquivo `E:/Backup/thor-backup/manifests/documentos/manifest-sha256.txt` uma entrada neste formato:
+
+```text
+<hash_sha256>  contratos/novo.pdf
+```
+
+Se esse arquivo for alterado em uma execução posterior, a mesma entrada passa a registrar o novo hash. As entradas de arquivos iguais ou removidos da origem são mantidas. Ao concluir cada execução, uma cópia dos manifestos atualizados é salva em `thor-backup/historico/<execucao>/<origem>/`, junto ao registro de diferenças em `historico/<execucao>/alteracoes.json`. O relatório TXT fica em `thor-backup/relatorios/`.
+
+#### Onde ficam as versões anteriores
+
+Antes de substituir um arquivo alterado, a função move sua versão atual no destino para:
+
+```text
+<destino>/thor-backup/versoes/<execucao>/<origem>/<caminho_relativo_do_arquivo>
+```
+
+Por exemplo, se `documentos/contratos/contrato.pdf` mudar, a organização será:
+
+```text
+E:/Backup/
+  documentos/contratos/contrato.pdf                         ← versão atual
+  thor-backup/
+    versoes/<execucao>/documentos/contratos/contrato.pdf     ← versão anterior
+    manifests/documentos/manifest-sha256.txt                ← hash da versão atual
+    historico/<execucao>/documentos/manifest-sha256.txt      ← cópia do manifesto atualizado
+```
+
+`<execucao>` identifica a execução que substituiu o arquivo. Se ele mudar novamente, outra versão anterior será preservada na pasta da nova execução. O relatório informa o caminho da versão preservada. Arquivos removidos da origem continuam na pasta principal do backup; a remoção da origem não os move para `versoes/`.
+
+#### Operação, pausa e verificação
 
 `thor-backup` é um nome reservado. Nomes de origem que colidam após normalização, inclusive diferenças apenas de maiúsculas e minúsculas, são recusados. Origem e destino não podem estar contidos um no outro. Destinos da estrutura anterior não são convertidos automaticamente: escolha um novo destino para iniciar nesse formato, mantendo o backup existente preservado.
 
