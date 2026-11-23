@@ -19,9 +19,12 @@
 from __future__ import annotations
 
 import argparse
+import errno
 import hashlib
+import ntpath
 import os
 import re
+import stat
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -32,6 +35,54 @@ from typing import Optional, List, Tuple
 CHUNK = 1024 * 1024  # 1 MiB
 # hash + whitespace + path (não vazio, mas pode ter espaços)
 LINE_RE = re.compile(r"^([A-Fa-f0-9]+)\s+(.*?)\s*$")
+
+
+def io_path(path: Path | str, *, windows: Optional[bool] = None) -> str:
+    """Use caminhos absolutos estendidos somente nas operações de I/O do Windows."""
+    value = os.fspath(path)
+    use_windows = os.name == "nt" if windows is None else windows
+    if use_windows:
+        value = ntpath.abspath(value)
+        if not value.startswith("\\\\?\\"):
+            value = ("\\\\?\\UNC\\" + value[2:]) if value.startswith("\\\\") else "\\\\?\\" + value
+    return value
+
+
+def retry_io(operation, *, attempts: int = 3):
+    """Repete falhas transitórias, inclusive ausência momentânea em compartilhamentos."""
+    for attempt in range(attempts):
+        try:
+            return operation()
+        except OSError as exc:
+            transient = (
+                exc.errno in {errno.ENOENT, errno.EIO, errno.EAGAIN, errno.EBUSY,
+                              errno.ETIMEDOUT, errno.ECONNRESET, errno.ENETDOWN,
+                              errno.ENETUNREACH, errno.EHOSTUNREACH}
+                or getattr(exc, "winerror", None) in {2, 3, 32, 33, 53, 54, 59, 64, 67, 121, 1231, 1232}
+            )
+            if not transient or attempt + 1 == attempts:
+                raise
+            time.sleep(0.25 * (2 ** attempt))
+
+
+def check_entry(root: Path, item: Tuple[str, str], algo: str) -> Tuple[str, str, str, str, str]:
+    expected, rel = item
+    path = root / Path(rel)
+    try:
+        actual = retry_io(lambda: hash_file(path, algo)).lower()
+    except OSError as exc:
+        # Preserve códigos nativos: falhas de rede e caminhos inválidos não são ausência.
+        missing = isinstance(exc, FileNotFoundError) and getattr(exc, "winerror", None) in {None, 2, 3}
+        if missing:
+            try:
+                retry_io(lambda: os.stat(io_path(root)))
+            except OSError as root_exc:
+                return rel, "ERROR", expected, "", f"Raiz inacessível: {root_exc}"
+        detail = f"{exc}; caminho completo={path}; caracteres={len(str(path))}"
+        return rel, "MISSING" if missing else "ERROR", expected, "", detail
+    if actual != expected:
+        return rel, "CORRUPT", expected, actual, "Hash gerado diferente do hash no manifesto"
+    return rel, "OK", expected, actual, ""
 
 
 def parse_args() -> argparse.Namespace:
@@ -83,7 +134,7 @@ def infer_algo_from_filename(path: Path) -> Optional[str]:
 
 def hash_file(p: Path, algo: str) -> str:
     h = hashlib.new(algo)
-    with p.open("rb") as f:
+    with open(io_path(p), "rb") as f:
         while True:
             chunk = f.read(CHUNK)
             if not chunk:
@@ -130,9 +181,11 @@ def build_report_lines(
         f"Total no manifesto: {total}",
         f"Arquivos verificados íntegros: {ok}",
         f"Arquivos verificados corrompidos: {len(corrupted)}",
+        f"Erros de acesso ou leitura: {len(mismatches) - len(corrupted)}",
         f"Arquivos no manifesto ausentes na pasta analisada: {len(missing)}",
         f"Divergências: {len(mismatches)}",
         f"Arquivos na pasta analisada ausentes no manifesto: {len(extras)}",
+        "Busca de extras: " + ("incompleta (a contagem não é conclusiva)" if any("Busca de extras incompleta:" in item for item in mismatches) else "concluída"),
     ]
     omitted = False
     for title, items in (
@@ -154,6 +207,7 @@ def build_report_lines(
             f"Total no manifesto: {total}",
             f"Arquivos verificados íntegros: {ok}",
             f"Arquivos verificados corrompidos: {len(corrupted)}",
+            f"Erros de acesso ou leitura: {len(mismatches) - len(corrupted)}",
             f"Arquivos no manifesto ausentes na pasta analisada: {len(missing)}",
             f"Arquivos na pasta analisada ausentes no manifesto: {len(extras)}",
             f"Tempo de verificação: {verify_elapsed:.2f}s",
@@ -201,11 +255,13 @@ def main() -> int:
     raiz = Path(args.raiz).resolve()
     mani = Path(args.manifesto).resolve()
 
-    if not raiz.exists() or not raiz.is_dir():
-        print(f"[ERRO] Pasta raiz inválida: {raiz}", file=sys.stderr)
-        return 2
-    if not mani.exists() or not mani.is_file():
-        print(f"[ERRO] Manifesto inválido: {mani}", file=sys.stderr)
+    try:
+        if not stat.S_ISDIR(retry_io(lambda: os.stat(io_path(raiz))).st_mode):
+            raise NotADirectoryError(str(raiz))
+        if not stat.S_ISREG(retry_io(lambda: os.stat(io_path(mani))).st_mode):
+            raise OSError(f"Manifesto não é arquivo regular: {mani}")
+    except OSError as exc:
+        print(f"[ERRO] Não foi possível acessar raiz ou manifesto: {exc}", file=sys.stderr)
         return 2
 
     algo = (args.algo or infer_algo_from_filename(mani) or "sha256").lower()
@@ -214,7 +270,7 @@ def main() -> int:
         return 2
 
     entries: List[Tuple[str, str]] = []  # (digest_hex, relpath_posix)
-    with mani.open("r", encoding="utf-8") as f:
+    with open(io_path(mani), "r", encoding="utf-8") as f:
         for ln, line in enumerate(f, 1):
             line = line.rstrip("\n")
             if not line or line.lstrip().startswith("#"):
@@ -254,17 +310,7 @@ def main() -> int:
     ok = 0
 
     def _check_one(item: Tuple[str, str]) -> Tuple[str, str, str, str, str]:
-        exp_digest, rel = item
-        p = raiz / Path(rel)
-        if not p.exists() or not p.is_file():
-            return (rel, "MISSING", exp_digest, "", "Arquivo listado no manifesto ausente na pasta analisada")
-        try:
-            d = hash_file(p, algo).lower()
-            if d != exp_digest:
-                return (rel, "CORRUPT", exp_digest, d, "Hash gerado diferente do hash no manifesto")
-            return (rel, "OK", exp_digest, d, "")
-        except Exception as e:
-            return (rel, "ERROR", exp_digest, "", str(e))
+        return check_entry(raiz, item, algo)
 
     # verificação em paralelo
     verify_start = time.perf_counter()
@@ -276,9 +322,8 @@ def main() -> int:
                 rel, status, expected_hash, actual_hash, detail = fut.result()
             except Exception as e:
                 # erro inesperado em uma thread
-                rel = "<desconhecido>"
+                expected_hash, rel = futs[fut]
                 status = "ERROR"
-                expected_hash = ""
                 actual_hash = ""
                 detail = f"THREAD_ERROR {e}"
 
@@ -292,7 +337,6 @@ def main() -> int:
                     corrupted.append(rel)
                     mismatches.append(f"{rel} :: MISMATCH expected={expected_hash} got={actual_hash}")
                 else:
-                    corrupted.append(rel)
                     mismatches.append(f"{rel} :: ERROR {detail}")
             done += 1
 
@@ -327,17 +371,29 @@ def main() -> int:
         manifest_file_rel = mani.relative_to(raiz).as_posix()
     except ValueError:
         pass
-    for root, dirs, files in os.walk(raiz):
-        root_path = Path(root)
-        for name in files:
-            p = root_path / name
-            rel = p.relative_to(raiz)
-            rel_posix = rel.as_posix()
-            if rel_posix == manifest_file_rel:
-                continue
-            if rel_posix not in in_manifest:
-                extras.append(rel_posix)
-                structured_records.append(("EXTRA", rel_posix, "", "", "Arquivo presente na pasta analisada e ausente no manifesto"))
+    def scan_extras():
+        found = []
+        scan_root = io_path(raiz)
+
+        def onerror(exc):
+            raise exc
+
+        for root, dirs, files in os.walk(scan_root, onerror=onerror):
+            for name in files:
+                rel_posix = Path(os.path.relpath(os.path.join(root, name), scan_root)).as_posix()
+                if rel_posix != manifest_file_rel and rel_posix not in in_manifest:
+                    found.append(rel_posix)
+        return found
+
+    try:
+        extras = retry_io(scan_extras)
+    except OSError as exc:
+        detail = f"Busca de extras incompleta: {exc}"
+        mismatches.append(f"{raiz} :: ERROR {detail}")
+        # Erro de enumeração não é um arquivo a restaurar no backup incremental.
+        structured_records.append(("SCAN_ERROR", ".", "", "", detail))
+    for rel_posix in extras:
+        structured_records.append(("EXTRA", rel_posix, "", "", "Arquivo presente na pasta analisada e ausente no manifesto"))
     extras.sort()
     missing.sort()
     corrupted.sort()
@@ -362,8 +418,9 @@ def main() -> int:
         structured_records=structured_records,
     )
     try:
-        report_path.parent.mkdir(parents=True, exist_ok=True)
-        report_path.write_text("\n".join(full_lines) + "\n", encoding="utf-8")
+        os.makedirs(io_path(report_path.parent), exist_ok=True)
+        with open(io_path(report_path), "w", encoding="utf-8") as report:
+            report.write("\n".join(full_lines) + "\n")
     except OSError:
         report_path = Path.cwd() / report_path.name
         report_path.write_text("\n".join(full_lines) + "\n", encoding="utf-8")

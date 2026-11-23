@@ -133,9 +133,33 @@ Códigos de saída:
 
 | Código | Significado |
 |---|---|
-| `0` | Tudo OK. |
-| `1` | Há faltantes, divergências ou erro em arquivo. |
-| `2` | Parâmetros inválidos, manifesto inválido ou algoritmo não suportado. |
+| `0` | Hashes conferem, sem faltantes nem erros de leitura ou enumeração. A presença de extras, isoladamente, não altera o código. |
+| `1` | Há faltantes, hashes divergentes, erro de leitura ou busca de extras incompleta. |
+| `2` | Raiz ou manifesto inválido/inacessível na validação inicial, manifesto sem entradas válidas ou algoritmo não suportado. |
+
+### Caminhos longos e pastas de rede
+
+No Windows, as operações de leitura e enumeração usam automaticamente caminhos estendidos: `\\?\C:\...` para caminhos locais e `\\?\UNC\servidor\compartilhamento\...` para UNC. Os caminhos do manifesto continuam relativos, com `/`; não é necessário adicionar esses prefixos ao comando.
+
+Exemplo no PowerShell:
+
+```powershell
+python scripts/verify_fixity.py --raiz "\\servidor\compartilhamento\acervo" --manifesto "C:/relatorios/manifest-sha256.txt" --report-file "C:/relatorios/fixity.txt" --workers 4 --progress
+```
+
+Erros transitórios de leitura, rede e ausência momentânea têm até três tentativas, com pausas de 0,25 e 0,5 segundo. Uma nova tentativa de leitura reinicia o cálculo do hash. Falhas permanentes, como permissão negada, são registradas sem repetição desnecessária. A enumeração de extras também é repetida em falhas transitórias; os resultados parciais de uma tentativa que falhou são descartados.
+
+| Status TSV | Significado |
+|---|---|
+| `MISSING` | O sistema informou ausência após as tentativas e a raiz permaneceu acessível. |
+| `CORRUPT` | Leitura concluída, mas o hash difere do manifesto. |
+| `ERROR` | Não foi possível verificar o arquivo; não é contado como corrompido. O detalhe inclui o erro original, caminho completo e comprimento, ou informa que a raiz ficou inacessível. |
+| `EXTRA` | Arquivo encontrado na pasta e ausente no manifesto. |
+| `SCAN_ERROR` | Busca por extras incompleta; usa `.` no campo `path` e não representa arquivo a restaurar. |
+
+O relatório mantém contagens separadas de hashes divergentes e erros de acesso ou leitura. Quando a enumeração falha, exibe **Busca de extras: incompleta (a contagem não é conclusiva)** e retorna `1`. Registros íntegros (`OK`) são omitidos do TSV.
+
+Para rever falsos ausentes de relatórios antigos, execute novamente com a versão atual, especialmente quando o caminho completo tiver 260 caracteres ou mais. As novas tentativas não garantem acesso se a rede ou as permissões continuarem indisponíveis.
 
 Relatório final:
 
@@ -147,9 +171,11 @@ Algoritmo : sha256
 Total no manifesto: 100
 Arquivos verificados íntegros: 100
 Arquivos verificados corrompidos: 0
+Erros de acesso ou leitura: 0
 Arquivos no manifesto ausentes na pasta analisada: 0
 Divergências: 0
 Arquivos na pasta analisada ausentes no manifesto: 0
+Busca de extras: concluída
 
 -- Arquivos no manifesto ausentes na pasta analisada --
 Nenhum
@@ -164,6 +190,7 @@ Nenhum
 Total no manifesto: 100
 Arquivos verificados íntegros: 100
 Arquivos verificados corrompidos: 0
+Erros de acesso ou leitura: 0
 Arquivos no manifesto ausentes na pasta analisada: 0
 Arquivos na pasta analisada ausentes no manifesto: 0
 Tempo de verificação: 12.34s
@@ -179,8 +206,10 @@ Exemplo de stdout/log quando há lista grande compactada:
 Total no manifesto: 30860
 Arquivos verificados íntegros: 28363
 Arquivos verificados corrompidos: 0
+Erros de acesso ou leitura: 0
 Arquivos no manifesto ausentes na pasta analisada: 2497
 Arquivos na pasta analisada ausentes no manifesto: 0
+Busca de extras: concluída
 
 -- Arquivos no manifesto ausentes na pasta analisada --
 data/foto_0001.jpg
@@ -193,6 +222,7 @@ Relatório completo: D:\acervo\relatorios\fixity_2026-08-01.txt
 Total no manifesto: 30860
 Arquivos verificados íntegros: 28363
 Arquivos verificados corrompidos: 0
+Erros de acesso ou leitura: 0
 Arquivos no manifesto ausentes na pasta analisada: 2497
 Arquivos na pasta analisada ausentes no manifesto: 0
 ```
@@ -206,7 +236,9 @@ O relatório TXT é sempre emitido. Além da visualização humana, ele contém 
 status	path	expected_hash	actual_hash	detail
 MISSING	data/b.txt	<hash>		Arquivo listado no manifesto ausente na pasta analisada
 CORRUPT	data/c.txt	<hash>	<hash_atual>	Hash gerado diferente do hash no manifesto
+ERROR	data/restrito.txt	<hash>		Erro de acesso; caminho completo e comprimento registrados no detalhe
 EXTRA	data/d.txt			Arquivo presente na pasta analisada e ausente no manifesto
+SCAN_ERROR	.			Busca de extras incompleta: erro de acesso ao diretório
 ```
 
 ---
@@ -359,6 +391,7 @@ Regras por status do relatório de fixidez:
 | `CORRUPT` | Substitui o arquivo do destino pelo arquivo da origem. |
 | `ERROR` | Tenta copiar novamente da origem. |
 | `EXTRA` | Reporta, mas não exclui automaticamente. |
+| `SCAN_ERROR` | Ignora: é falha de enumeração, não arquivo a copiar. Corrija o acesso e gere uma nova verificação para completar a busca de extras. |
 
 Exemplo de relatório de aplicação:
 

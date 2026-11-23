@@ -185,14 +185,21 @@ Relatório final:
 
 - total de entradas no manifesto;
 - quantidade de arquivos verificados íntegros;
-- quantidade de arquivos verificados corrompidos ou com erro;
+- quantidade de arquivos corrompidos, com hash diferente do manifesto;
+- quantidade de erros de acesso ou leitura, separada dos corrompidos;
 - quantidade e lista de arquivos presentes no manifesto e ausentes na pasta analisada;
 - quantidade e lista de arquivos presentes na pasta analisada e ausentes no manifesto;
 - tempo total de verificação e média por arquivo.
 
+No Windows, a verificação usa caminhos estendidos para acessar caminhos completos longos, inclusive em compartilhamentos de rede UNC. Informe a pasta normalmente, como `\\servidor\compartilhamento\acervo`; a conversão é automática nas operações de leitura e enumeração.
+
+Falhas transitórias de leitura ou rede têm até três tentativas, com intervalos de 0,25 e 0,5 segundo. Cada nova tentativa recalcula o hash desde o início. Arquivos só recebem `MISSING` após o sistema informar ausência e a raiz continuar acessível; falhas de permissão, caminhos inválidos e erros de rede identificados ficam como `ERROR`. O detalhe registra o erro original, o caminho completo e seu comprimento.
+
+Se a busca por extras falhar após as tentativas aplicáveis, o relatório indica **Busca de extras: incompleta**. Nesse caso, a contagem de extras não é conclusiva e a execução retorna código `1`.
+
 As contagens e seções são exibidas mesmo quando o valor é `0`; listas vazias aparecem como `Nenhum`.
 
-Para evitar travamentos e excesso de escrita em disco, listas grandes são compactadas no log do Worker. A execução sempre grava um relatório TXT completo e informa o caminho no log. Esse TXT inclui uma seção estruturada em TSV, com `status`, `path`, `expected_hash`, `actual_hash` e `detail`, planejada para servir como entrada de rotinas futuras de backup incremental.
+Para evitar travamentos e excesso de escrita em disco, listas grandes são compactadas no log do Worker. A execução grava um relatório TXT completo e informa o caminho no log. Esse TXT inclui uma seção estruturada em TSV, com `status`, `path`, `expected_hash`, `actual_hash` e `detail`, usada pelo backup incremental por fixidez.
 
 Quando a execução encontra divergências de fixidez, o Worker registra **Concluído com divergências de fixidez** em vez de tratar o caso como falha operacional do script.
 
@@ -216,8 +223,10 @@ Exemplo de log compacto no Worker:
 Total no manifesto: 30860
 Arquivos verificados íntegros: 28363
 Arquivos verificados corrompidos: 0
+Erros de acesso ou leitura: 0
 Arquivos no manifesto ausentes na pasta analisada: 2497
 Arquivos na pasta analisada ausentes no manifesto: 0
+Busca de extras: concluída
 ...
 Relatório completo: D:\acervo\verify_fixity_report_20260801T221817Z.txt
 [WARN] Concluído com divergências de fixidez
@@ -233,7 +242,9 @@ Exemplo da seção estruturada gravada no relatório TXT:
 status	path	expected_hash	actual_hash	detail
 MISSING	data/foto.jpg	3a6eb079...		Arquivo listado no manifesto ausente na pasta analisada
 CORRUPT	data/video.mp4	2cf24dba...	b94d27b9...	Hash gerado diferente do hash no manifesto
+ERROR	data/restrito.tif	3a6eb079...		Erro de acesso; caminho completo e comprimento registrados no detalhe
 EXTRA	data/novo.tif			Arquivo presente na pasta analisada e ausente no manifesto
+SCAN_ERROR	.			Busca de extras incompleta: erro de acesso ao diretório
 ```
 
 ### Tarefas > Gerar Pacote BagIt
@@ -376,6 +387,7 @@ Regras por status:
 - `CORRUPT`: substitui no destino pelo arquivo da origem.
 - `ERROR`: tenta copiar novamente da origem.
 - `EXTRA`: reportado, mas não excluído automaticamente.
+- `SCAN_ERROR`: falha na enumeração de diretórios; ignorado pelo incremental, pois não representa um arquivo a copiar. Corrija o acesso e execute novamente a verificação para obter a relação completa de extras.
 
 Exemplo por linha de comando:
 
@@ -633,6 +645,7 @@ A suíte de testes cobre:
 - preservação de removidos;
 - parada segura por `STOP` e retomada;
 - verificação de fixidez, relatório final de íntegros/corrompidos/faltantes/extras e evento PREMIS `FIXITY_CHECK`;
+- caminhos longos com acentos no Windows, novas tentativas de leitura, distinção entre ausência e erro de acesso, e falha na busca por extras;
 - concorrência e contenção de logs do `JobStore`.
 
 Execute a suíte e gere o relatório HTML:
@@ -648,6 +661,12 @@ tests/reports/backup_tests_report.html
 ```
 
 O relatório lista cada teste executado com finalidade, pré-condições, pós-condições, status, duração e detalhes.
+
+Para executar apenas os testes de caminhos longos e falhas de acesso da verificação de fixidez:
+
+```powershell
+python -m unittest discover -s tests -p test_verify_fixity.py -v
+```
 
 ---
 
@@ -720,6 +739,10 @@ A janela é centralizada depois da montagem inicial, usando a área útil do mon
 **Erro de permissão**
 
 Execute o aplicativo em uma pasta onde o usuário tenha permissão de leitura e escrita. As tarefas criam manifestos, relatórios, logs e arquivos temporários.
+
+**A verificação indicou ausentes que existem na pasta de rede**
+
+Execute novamente a verificação com a versão atual e gere um novo relatório. Versões anteriores podiam indicar ausência ao consultar caminhos longos sem registrar a causa. Confira os registros `ERROR`, o comprimento do caminho e o erro original no TXT completo. Em falhas persistentes de rede, verifique conectividade e permissões; pela CLI, `--workers 4` permite reduzir a quantidade de leituras simultâneas. Se aparecer `SCAN_ERROR` ou **Busca de extras: incompleta**, a contagem de extras não permite concluir que a pasta foi completamente analisada.
 
 ---
 

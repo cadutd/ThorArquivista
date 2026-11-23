@@ -6,6 +6,7 @@ Esta pasta contém a suíte automatizada do módulo de Backup Preservacional Bag
 
 - [Executar](#executar)
 - [Cobertura](#cobertura)
+- [Verificação de fixidez: caminhos longos e rede](#verificação-de-fixidez-caminhos-longos-e-rede)
 - [Validação de utilitários](#validação-de-utilitários)
 - [Relatório HTML](#relatório-html)
 
@@ -44,8 +45,35 @@ Os testes cobrem:
 - verificação de fixidez e evento PREMIS `FIXITY_CHECK`.
 - validação de pacote BagIt gerado pelo `build_bag.py`;
 - detecção de payload corrompido e arquivo extra em `data/`.
-- emissão de relatório TXT estruturado da verificação de fixidez para uso futuro em backup incremental.
+- emissão de relatório TXT estruturado da verificação de fixidez para backup incremental;
 - aplicação de backup incremental usando o relatório estruturado da verificação de fixidez.
+
+## Verificação de fixidez: caminhos longos e rede
+
+Execute apenas os testes de regressão de `verify_fixity.py`:
+
+```powershell
+python -m unittest discover -s tests -p test_verify_fixity.py -v
+```
+
+O arquivo `test_verify_fixity.py` cobre:
+
+- conversão de caminhos locais e UNC para o formato estendido do Windows, sem duplicar prefixos existentes;
+- leitura real e enumeração de um caminho com acentos e mais de 260 caracteres no Windows;
+- nova tentativa após falha transitória de leitura;
+- repetição da consulta a um arquivo ausente antes de classificá-lo como `MISSING`;
+- distinção entre ausência, permissão negada, caminho longo inválido e falha de rede;
+- raiz indisponível classificada como erro de acesso;
+- contagens separadas de íntegros, corrompidos, ausentes e erros no relatório;
+- falha de enumeração registrada como `SCAN_ERROR`, com busca de extras incompleta e código de saída `1`.
+
+Para conferir também a integração com preservação e backup incremental:
+
+```powershell
+python -m unittest discover -s tests -p test_preservation_backup_scripts.py -v
+```
+
+O teste real de caminho longo é exclusivo do Windows e aparece como `SKIP` em outros sistemas. Os testes de falhas de rede usam simulações; a validação de um compartilhamento real exige nova execução da verificação no ambiente de origem.
 
 ## Validação de utilitários
 
