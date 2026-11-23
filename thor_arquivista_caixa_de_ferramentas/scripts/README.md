@@ -542,7 +542,7 @@ Proteção:
 
 ## `backup_plan.py`
 
-Executa backup preservacional incremental baseado em BagIt. O plano JSON define destino, opções e origens; o destino é mantido como repositório BagIt, com `data/`, `manifest-sha256.txt`, `tagmanifest-sha256.txt`, `bag-info.txt`, `bagit.txt` e histórico em `thor-backup/`.
+Executa backup preservacional incremental baseado em BagIt. O plano JSON define nome, destino, opções e origens; o destino é mantido como repositório BagIt, com `data/`, `manifest-<algo>.txt`, `tagmanifest-<algo>.txt`, `bag-info.txt`, `bagit.txt` e histórico em `thor-backup/`. O algoritmo padrão é `sha256`; o editor de plano também oferece `sha512` e `md5`.
 
 Uso básico:
 
@@ -550,7 +550,7 @@ Uso básico:
 python scripts/backup_plan.py --config "D:/planos/backup.json"
 ```
 
-Retomar por checkpoint:
+Retomar por checkpoint (remova antes `thor-backup/checkpoints/STOP`, se existir; o botão **Retomar** da interface faz essa remoção automaticamente):
 
 ```bash
 python scripts/backup_plan.py --resume --config "D:/planos/backup.json"
@@ -568,7 +568,8 @@ Exemplo de plano:
   ],
   "options": {
     "algo": "sha256",
-    "ignore_hidden": true
+    "ignore_hidden": true,
+    "follow_symlinks": false
   }
 }
 ```
@@ -582,6 +583,14 @@ python scripts/backup_verify.py --destino "E:/Backup" --progress
 python scripts/backup_report.py --destino "E:/Backup" --backup "acervo_institucional"
 ```
 
+`backup_verify.py` usa SHA-256 por padrão. Para outro algoritmo, informe, por exemplo, `--algo sha512`. O botão **Verificar integridade** da interface sempre solicita SHA-256, mesmo que o plano use outro algoritmo.
+
+Para registrar o evento PREMIS da verificação:
+
+```bash
+python scripts/backup_verify.py --destino "E:/Backup" --algo sha512 --premis-log "E:/Backup/thor-backup/logs/premis_events.jsonl" --progress
+```
+
 Responsabilidades dos scripts relacionados:
 
 | Script | Responsabilidade |
@@ -591,7 +600,7 @@ Responsabilidades dos scripts relacionados:
 | `backup_verify.py` | Valida fixidez do repositório BagIt de backup e pode registrar evento PREMIS `FIXITY_CHECK`. |
 | `backup_report.py` | Lista checkpoints, relatórios e manifestos históricos de um destino de backup. |
 
-Saídas principais:
+Saídas principais com o algoritmo padrão SHA-256 (os manifestos da raiz usam o algoritmo do plano):
 
 ```text
 Backup/
@@ -614,8 +623,9 @@ Backup/
 Parada segura:
 
 - Crie `thor-backup/checkpoints/STOP` dentro do destino.
-- O script termina o arquivo atual, atualiza manifesto/checkpoint, registra PREMIS e encerra como `PAUSED`.
-- Remova o arquivo `STOP` antes de executar com `--resume`.
+- O script consulta `STOP` após copiar e conferir um arquivo novo ou alterado; então atualiza manifesto/checkpoint, registra PREMIS e encerra como `PAUSED`.
+- A geração dos manifestos de origem não é interrompida por `STOP`. Arquivos iguais e itens já concluídos no checkpoint não consultam esse marcador; uma execução apenas com esses itens pode terminar sem pausar.
+- Remova o arquivo `STOP` antes de executar com `--resume`. Na interface, o botão **Retomar** remove o marcador automaticamente.
 
 Eventos PREMIS registrados pelo script:
 
@@ -626,13 +636,18 @@ BACKUP_PAUSED
 BACKUP_RESUMED
 BACKUP_COMPLETED
 BACKUP_FAILED
-FIXITY_CHECK
 ```
+
+`BACKUP_INCREMENTAL` é registrado quando o manifesto anterior contém entradas. `FIXITY_CHECK` é registrado separadamente por `backup_verify.py`, somente quando recebe `--premis-log`.
+
+Na execução direta, `backup_plan.py` usa `thor-backup/logs/premis_events.jsonl` por padrão, com possibilidade de sobrescrever o caminho por `--premis-log`. Pela interface, o Worker fornece o log PREMIS configurado na aplicação tanto para o backup quanto para a verificação.
 
 Observações:
 
-- Arquivos alterados têm a versão anterior movida para `thor-backup/versoes/`.
+- Os arquivos são copiados para `data/<nome_da_origem>/`; cada cópia nova ou alterada tem o hash conferido contra o manifesto gerado da origem.
+- Arquivos alterados têm a versão anterior movida para `thor-backup/versoes/<execucao>/data/<nome_da_origem>/`.
 - Arquivos removidos da origem são preservados no destino e mantidos no manifesto do backup.
+- Arquivos iguais são identificados comparando o hash da origem com o manifesto do destino. O incremental não verifica novamente o conteúdo desses arquivos no destino nem recompõe automaticamente os que estejam ausentes ou corrompidos; use `backup_verify.py` para detectar essas situações.
 - O checkpoint fica em `thor-backup/checkpoints/<backup>.state.json`.
 - O manifesto BagIt do destino continua sendo a fonte de verdade; nenhum banco SQL é usado.
 - Geração de manifesto de origem e aplicação incremental registram progresso em marcos de 5% quando `--progress` está ativo.

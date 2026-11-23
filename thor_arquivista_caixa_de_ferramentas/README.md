@@ -323,16 +323,26 @@ Executa um backup preservacional incremental em um destino tratado como reposit�
 Campos e ações principais:
 
 - **Plano JSON**: arquivo que define nome, destino, opções e origens.
-- **Destino BagIt**: pasta do repositório de backup.
-- **Backup**: nome lógico usado em checkpoints e histórico.
+- **Destino BagIt**: pasta usada pelas ações de pausa, verificação e consulta de histórico. A execução usa o destino definido no JSON.
+- **Backup**: nome lógico usado para localizar o checkpoint no histórico. A execução usa o nome definido no JSON.
 - **Validar plano**: confere estrutura mínima e existência das origens.
 - **Executar**: enfileira o job `BACKUP_PLAN`.
 - **Retomar**: retoma pelo checkpoint e remove `STOP` quando necessário.
 - **Pausar com STOP**: cria `thor-backup/checkpoints/STOP` para parada segura.
-- **Verificar integridade**: enfileira `BACKUP_VERIFY`.
+- **Verificar integridade**: enfileira `BACKUP_VERIFY` usando SHA-256. Para planos com outro algoritmo, use a linha de comando com `--algo`.
 - **Histórico**: lista checkpoints, relatórios e manifestos históricos.
 
-As etapas de geração de manifesto de origem e aplicação incremental do backup registram progresso em marcos de 5%, com quantidade restante e resumo de duração.
+Funcionamento do incremental:
+
+- Gera hashes das origens e compara com o manifesto do destino.
+- Copia arquivos novos e alterados para `data/<nome_da_origem>/`, conferindo o hash após cada cópia.
+- Move a versão anterior de arquivos alterados para `thor-backup/versoes/<execucao>/data/<nome_da_origem>/`.
+- Preserva no destino e no manifesto os arquivos removidos da origem.
+- Arquivos com hash igual ao registrado no manifesto não são copiados nem têm o conteúdo do destino verificado novamente. Execute **Verificar integridade** para detectar corrupção ou ausência desses arquivos.
+
+O arquivo `STOP` é consultado após a cópia e conferência de um arquivo novo ou alterado. Nesse ponto, a rotina salva manifesto e checkpoint e encerra como `PAUSED`. A geração dos manifestos de origem não é interrompida por `STOP`; uma execução contendo apenas arquivos iguais pode terminar sem pausar. O botão **Retomar** remove `STOP` automaticamente; pela linha de comando, remova-o antes de usar `--resume`.
+
+Com `--progress` (ativado pela interface), as etapas de geração de manifesto de origem e aplicação incremental registram progresso em marcos de 5%, com quantidade restante e resumo de duração.
 
 Exemplo por linha de comando:
 
@@ -340,9 +350,13 @@ Exemplo por linha de comando:
 python scripts/backup_plan.py --config "D:/planos/backup.json" --progress
 python scripts/backup_plan.py --resume --config "D:/planos/backup.json"
 python scripts/backup_verify.py --destino "E:/Backup" --progress
+# Para um plano configurado com SHA-512, com registro PREMIS da verificação:
+python scripts/backup_verify.py --destino "E:/Backup" --algo sha512 --premis-log "E:/Backup/thor-backup/logs/premis_events.jsonl" --progress
 ```
 
-Estrutura criada no destino:
+Na execução direta, `backup_plan.py` registra eventos PREMIS em `thor-backup/logs/premis_events.jsonl` por padrão; `--premis-log` permite escolher outro caminho. Já `backup_verify.py` só registra `FIXITY_CHECK` quando recebe `--premis-log`. Pela interface, o Worker fornece o caminho de log PREMIS configurado na aplicação para as duas rotinas.
+
+Estrutura criada no destino com o algoritmo padrão SHA-256 (os manifestos da raiz usam o algoritmo do plano):
 
 ```text
 Backup/
