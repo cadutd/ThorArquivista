@@ -27,10 +27,10 @@ def emit_progress(done: int, total: int, marks: list[tuple[int, int]], next_mark
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Gera manifesto de origem para backup preservacional BagIt.")
+    p = argparse.ArgumentParser(description="Gera manifesto de origem para backup preservacional.")
     p.add_argument("--raiz", required=True, help="Pasta de origem.")
     p.add_argument("--saida", required=True, help="Arquivo de manifesto a gravar.")
-    p.add_argument("--prefix", default="", help="Prefixo BagIt para os caminhos, ex.: data/origem.")
+    p.add_argument("--prefix", default="", help="Prefixo opcional para os caminhos, ex.: documentos.")
     p.add_argument("--algo", default="sha256", help="Algoritmo de hash.")
     p.add_argument("--ignore-hidden", action="store_true", help="Ignora arquivos e pastas ocultos por ponto.")
     p.add_argument("--follow-symlinks", action="store_true", help="Segue links simbólicos.")

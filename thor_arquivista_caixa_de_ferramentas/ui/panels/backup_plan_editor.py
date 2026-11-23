@@ -9,6 +9,8 @@ from tkinter import BOTH, LEFT, RIGHT, X, Y
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import DANGER, INFO, PRIMARY, SECONDARY, SUCCESS
 
+from scripts.backup_common import normalize_sources, validate_source_paths
+
 
 def create_panel(app, enqueue_cb):
     page = ttk.Frame(app._main_nb, padding=10)
@@ -38,15 +40,17 @@ def create_panel(app, enqueue_cb):
     form.pack(fill=X, pady=4)
     ttk.Label(form, text="Nome do backup").grid(row=0, column=0, sticky="w", padx=4, pady=3)
     ttk.Entry(form, textvariable=backup_name, width=32).grid(row=0, column=1, sticky="we", padx=4, pady=3)
-    ttk.Label(form, text="Destino BagIt").grid(row=0, column=2, sticky="w", padx=4, pady=3)
+    ttk.Label(form, text="Destino do backup").grid(row=0, column=2, sticky="w", padx=4, pady=3)
     ttk.Entry(form, textvariable=dest_path).grid(row=0, column=3, sticky="we", padx=4, pady=3)
-    ttk.Button(form, text="Selecionar...", command=lambda: _ask_dir(dest_path, "Selecionar destino BagIt")).grid(row=0, column=4, sticky="w", padx=4, pady=3)
+    ttk.Button(form, text="Selecionar...", command=lambda: _ask_dir(dest_path, "Selecionar destino do backup")).grid(row=0, column=4, sticky="w", padx=4, pady=3)
     ttk.Label(form, text="Algoritmo").grid(row=1, column=0, sticky="w", padx=4, pady=3)
     ttk.Combobox(form, textvariable=algo, values=["sha256", "sha512", "md5"], width=12, state="readonly").grid(row=1, column=1, sticky="w", padx=4, pady=3)
     ttk.Checkbutton(form, text="Ignorar ocultos", variable=ignore_hidden).grid(row=1, column=2, sticky="w", padx=4, pady=3)
     ttk.Checkbutton(form, text="Seguir symlinks", variable=follow_symlinks).grid(row=1, column=3, sticky="w", padx=4, pady=3)
     form.grid_columnconfigure(1, weight=1)
     form.grid_columnconfigure(3, weight=2)
+
+    ttk.Label(page, text="Cada nome de origem cria uma pasta no destino e uma pasta em thor-backup/manifests/.").pack(fill=X, pady=4)
 
     sources_box = ttk.LabelFrame(page, text="Origens")
     sources_box.pack(fill=BOTH, expand=True, pady=6)
@@ -212,7 +216,7 @@ def _validate_editor(backup_name, dest_path, algo, ignore_hidden, follow_symlink
     if not data["name"]:
         problems.append("Informe o nome do backup.")
     if not data["destination"]:
-        problems.append("Informe o destino BagIt.")
+        problems.append("Informe o destino do backup.")
     if not data["sources"]:
         problems.append("Adicione pelo menos uma pasta de origem.")
     names = set()
@@ -227,6 +231,12 @@ def _validate_editor(backup_name, dest_path, algo, ignore_hidden, follow_symlink
         elif not Path(source["path"]).exists():
             problems.append(f"Origem não encontrada: {source['path']}")
     output.insert(END, json.dumps(data, ensure_ascii=False, indent=2))
+    if data["destination"] and data["sources"]:
+        try:
+            normalized = normalize_sources(data)
+            validate_source_paths(Path(data["destination"]).resolve(), normalized)
+        except ValueError as exc:
+            problems.append(str(exc))
     if problems:
         status.set(f"Plano com {len(problems)} pendência(s).")
         output.insert(END, "\n\nPendências:\n" + "\n".join(f"- {p}" for p in problems))

@@ -9,6 +9,8 @@ from tkinter import BOTH, LEFT, RIGHT, X, Y
 import ttkbootstrap as ttk
 from ttkbootstrap.constants import DANGER, INFO, PRIMARY, SECONDARY, SUCCESS, WARNING
 
+from scripts.backup_common import normalize_sources, validate_source_paths
+
 
 def create_panel(app, enqueue_cb):
     page = ttk.Frame(app._main_nb, padding=10)
@@ -30,7 +32,7 @@ def create_panel(app, enqueue_cb):
 
     r2 = ttk.Frame(page)
     r2.pack(fill=X, pady=5)
-    ttk.Label(r2, text="Destino BagIt").pack(side=LEFT, padx=4)
+    ttk.Label(r2, text="Destino do backup").pack(side=LEFT, padx=4)
     ttk.Entry(r2, textvariable=dest_path).pack(side=LEFT, fill=X, expand=True)
     ttk.Button(r2, text="Selecionar...", command=lambda: _ask_dir(dest_path)).pack(side=LEFT, padx=6)
 
@@ -39,6 +41,8 @@ def create_panel(app, enqueue_cb):
     ttk.Label(r3, text="Backup").pack(side=LEFT, padx=4)
     ttk.Entry(r3, textvariable=backup_name, width=30).pack(side=LEFT)
     ttk.Label(r3, textvariable=status, bootstyle=SECONDARY).pack(side=LEFT, padx=12)
+
+    ttk.Label(page, text="Arquivos: <destino>/<origem>/ | Manifestos: thor-backup/manifests/<origem>/manifest-<algoritmo>.txt").pack(fill=X, pady=4)
 
     actions = ttk.Frame(page)
     actions.pack(fill=X, pady=8)
@@ -98,7 +102,7 @@ def _ask_plan(plan_path, dest_path, backup_name, status):
 
 
 def _ask_dir(var):
-    p = filedialog.askdirectory(title="Selecionar destino BagIt")
+    p = filedialog.askdirectory(title="Selecionar destino do backup")
     if p:
         var.set(p)
 
@@ -113,6 +117,8 @@ def _validate(plan_path, dest_path, backup_name, status, output):
             raise ValueError("Campo 'destination'/'destino' ausente.")
         if not isinstance(sources, list) or not sources:
             raise ValueError("Lista 'sources'/'pastas' ausente.")
+        normalized = normalize_sources(data)
+        validate_source_paths(Path(dest).resolve(), normalized)
         missing = []
         for item in sources:
             p = item if isinstance(item, str) else item.get("path") or item.get("raiz") or item.get("source")
@@ -121,6 +127,11 @@ def _validate(plan_path, dest_path, backup_name, status, output):
         dest_path.set(dest)
         backup_name.set(_plan_name(data, plan_path.get()))
         output.insert(END, json.dumps(data, ensure_ascii=False, indent=2))
+        output.insert(END, "\n\nOrganização no destino:\n")
+        opts = data.get("options") or data.get("opcoes") or {}
+        algo = opts.get("algo") or opts.get("algorithm") or "sha256"
+        for source in normalized:
+            output.insert(END, f"  {source['name']}/\n  thor-backup/manifests/{source['name']}/manifest-{algo}.txt\n")
         if missing:
             status.set(f"Plano válido com {len(missing)} origem(ns) não encontrada(s).")
             output.insert(END, "\n\nOrigens não encontradas:\n" + "\n".join(missing))
@@ -136,14 +147,13 @@ def _enqueue_plan(enqueue_cb, plan_path, resume: bool, page, dest_path=None):
         messagebox.showwarning("Plano JSON", "Selecione um plano JSON.", parent=page)
         return
     if resume:
-        dest = ""
+        try:
+            dest = _plan_dest(_load_plan(plan_path.get().strip()))
+        except Exception as exc:
+            messagebox.showerror("Plano inválido", str(exc), parent=page)
+            return
         if dest_path is not None:
-            dest = dest_path.get().strip()
-        if not dest:
-            try:
-                dest = _plan_dest(_load_plan(plan_path.get().strip()))
-            except Exception:
-                dest = ""
+            dest_path.set(dest)
         if dest:
             stop = Path(dest) / "thor-backup" / "checkpoints" / "STOP"
             if stop.exists():
@@ -154,15 +164,15 @@ def _enqueue_plan(enqueue_cb, plan_path, resume: bool, page, dest_path=None):
 
 def _enqueue_verify(enqueue_cb, dest_path, page):
     if not dest_path.get().strip():
-        messagebox.showwarning("Destino", "Informe o destino BagIt.", parent=page)
+        messagebox.showwarning("Destino", "Informe o destino do backup.", parent=page)
         return
-    enqueue_cb("BACKUP_VERIFY", {"destino": dest_path.get().strip(), "algo": "sha256", "progress": True})
+    enqueue_cb("BACKUP_VERIFY", {"destino": dest_path.get().strip(), "progress": True})
     messagebox.showinfo("Verificação", "Job de verificação enviado para a fila.", parent=page)
 
 
 def _write_stop(dest_path, page):
     if not dest_path.get().strip():
-        messagebox.showwarning("Destino", "Informe o destino BagIt.", parent=page)
+        messagebox.showwarning("Destino", "Informe o destino do backup.", parent=page)
         return
     stop = Path(dest_path.get().strip()) / "thor-backup" / "checkpoints" / "STOP"
     stop.parent.mkdir(parents=True, exist_ok=True)
@@ -173,7 +183,7 @@ def _write_stop(dest_path, page):
 def _show_history(dest_path, backup_name, output):
     output.delete("1.0", END)
     if not dest_path.get().strip():
-        output.insert(END, "Informe o destino BagIt.")
+        output.insert(END, "Informe o destino do backup.")
         return
     tb = Path(dest_path.get().strip()) / "thor-backup"
     if not tb.exists():
@@ -182,8 +192,9 @@ def _show_history(dest_path, backup_name, output):
     checkpoint = tb / "checkpoints" / f"{backup_name.get().strip()}.state.json"
     sections = [
         ("Checkpoint", [checkpoint] if checkpoint.exists() else sorted((tb / "checkpoints").glob("*.state.json"))),
-        ("Relatórios", sorted((tb / "relatorios").glob("*"))),
-        ("Manifestos históricos", sorted((tb / "manifests" / "historico").glob("*"))),
+        ("Relatórios", sorted(p for p in (tb / "relatorios").rglob("*") if p.is_file())),
+        ("Manifestos atuais", sorted((tb / "manifests").glob("*/manifest-*.txt"))),
+        ("Manifestos históricos", sorted((tb / "historico").glob("*/*/manifest-*.txt"))),
     ]
     for title, paths in sections:
         output.insert(END, f"{title}\n")

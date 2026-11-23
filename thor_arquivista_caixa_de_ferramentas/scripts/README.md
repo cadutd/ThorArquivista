@@ -542,18 +542,13 @@ Proteção:
 
 ## `backup_plan.py`
 
-Executa backup preservacional incremental baseado em BagIt. O plano JSON define nome, destino, opções e origens; o destino é mantido como repositório BagIt, com `data/`, `manifest-<algo>.txt`, `tagmanifest-<algo>.txt`, `bag-info.txt`, `bagit.txt` e histórico em `thor-backup/`. O algoritmo padrão é `sha256`; o editor de plano também oferece `sha512` e `md5`.
+Executa backup preservacional incremental com pastas e manifestos independentes por origem. Os arquivos ficam em `<destino>/<origem>/`; o manifesto atual fica em `<destino>/thor-backup/manifests/<origem>/manifest-<algo>.txt`. Os caminhos dentro de cada manifesto são relativos à pasta da respectiva origem no destino.
 
-Uso básico:
-
-```bash
-python scripts/backup_plan.py --config "D:/planos/backup.json"
-```
-
-Retomar por checkpoint (remova antes `thor-backup/checkpoints/STOP`, se existir; o botão **Retomar** da interface faz essa remoção automaticamente):
+Uso básico e retomada (remova `thor-backup/checkpoints/STOP` antes de retomar pela linha de comando):
 
 ```bash
-python scripts/backup_plan.py --resume --config "D:/planos/backup.json"
+python scripts/backup_plan.py --config "D:/planos/backup.json" --progress
+python scripts/backup_plan.py --resume --config "D:/planos/backup.json" --progress
 ```
 
 Exemplo de plano:
@@ -574,60 +569,150 @@ Exemplo de plano:
 }
 ```
 
+O algoritmo padrão é `sha256`; o editor também oferece `sha512` e `md5`. A opção `ignore_hidden` filtra nomes iniciados por ponto, e `follow_symlinks` controla o seguimento de links simbólicos.
+
+Estrutura criada para esse plano:
+
+```text
+Backup/
+  documentos/
+  imagens/
+  thor-backup/
+    configs/acervo_institucional_<execucao>.json
+    manifests/
+      documentos/manifest-sha256.txt
+      imagens/manifest-sha256.txt
+    historico/<execucao>/
+      documentos/manifest-sha256.txt
+      imagens/manifest-sha256.txt
+      alteracoes.json
+    checkpoints/acervo_institucional.state.json
+    relatorios/acervo_institucional_<execucao>_relatorio.txt
+    logs/premis_events.jsonl
+    versoes/<execucao>/<origem>/
+```
+
+`versoes/` recebe arquivos somente quando há versões anteriores a preservar. O arquivo `STOP` aparece em `checkpoints/` quando uma pausa é solicitada.
+
 Scripts relacionados:
 
 ```bash
-python scripts/backup_manifest_build.py --raiz "D:/Acervo" --prefix "data/acervo" --saida "D:/manifest.txt"
-python scripts/backup_manifest_diff.py --origem "D:/manifest_origem.txt" --destino "E:/Backup/manifest-sha256.txt"
+python scripts/backup_manifest_build.py --raiz "D:/Acervo/Documentos" --saida "D:/manifest-sha256.txt"
+python scripts/backup_manifest_diff.py --origem "D:/manifest-sha256.txt" --destino "E:/Backup/thor-backup/manifests/documentos/manifest-sha256.txt"
 python scripts/backup_verify.py --destino "E:/Backup" --progress
 python scripts/backup_report.py --destino "E:/Backup" --backup "acervo_institucional"
 ```
 
-`backup_verify.py` usa SHA-256 por padrão. Para outro algoritmo, informe, por exemplo, `--algo sha512`. O botão **Verificar integridade** da interface sempre solicita SHA-256, mesmo que o plano use outro algoritmo.
-
-Para registrar o evento PREMIS da verificação:
-
-```bash
-python scripts/backup_verify.py --destino "E:/Backup" --algo sha512 --premis-log "E:/Backup/thor-backup/logs/premis_events.jsonl" --progress
-```
-
-Responsabilidades dos scripts relacionados:
-
 | Script | Responsabilidade |
 |---|---|
-| `backup_manifest_build.py` | Gera manifesto da origem com prefixo BagIt, algoritmo configurável, opção de ignorar ocultos e suporte a symlinks. |
-| `backup_manifest_diff.py` | Compara manifesto de origem com manifesto do destino e classifica `new`, `changed`, `same` e `removed`. |
-| `backup_verify.py` | Valida fixidez do repositório BagIt de backup e pode registrar evento PREMIS `FIXITY_CHECK`. |
-| `backup_report.py` | Lista checkpoints, relatórios e manifestos históricos de um destino de backup. |
+| `backup_manifest_build.py` | Gera manifesto com caminhos relativos, prefixo opcional, algoritmo configurável e opções de ocultos e links simbólicos. |
+| `backup_manifest_diff.py` | Classifica diferenças como `new`, `changed`, `same` e `removed`. |
+| `backup_verify.py` | Descobre os manifestos por origem, identifica seus algoritmos e verifica cada pasta correspondente. |
+| `backup_report.py` | Lista checkpoints, relatórios e manifestos históricos. |
 
-Saídas principais com o algoritmo padrão SHA-256 (os manifestos da raiz usam o algoritmo do plano):
+`backup_verify.py` verifica todos os manifestos encontrados por padrão. `--algo sha512`, por exemplo, filtra a verificação por algoritmo. Origens vazias também possuem manifesto e podem ser verificadas. Os relatórios são gravados em `thor-backup/relatorios/verificacao_<execucao>/`, sem acrescentar arquivos às pastas das origens.
 
-```text
-Backup/
-  data/
-  manifest-sha256.txt
-  tagmanifest-sha256.txt
-  bag-info.txt
-  bagit.txt
-  thor-backup/
-    configs/
-    manifests/origem/
-    manifests/destino/
-    manifests/historico/
-    checkpoints/
-    relatorios/
-    logs/
-    versoes/
+Para registrar um evento PREMIS `FIXITY_CHECK` por manifesto:
+
+```bash
+python scripts/backup_verify.py --destino "E:/Backup" --premis-log "E:/Backup/thor-backup/logs/premis_events.jsonl" --progress
 ```
 
-Parada segura:
+Relatório final:
 
-- Crie `thor-backup/checkpoints/STOP` dentro do destino.
-- O script consulta `STOP` após copiar e conferir um arquivo novo ou alterado; então atualiza manifesto/checkpoint, registra PREMIS e encerra como `PAUSED`.
-- A geração dos manifestos de origem não é interrompida por `STOP`. Arquivos iguais e itens já concluídos no checkpoint não consultam esse marcador; uma execução apenas com esses itens pode terminar sem pausar.
-- Remova o arquivo `STOP` antes de executar com `--resume`. Na interface, o botão **Retomar** remove o marcador automaticamente.
+- O arquivo `relatorios/<backup>_<execucao>_relatorio.txt` é gravado em UTF-8, com identificação do plano, execução, destino, algoritmo e indicação de retomada.
+- Apresenta as origens e seus manifestos, contagens e seções para arquivos novos, alterados, iguais, ausentes na origem e falhas. Seções vazias exibem `Nenhum`.
+- Cada item mostra caminho relativo, origem e destino quando disponíveis, hashes completos e detalhes da preservação de versões.
+- O resumo final informa o total de arquivos relacionados, cópias conferidas, resultados por categoria e duração. Arquivos iguais não são apresentados como verificados novamente no destino.
+- O TXT contém todas as listas; o log do Worker recebe apenas o resumo e o caminho do relatório completo. O checkpoint e o evento `BACKUP_COMPLETED` apontam para esse TXT.
+- As contagens referem-se à execução atual, inclusive na retomada. O relatório final é emitido ao concluir o backup.
 
-Eventos PREMIS registrados pelo script:
+Exemplo ilustrativo do TXT (hashes abreviados; no relatório real são gravados integralmente):
+
+```text
+=== Backup preservacional ===
+Backup    : acervo_institucional
+Execução  : <execucao>
+Plano     : D:/planos/backup.json
+Destino   : E:/Backup
+Algoritmo : sha256
+Resultado : CONCLUÍDO
+Retomada de checkpoint: não
+
+-- Origens e manifestos --
+Origem: documentos
+  Pasta de origem: D:/Acervo/Documentos
+  Pasta no destino: E:/Backup/documentos
+  Manifesto: E:/Backup/thor-backup/manifests/documentos/manifest-sha256.txt
+Origem: imagens
+  Pasta de origem: D:/Acervo/Imagens
+  Pasta no destino: E:/Backup/imagens
+  Manifesto: E:/Backup/thor-backup/manifests/imagens/manifest-sha256.txt
+
+-- Contagens da execução --
+Total de arquivos no relatório: 4
+Arquivos novos copiados: 1
+Arquivos alterados copiados: 1
+Cópias com hash conferido: 2
+Arquivos iguais ao manifesto (sem nova cópia): 1
+Arquivos ausentes na origem e preservados no destino: 1
+Arquivos com falha: 0
+Tempo total de execução: 12.34s
+
+-- Arquivos novos copiados (1) --
+documentos/contrato.pdf
+  Origem: D:/Acervo/Documentos/contrato.pdf
+  Destino: E:/Backup/documentos/contrato.pdf
+  Hash registrado: a81f...
+
+-- Arquivos alterados copiados (1) --
+documentos/ata.pdf
+  Origem: D:/Acervo/Documentos/ata.pdf
+  Destino: E:/Backup/documentos/ata.pdf
+  Hash anterior: b92e...
+  Hash registrado: c73a...
+  Detalhe: Versão anterior preservada em E:/Backup/thor-backup/versoes/<execucao>/documentos/ata.pdf
+
+-- Arquivos iguais ao manifesto (1) --
+imagens/fotografia.jpg
+  Hash registrado: d64b...
+
+-- Arquivos ausentes na origem e preservados no destino (1) --
+documentos/antigo.pdf
+  Hash anterior: e55c...
+  Detalhe: Ausente na origem; preservado no backup e mantido no manifesto.
+
+-- Arquivos com falha (0) --
+Nenhum
+
+-- Critérios de leitura --
+Os caminhos dos arquivos são relativos à raiz do destino e incluem o nome da origem.
+Novos e alterados: o hash da cópia foi conferido contra o hash da origem.
+Iguais: o hash da origem coincide com o manifesto; o conteúdo no destino não foi verificado novamente.
+Ausentes na origem: os arquivos e seus registros no manifesto foram mantidos no destino.
+As contagens descrevem esta execução; em uma retomada, cópias já persistidas podem aparecer como iguais.
+
+=== Resumo final do backup ===
+Total de arquivos no relatório: 4
+Arquivos novos copiados: 1
+Arquivos alterados copiados: 1
+Cópias com hash conferido: 2
+Arquivos iguais ao manifesto (sem nova cópia): 1
+Arquivos ausentes na origem e preservados no destino: 1
+Arquivos com falha: 0
+Tempo total de execução: 12.34s
+Relatório completo: E:/Backup/thor-backup/relatorios/acervo_institucional_<execucao>_relatorio.txt
+```
+
+Parada e retomada:
+
+- Crie `thor-backup/checkpoints/STOP` no destino.
+- Após processar um arquivo, inclusive um arquivo igual, a rotina consulta o marcador, salva manifestos e checkpoint, registra PREMIS e encerra como `PAUSED`.
+- A geração dos manifestos de origem não é interrompida por `STOP`.
+- Remova o marcador antes de usar `--resume`; o botão **Retomar** da interface faz essa remoção no destino definido pelo plano.
+- O checkpoint deve pertencer a uma execução interrompida com a mesma estrutura, algoritmo, destino e origens. Na retomada, o incremental recalcula os manifestos das origens e compara com o estado persistido no destino.
+
+Eventos registrados por `backup_plan.py`:
 
 ```text
 BACKUP_STARTED
@@ -638,29 +723,28 @@ BACKUP_COMPLETED
 BACKUP_FAILED
 ```
 
-`BACKUP_INCREMENTAL` é registrado quando o manifesto anterior contém entradas. `FIXITY_CHECK` é registrado separadamente por `backup_verify.py`, somente quando recebe `--premis-log`.
+`BACKUP_INCREMENTAL` é registrado quando existem entradas nos manifestos anteriores. Na execução direta, o log padrão é `thor-backup/logs/premis_events.jsonl`; `--premis-log` permite alterar o caminho. Pela interface, o Worker fornece o log configurado na aplicação tanto para o backup quanto para a verificação. `backup_verify.py` registra `FIXITY_CHECK` somente quando recebe `--premis-log`.
 
-Na execução direta, `backup_plan.py` usa `thor-backup/logs/premis_events.jsonl` por padrão, com possibilidade de sobrescrever o caminho por `--premis-log`. Pela interface, o Worker fornece o log PREMIS configurado na aplicação tanto para o backup quanto para a verificação.
+Regras de preservação:
 
-Observações:
+- Cada cópia nova ou alterada tem o hash conferido contra o manifesto gerado da origem.
+- A versão anterior de um arquivo alterado é movida para `thor-backup/versoes/<execucao>/<origem>/`, preservando o caminho relativo.
+- Arquivos removidos da origem continuam no destino e no respectivo manifesto.
+- Arquivos iguais são identificados comparando o hash da origem com o manifesto do destino. O incremental não verifica novamente seu conteúdo no destino nem recompõe automaticamente arquivos ausentes ou corrompidos; use `backup_verify.py` para detectá-los.
+- Manifestos são gravados em arquivo temporário e substituídos após a escrita. Cada execução concluída guarda uma cópia por origem em `historico/<execucao>/`.
+- Nomes de origem são normalizados; colisões após normalização, inclusive diferenças apenas de maiúsculas e minúsculas, são recusadas. `thor-backup` é reservado.
+- Origem e destino não podem estar contidos um no outro.
+- Destinos da estrutura anterior são recusados sem conversão automática. Use um novo destino e mantenha os arquivos existentes preservados.
+- Os manifestos do destino são a fonte de verdade do incremental; nenhum banco SQL é usado.
+- Com `--progress`, a geração dos manifestos de origem e a aplicação incremental registram progresso em marcos de 5%.
 
-- Os arquivos são copiados para `data/<nome_da_origem>/`; cada cópia nova ou alterada tem o hash conferido contra o manifesto gerado da origem.
-- Arquivos alterados têm a versão anterior movida para `thor-backup/versoes/<execucao>/data/<nome_da_origem>/`.
-- Arquivos removidos da origem são preservados no destino e mantidos no manifesto do backup.
-- Arquivos iguais são identificados comparando o hash da origem com o manifesto do destino. O incremental não verifica novamente o conteúdo desses arquivos no destino nem recompõe automaticamente os que estejam ausentes ou corrompidos; use `backup_verify.py` para detectar essas situações.
-- O checkpoint fica em `thor-backup/checkpoints/<backup>.state.json`.
-- O manifesto BagIt do destino continua sendo a fonte de verdade; nenhum banco SQL é usado.
-- Geração de manifesto de origem e aplicação incremental registram progresso em marcos de 5% quando `--progress` está ativo.
-
-Testes do backup preservacional:
+Testes:
 
 ```powershell
-py tests\run_backup_tests_html.py
+python -B tests/run_backup_tests_html.py
 ```
 
-O comando executa testes de scripts e interface gráfica com widgets simulados e grava o relatório em `tests/reports/backup_tests_report.html`.
-
----
+O comando executa os testes de scripts e de interface com widgets simulados e grava `tests/reports/backup_tests_report.html`.
 
 ## `duplicate_finder.py`
 

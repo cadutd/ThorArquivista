@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import csv
 import hashlib
 import json
 import os
@@ -77,9 +76,11 @@ def read_manifest(path: Path) -> dict[str, str]:
 
 def write_manifest(path: Path, entries: dict[str, str]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8", newline="\n") as f:
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with tmp.open("w", encoding="utf-8", newline="\n") as f:
         for rel in sorted(entries):
             f.write(f"{entries[rel]}  {rel}\n")
+    tmp.replace(path)
 
 
 def copy_file(src: Path, dst: Path) -> None:
@@ -116,9 +117,11 @@ def normalize_sources(plan: dict[str, Any]) -> list[dict[str, str]]:
         if not path:
             raise ValueError(f"Origem sem caminho na posição {idx}.")
         key = safe_name(str(name))
-        if key in used:
-            key = f"{key}_{idx}"
-        used.add(key)
+        if key.casefold() == "thor-backup":
+            raise ValueError("Nome de origem reservado: thor-backup.")
+        if key.casefold() in used:
+            raise ValueError(f"Nome de origem duplicado após normalização: {key}")
+        used.add(key.casefold())
         out.append({"name": key, "path": str(path)})
     return out
 
@@ -138,45 +141,67 @@ def options(plan: dict[str, Any]) -> dict[str, Any]:
     return opts
 
 
-def ensure_repository(dest: Path, algo: str) -> None:
-    (dest / "data").mkdir(parents=True, exist_ok=True)
+def ensure_repository(dest: Path, algo: str, sources: list[dict[str, str]]) -> None:
+    if any(dest.glob("manifest-*.txt")):
+        raise ValueError("Destino com estrutura anterior incompatível. Escolha um novo destino; os arquivos existentes não serão convertidos.")
+    manifests_dir = dest / "thor-backup" / "manifests"
+    existing = {p.name.casefold(): p.name for p in manifests_dir.iterdir() if p.is_dir()} if manifests_dir.exists() else {}
+    for source in sources:
+        name = source["name"]
+        if name.casefold() in existing and existing[name.casefold()] != name:
+            raise ValueError(f"O nome da origem difere apenas em maiúsculas/minúsculas de uma origem existente: {name}")
+        manifest = source_manifest_path(dest, name, algo)
+        if any(p != manifest for p in manifest.parent.glob("manifest-*.txt")):
+            raise ValueError(f"Algoritmo diferente do manifesto existente para {name}.")
     for sub in (
         "configs",
-        "manifests/origem",
-        "manifests/destino",
-        "manifests/historico",
+        "manifests",
+        "historico",
         "checkpoints",
         "relatorios",
         "logs",
         "versoes",
     ):
         (dest / "thor-backup" / sub).mkdir(parents=True, exist_ok=True)
-    bagit = dest / "bagit.txt"
-    if not bagit.exists():
-        bagit.write_text("BagIt-Version: 0.97\nTag-File-Character-Encoding: UTF-8\n", encoding="utf-8", newline="\n")
-    bag_info = dest / "bag-info.txt"
-    if not bag_info.exists():
-        bag_info.write_text(
-            "Bag-Software-Agent: Thor Arquivista backup_plan.py\n"
-            f"Bagging-Date: {datetime.now(timezone.utc).date().isoformat()}\n",
-            encoding="utf-8",
-            newline="\n",
-        )
-    manifest = dest / f"manifest-{algo}.txt"
-    if not manifest.exists():
-        write_manifest(manifest, {})
+    for source in sources:
+        (dest / source["name"]).mkdir(parents=True, exist_ok=True)
+        manifest = source_manifest_path(dest, source["name"], algo)
+        if not manifest.exists():
+            write_manifest(manifest, {})
 
 
-def tag_files(dest: Path, algo: str) -> dict[str, str]:
+def source_manifest_path(dest: Path, source_name: str, algo: str) -> Path:
+    return dest / "thor-backup" / "manifests" / source_name / f"manifest-{algo}.txt"
+
+
+def read_source_manifests(dest: Path, algo: str) -> dict[str, str]:
     entries: dict[str, str] = {}
-    for p in (dest / "bagit.txt", dest / "bag-info.txt", dest / f"manifest-{algo}.txt"):
-        if p.exists():
-            entries[relposix(dest, p)] = digest_file(p, algo)
+    for manifest in sorted((dest / "thor-backup" / "manifests").glob(f"*/manifest-{algo}.txt")):
+        name = manifest.parent.name
+        for rel, digest in read_manifest(manifest).items():
+            if Path(rel).is_absolute() or ".." in Path(rel).parts or ":" in rel:
+                raise ValueError(f"Caminho inválido no manifesto {manifest}: {rel}")
+            entries[f"{name}/{rel}"] = digest
     return entries
 
 
-def update_tagmanifest(dest: Path, algo: str) -> None:
-    write_manifest(dest / f"tagmanifest-{algo}.txt", tag_files(dest, algo))
+def write_source_manifests(base: Path, entries: dict[str, str], algo: str, names: Iterable[str]) -> None:
+    grouped: dict[str, dict[str, str]] = {name: {} for name in names}
+    for path, digest in entries.items():
+        name, rel = path.split("/", 1)
+        grouped.setdefault(name, {})[rel] = digest
+    for name, manifest_entries in grouped.items():
+        write_manifest(base / name / f"manifest-{algo}.txt", manifest_entries)
+
+
+def validate_source_paths(dest: Path, sources: list[dict[str, str]]) -> None:
+    for source in sources:
+        root = Path(source["path"]).resolve()
+        if dest.is_relative_to(root) or root.is_relative_to(dest):
+            raise ValueError(f"Origem e destino não podem se sobrepor: {root}")
+        target = dest / source["name"]
+        if target.is_symlink() or not target.resolve().is_relative_to(dest):
+            raise ValueError(f"Pasta de destino da origem inválida: {target}")
 
 
 def append_premis(log_path: Path, event_type: str, obj_id: str, detail: str, outcome: str, agent: str) -> None:
@@ -209,11 +234,76 @@ def read_json(path: Path) -> dict[str, Any]:
     return data if isinstance(data, dict) else {}
 
 
-def write_report_csv(path: Path, rows: list[dict[str, Any]]) -> None:
+def backup_report_summary(rows: list[dict[str, Any]], elapsed: float) -> list[str]:
+    counts = {status: sum(row.get("status") == status for row in rows) for status in ("new", "changed", "same", "removed", "failed")}
+    copied = counts["new"] + counts["changed"]
+    return [
+        f"Total de arquivos no relatório: {len(rows)}",
+        f"Arquivos novos copiados: {counts['new']}",
+        f"Arquivos alterados copiados: {counts['changed']}",
+        f"Cópias com hash conferido: {copied}",
+        f"Arquivos iguais ao manifesto (sem nova cópia): {counts['same']}",
+        f"Arquivos ausentes na origem e preservados no destino: {counts['removed']}",
+        f"Arquivos com falha: {counts['failed']}",
+        f"Tempo total de execução: {elapsed:.2f}s",
+    ]
+
+
+def write_backup_report(
+    path: Path, rows: list[dict[str, Any]], *, name: str, execution: str,
+    config: Path, dest: Path, algo: str, sources: list[dict[str, str]],
+    elapsed: float, resumed: bool = False,
+) -> None:
+    lines = [
+        "=== Backup preservacional ===",
+        f"Backup    : {name}",
+        f"Execução  : {execution}",
+        f"Plano     : {config}",
+        f"Destino   : {dest}",
+        f"Algoritmo : {algo}",
+        "Resultado : CONCLUÍDO",
+        f"Retomada de checkpoint: {'sim' if resumed else 'não'}",
+        "", "-- Origens e manifestos --",
+    ]
+    for source in sources:
+        lines.extend([
+            f"Origem: {source['name']}",
+            f"  Pasta de origem: {source['path']}",
+            f"  Pasta no destino: {dest / source['name']}",
+            f"  Manifesto: {source_manifest_path(dest, source['name'], algo)}",
+        ])
+    lines.extend(["", "-- Contagens da execução --", *backup_report_summary(rows, elapsed)])
+    for status, title in (
+        ("new", "Arquivos novos copiados"),
+        ("changed", "Arquivos alterados copiados"),
+        ("same", "Arquivos iguais ao manifesto"),
+        ("removed", "Arquivos ausentes na origem e preservados no destino"),
+        ("failed", "Arquivos com falha"),
+    ):
+        items = sorted((row for row in rows if row.get("status") == status), key=lambda row: row["path"])
+        lines.extend(["", f"-- {title} ({len(items)}) --"])
+        if not items:
+            lines.append("Nenhum")
+        for row in items:
+            lines.append(str(row["path"]))
+            for key, label in (
+                ("source", "Origem"), ("destination", "Destino"),
+                ("digest_before", "Hash anterior"), ("digest_after", "Hash registrado"),
+                ("detail", "Detalhe"),
+            ):
+                if row.get(key):
+                    lines.append(f"  {label}: {row[key]}")
+    lines.extend([
+        "", "-- Critérios de leitura --",
+        "Os caminhos dos arquivos são relativos à raiz do destino e incluem o nome da origem.",
+        "Novos e alterados: o hash da cópia foi conferido contra o hash da origem.",
+        "Iguais: o hash da origem coincide com o manifesto; o conteúdo no destino não foi verificado novamente.",
+        "Ausentes na origem: os arquivos e seus registros no manifesto foram mantidos no destino.",
+        "As contagens descrevem esta execução; em uma retomada, cópias já persistidas podem aparecer como iguais.",
+        "", "=== Resumo final do backup ===", *backup_report_summary(rows, elapsed),
+        f"Relatório completo: {path}",
+    ])
     path.parent.mkdir(parents=True, exist_ok=True)
-    keys = ["path", "status", "source", "destination", "digest_before", "digest_after", "detail"]
-    with path.open("w", encoding="utf-8", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=keys)
-        w.writeheader()
-        for row in rows:
-            w.writerow({k: row.get(k, "") for k in keys})
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    tmp.replace(path)

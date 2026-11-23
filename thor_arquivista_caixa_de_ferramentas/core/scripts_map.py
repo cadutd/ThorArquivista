@@ -281,10 +281,11 @@ def _args_backup_verify(p: Dict[str, Any], cfg: AppConfig) -> list[str]:
         raise ValueError("BACKUP_VERIFY: campo obrigatório 'destino' ausente.")
     args = [
         "--destino", str(destino),
-        "--algo", str(p.get("algo", "sha256")),
         "--premis-log", str(p.get("premis_log") or cfg.premis_log),
         "--agent", str(p.get("agent") or cfg.premis_agent or "Thor Arquivista"),
     ]
+    if p.get("algo"):
+        args += ["--algo", str(p["algo"])]
     if p.get("progress", True):
         args.append("--progress")
     return args

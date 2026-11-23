@@ -9,7 +9,7 @@ from pathlib import Path
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Lista histórico e checkpoint de um backup preservacional.")
-    p.add_argument("--destino", required=True, help="Raiz do repositório BagIt de backup.")
+    p.add_argument("--destino", required=True, help="Pasta de destino do backup.")
     p.add_argument("--backup", help="Nome do backup para localizar checkpoint.")
     p.add_argument("--saida", help="Arquivo JSON de relatório consolidado.")
     return p.parse_args()
@@ -30,8 +30,8 @@ def main() -> int:
         print(f"[ERRO] Estrutura thor-backup não encontrada: {tb}", file=sys.stderr)
         return 2
     checkpoints = sorted((tb / "checkpoints").glob("*.state.json"))
-    reports = sorted((tb / "relatorios").glob("*"))
-    manifests = sorted((tb / "manifests" / "historico").glob("*"))
+    reports = sorted(p for p in (tb / "relatorios").rglob("*") if p.is_file())
+    manifests = sorted((tb / "historico").glob("*/*/manifest-*.txt"))
     if args.backup:
         cp = tb / "checkpoints" / f"{args.backup}.state.json"
         checkpoints = [cp] if cp.exists() else []

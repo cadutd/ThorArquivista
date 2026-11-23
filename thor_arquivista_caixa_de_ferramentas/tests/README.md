@@ -1,11 +1,12 @@
 # Testes - Backup Preservacional
 
-Esta pasta contém a suíte automatizada do módulo de Backup Preservacional BagIt e do editor de plano JSON.
+Esta pasta contém a suíte automatizada do módulo de Backup Preservacional com manifestos por origem e do editor de plano JSON.
 
 ## Índice
 
 - [Executar](#executar)
 - [Cobertura](#cobertura)
+- [Testes da estrutura de destino e do relatório TXT](#testes-da-estrutura-de-destino-e-do-relatório-txt)
 - [Verificação de fixidez: caminhos longos e rede](#verificação-de-fixidez-caminhos-longos-e-rede)
 - [Validação de utilitários](#validação-de-utilitários)
 - [Relatório HTML](#relatório-html)
@@ -35,7 +36,11 @@ Os testes cobrem:
 - geração de manifesto de origem;
 - comparação de manifestos;
 - execução inicial do backup;
+- manifestos relativos independentes e histórico por origem;
+- verificação de múltiplas origens, origens vazias e algoritmo identificado automaticamente;
+- proteção dos destinos antigos, nomes reservados e sobreposição de caminhos;
 - execução incremental;
+- relatório final TXT legível, com contagens, hashes, detalhes e seções vazias;
 - versionamento de alterados;
 - preservação de removidos;
 - opções `algo`, `ignore_hidden` e `follow_symlinks`;
@@ -47,6 +52,20 @@ Os testes cobrem:
 - detecção de payload corrompido e arquivo extra em `data/`.
 - emissão de relatório TXT estruturado da verificação de fixidez para backup incremental;
 - aplicação de backup incremental usando o relatório estruturado da verificação de fixidez.
+
+## Testes da estrutura de destino e do relatório TXT
+
+Para executar somente os testes de integração da estrutura por origem e do relatório final:
+
+```powershell
+python -B -m unittest discover -s tests -p test_preservation_backup_layout.py -v
+```
+
+Os testes usam pastas temporárias e verificam o incremental, os manifestos relativos por origem, o histórico, o versionamento, a pausa e a retomada. Também verificam a detecção de corrupção e de manifestos ausentes, origens vazias e a identificação automática do algoritmo.
+
+O teste do relatório executa um backup inicial e um incremental com arquivos novos, alterados, iguais e removidos da origem. Confere as contagens, hashes completos, detalhes de versões preservadas e o caminho TXT registrado no checkpoint e no evento PREMIS. A origem vazia também é testada para garantir contagens zero e seções com `Nenhum`.
+
+O TXT em `thor-backup/relatorios/` é o relatório operacional do backup. O HTML em `tests/reports/` é o resultado da suíte de testes.
 
 ## Verificação de fixidez: caminhos longos e rede
 

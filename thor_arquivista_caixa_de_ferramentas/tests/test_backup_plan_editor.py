@@ -104,7 +104,7 @@ class BackupPlanEditorTests(unittest.TestCase):
             editor._validate_editor(name, dest, algo, ignore_hidden, follow_symlinks, tree, output, status)
 
         self.assertIn("Informe o nome do backup", output.text)
-        self.assertIn("Informe o destino BagIt", output.text)
+        self.assertIn("Informe o destino do backup", output.text)
         self.assertIn("Adicione pelo menos uma pasta", output.text)
 
     def test_validate_editor_rejects_duplicate_source_names(self):

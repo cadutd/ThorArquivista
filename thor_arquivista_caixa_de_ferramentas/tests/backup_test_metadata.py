@@ -43,9 +43,9 @@ TEST_METADATA = {
         "postconditions": "O arquivo JSON é gravado e contém o nome do backup e a lista de origens esperada.",
     },
     "test_preservation_backup_scripts.PreservationBackupScriptTests.test_manifest_build_covers_prefix_hidden_and_hash_algorithm": {
-        "purpose": "Validar geração de manifesto de origem com prefixo BagIt, filtro de ocultos e algoritmo alternativo.",
+        "purpose": "Validar geração de manifesto de origem com prefixo opcional, filtro de ocultos e algoritmo alternativo.",
         "preconditions": "Uma pasta temporária contém um arquivo visível e um arquivo oculto.",
-        "postconditions": "O manifesto usa prefixo data/origem, exclui o arquivo oculto e gera hash SHA-512.",
+        "postconditions": "O manifesto usa prefixo origem, exclui o arquivo oculto e gera hash SHA-512.",
     },
     "test_preservation_backup_scripts.PreservationBackupScriptTests.test_manifest_build_follow_symlinks_when_available": {
         "purpose": "Verificar a opção follow_symlinks na geração de manifesto quando o sistema permite links simbólicos.",
@@ -57,10 +57,10 @@ TEST_METADATA = {
         "preconditions": "Dois manifestos em memória têm itens novos, alterados, iguais e removidos.",
         "postconditions": "O diff retorna listas corretas para new, changed, same e removed.",
     },
-    "test_preservation_backup_scripts.PreservationBackupScriptTests.test_backup_runner_creates_bagit_repository_and_premis_events": {
-        "purpose": "Executar backup inicial e validar criação do repositório BagIt e eventos PREMIS mínimos.",
+    "test_preservation_backup_scripts.PreservationBackupScriptTests.test_backup_runner_creates_source_manifests_and_premis_events": {
+        "purpose": "Executar backup inicial e validar pastas por origem, manifestos independentes e eventos PREMIS mínimos.",
         "preconditions": "Plano temporário aponta para uma origem com um arquivo e para um destino vazio.",
-        "postconditions": "São criados bagit.txt, bag-info.txt, tagmanifest, payload em data, manifesto e eventos BACKUP_STARTED/BACKUP_COMPLETED.",
+        "postconditions": "São criadas pastas por origem, manifestos em thor-backup/manifests e eventos BACKUP_STARTED/BACKUP_COMPLETED.",
     },
     "test_preservation_backup_scripts.PreservationBackupScriptTests.test_backup_runner_incremental_versions_changed_and_preserves_removed": {
         "purpose": "Validar backup incremental com versionamento de arquivo alterado e preservação de arquivo removido da origem.",
@@ -84,7 +84,7 @@ TEST_METADATA = {
     },
     "test_preservation_backup_scripts.PreservationBackupScriptTests.test_backup_verify_records_fixity_event": {
         "purpose": "Validar verificação de fixidez do backup e registro do evento PREMIS específico.",
-        "preconditions": "Um backup válido já foi executado e existe manifesto BagIt no destino.",
+        "preconditions": "Um backup válido já foi executado e existem manifestos por origem no destino.",
         "postconditions": "backup_verify retorna sucesso e grava evento FIXITY_CHECK com outcome success.",
     },
     "test_preservation_backup_scripts.PreservationBackupScriptTests.test_validate_bag_accepts_package_created_by_build_bag": {

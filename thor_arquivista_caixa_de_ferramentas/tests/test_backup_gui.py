@@ -196,7 +196,7 @@ class BackupGuiTests(unittest.TestCase):
             "Fechar aba",
         ]:
             self.assertIn(expected, texts)
-        for expected in ["Plano JSON", "Destino BagIt", "Backup"]:
+        for expected in ["Plano JSON", "Destino do backup", "Backup"]:
             self.assertIn(expected, label_texts())
 
     def test_backup_plan_editor_screen_exposes_json_editing_controls(self):
@@ -224,7 +224,7 @@ class BackupGuiTests(unittest.TestCase):
             "Fechar aba",
         ]:
             self.assertIn(expected, texts)
-        for expected in ["Nome do backup", "Destino BagIt", "Algoritmo", "Origens"]:
+        for expected in ["Nome do backup", "Destino do backup", "Algoritmo", "Origens"]:
             self.assertIn(expected, label_texts())
 
     def test_backup_plan_editor_builds_treeview_for_sources(self):

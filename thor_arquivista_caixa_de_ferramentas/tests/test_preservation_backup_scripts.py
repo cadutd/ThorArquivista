@@ -51,11 +51,11 @@ class PreservationBackupScriptTests(unittest.TestCase):
             (root / "visible.txt").write_text("visible", encoding="utf-8")
             (root / ".hidden.txt").write_text("hidden", encoding="utf-8")
 
-            entries = build_manifest(root, prefix="data/origem", algo="sha512", ignore_hidden=True)
+            entries = build_manifest(root, prefix="origem", algo="sha512", ignore_hidden=True)
 
-            self.assertIn("data/origem/visible.txt", entries)
-            self.assertNotIn("data/origem/.hidden.txt", entries)
-            self.assertEqual(len(entries["data/origem/visible.txt"]), 128)
+            self.assertIn("origem/visible.txt", entries)
+            self.assertNotIn("origem/.hidden.txt", entries)
+            self.assertEqual(len(entries["origem/visible.txt"]), 128)
 
     def test_manifest_build_follow_symlinks_when_available(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -68,11 +68,11 @@ class PreservationBackupScriptTests(unittest.TestCase):
             except (OSError, NotImplementedError):
                 self.skipTest("Symlink indisponível neste ambiente.")
 
-            no_follow = build_manifest(root, prefix="data/origem", follow_symlinks=False)
-            follow = build_manifest(root, prefix="data/origem", follow_symlinks=True)
+            no_follow = build_manifest(root, prefix="origem", follow_symlinks=False)
+            follow = build_manifest(root, prefix="origem", follow_symlinks=True)
 
-            self.assertNotIn("data/origem/link.txt", no_follow)
-            self.assertIn("data/origem/link.txt", follow)
+            self.assertNotIn("origem/link.txt", no_follow)
+            self.assertIn("origem/link.txt", follow)
 
     def test_manifest_diff_covers_new_changed_same_and_removed(self):
         source = {"a": "1", "b": "2", "c": "3"}
@@ -85,7 +85,7 @@ class PreservationBackupScriptTests(unittest.TestCase):
         self.assertEqual(diff["same"], ["c"])
         self.assertEqual(diff["removed"], ["d"])
 
-    def test_backup_runner_creates_bagit_repository_and_premis_events(self):
+    def test_backup_runner_creates_source_manifests_and_premis_events(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             source = root / "src"
@@ -98,12 +98,13 @@ class PreservationBackupScriptTests(unittest.TestCase):
 
             self.assertEqual(rc, 0)
             dest = root / "Backup"
-            self.assertTrue((dest / "bagit.txt").exists())
-            self.assertTrue((dest / "bag-info.txt").exists())
-            self.assertTrue((dest / "tagmanifest-sha256.txt").exists())
-            self.assertEqual((dest / "data" / "origem" / "a.txt").read_text(encoding="utf-8"), "alpha")
-            manifest = read_manifest(dest / "manifest-sha256.txt")
-            self.assertIn("data/origem/a.txt", manifest)
+            self.assertFalse((dest / "bagit.txt").exists())
+            self.assertFalse((dest / "bag-info.txt").exists())
+            self.assertFalse((dest / "tagmanifest-sha256.txt").exists())
+            self.assertFalse((dest / "data").exists())
+            self.assertEqual((dest / "origem" / "a.txt").read_text(encoding="utf-8"), "alpha")
+            manifest = read_manifest(dest / "thor-backup" / "manifests" / "origem" / "manifest-sha256.txt")
+            self.assertIn("a.txt", manifest)
             events = [json.loads(line)["eventType"] for line in premis.read_text(encoding="utf-8").splitlines()]
             self.assertIn("BACKUP_STARTED", events)
             self.assertIn("BACKUP_COMPLETED", events)
@@ -123,13 +124,13 @@ class PreservationBackupScriptTests(unittest.TestCase):
             self.assertEqual(self.run_backup(plan), 0)
 
             dest = root / "Backup"
-            self.assertEqual((dest / "data" / "origem" / "a.txt").read_text(encoding="utf-8"), "alpha changed")
-            self.assertTrue((dest / "data" / "origem" / "remove.txt").exists())
+            self.assertEqual((dest / "origem" / "a.txt").read_text(encoding="utf-8"), "alpha changed")
+            self.assertTrue((dest / "origem" / "remove.txt").exists())
             versions = list((dest / "thor-backup" / "versoes").rglob("a.txt"))
             self.assertEqual(len(versions), 1)
             self.assertEqual(versions[0].read_text(encoding="utf-8"), "alpha")
-            manifest = read_manifest(dest / "manifest-sha256.txt")
-            self.assertIn("data/origem/remove.txt", manifest)
+            manifest = read_manifest(dest / "thor-backup" / "manifests" / "origem" / "manifest-sha256.txt")
+            self.assertIn("remove.txt", manifest)
 
     def test_backup_runner_pause_and_resume_via_stop_checkpoint(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -163,11 +164,11 @@ class PreservationBackupScriptTests(unittest.TestCase):
 
             self.assertEqual(self.run_backup(plan), 0)
             dest = root / "Backup"
-            self.assertTrue((dest / "manifest-sha512.txt").exists())
-            manifest = read_manifest(dest / "manifest-sha512.txt")
-            self.assertIn("data/origem/a.txt", manifest)
-            self.assertNotIn("data/origem/.hidden.txt", manifest)
-            self.assertEqual(len(manifest["data/origem/a.txt"]), 128)
+            self.assertTrue((dest / "thor-backup" / "manifests" / "origem" / "manifest-sha512.txt").exists())
+            manifest = read_manifest(dest / "thor-backup" / "manifests" / "origem" / "manifest-sha512.txt")
+            self.assertIn("a.txt", manifest)
+            self.assertNotIn(".hidden.txt", manifest)
+            self.assertEqual(len(manifest["a.txt"]), 128)
 
     def test_backup_runner_reports_failure_for_invalid_source(self):
         with tempfile.TemporaryDirectory() as tmp:

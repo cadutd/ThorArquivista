@@ -1,6 +1,6 @@
 # Thor Arquivista - Caixa de Ferramentas de Preservação Digital
 
-Aplicativo desktop em Python para executar tarefas comuns de preservação digital: manifestos BagIt, verificação de fixidez, geração de pacote BagIt, cópia validada, backup preservacional BagIt, análise/tratamento de duplicatas, exclusão de duplicatas por manifesto e conversão PREMIS.
+Aplicativo desktop em Python para executar tarefas comuns de preservação digital: manifestos BagIt, verificação de fixidez, geração de pacote BagIt, cópia validada, backup preservacional com manifestos por origem, análise/tratamento de duplicatas, exclusão de duplicatas por manifesto e conversão PREMIS.
 
 O aplicativo usa Tkinter com `ttkbootstrap`, executa tarefas em fila local e grava o estado em arquivos JSON na própria pasta do projeto. A janela principal abre centralizada no monitor ativo.
 
@@ -318,63 +318,103 @@ O progresso da cópia, da geração do manifesto e da verificação de fixidez �
 
 Script usado: `scripts/backup_plan.py`
 
-Executa um backup preservacional incremental em um destino tratado como repositório BagIt. A fonte de verdade do backup é o manifesto BagIt do destino; não há uso de banco SQL.
+Executa um backup preservacional incremental com uma pasta de arquivos para cada origem e controle centralizado em `thor-backup/`. Cada origem possui seu próprio `manifest-<algoritmo>.txt`, com caminhos relativos à pasta correspondente no destino. Esses manifestos são a fonte de verdade do incremental; nenhum banco SQL é usado.
 
 Campos e ações principais:
 
-- **Plano JSON**: arquivo que define nome, destino, opções e origens.
-- **Destino BagIt**: pasta usada pelas ações de pausa, verificação e consulta de histórico. A execução usa o destino definido no JSON.
-- **Backup**: nome lógico usado para localizar o checkpoint no histórico. A execução usa o nome definido no JSON.
-- **Validar plano**: confere estrutura mínima e existência das origens.
-- **Executar**: enfileira o job `BACKUP_PLAN`.
-- **Retomar**: retoma pelo checkpoint e remove `STOP` quando necessário.
-- **Pausar com STOP**: cria `thor-backup/checkpoints/STOP` para parada segura.
-- **Verificar integridade**: enfileira `BACKUP_VERIFY` usando SHA-256. Para planos com outro algoritmo, use a linha de comando com `--algo`.
-- **Histórico**: lista checkpoints, relatórios e manifestos históricos.
+- **Plano JSON**: define nome, destino, opções e origens.
+- **Destino do backup**: pasta usada pelas ações de pausa, verificação e histórico. A execução usa o destino definido no JSON.
+- **Backup**: nome usado para localizar o checkpoint no histórico. A execução usa o nome definido no JSON.
+- **Validar plano**: confere a estrutura mínima, os nomes e caminhos das origens, informa origens ausentes e mostra as pastas e manifestos previstos no destino.
+- **Executar**: enfileira `BACKUP_PLAN`.
+- **Retomar**: enfileira a retomada de uma execução interrompida, removendo `STOP` no destino do plano. O checkpoint deve corresponder à estrutura, algoritmo e origens do plano.
+- **Pausar com STOP**: cria `thor-backup/checkpoints/STOP`.
+- **Verificar integridade**: enfileira `BACKUP_VERIFY`, que encontra os manifestos por origem e identifica seus algoritmos automaticamente.
+- **Histórico**: lista checkpoints, relatórios, manifestos atuais e históricos.
 
 Funcionamento do incremental:
 
-- Gera hashes das origens e compara com o manifesto do destino.
-- Copia arquivos novos e alterados para `data/<nome_da_origem>/`, conferindo o hash após cada cópia.
-- Move a versão anterior de arquivos alterados para `thor-backup/versoes/<execucao>/data/<nome_da_origem>/`.
-- Preserva no destino e no manifesto os arquivos removidos da origem.
-- Arquivos com hash igual ao registrado no manifesto não são copiados nem têm o conteúdo do destino verificado novamente. Execute **Verificar integridade** para detectar corrupção ou ausência desses arquivos.
+- O campo `name` de cada origem define sua pasta no destino, após normalização dos caracteres do nome.
+- Arquivos novos e alterados são copiados para `<destino>/<origem>/`, preservando subpastas e conferindo o hash após a cópia.
+- A versão anterior de um arquivo alterado é movida para `thor-backup/versoes/<execucao>/<origem>/`.
+- Arquivos removidos da origem permanecem no destino e no respectivo manifesto, com a ocorrência registrada no relatório.
+- Arquivos iguais são identificados comparando o hash da origem com o manifesto do destino. Seu conteúdo no destino não é verificado novamente durante o incremental; use **Verificar integridade** para detectar ausência ou corrupção.
+- Cada execução concluída guarda cópias dos manifestos em `thor-backup/historico/<execucao>/<origem>/`, além de `alteracoes.json` e relatório TXT.
+- Os manifestos são gravados em arquivo temporário e substituídos após a escrita.
 
-O arquivo `STOP` é consultado após a cópia e conferência de um arquivo novo ou alterado. Nesse ponto, a rotina salva manifesto e checkpoint e encerra como `PAUSED`. A geração dos manifestos de origem não é interrompida por `STOP`; uma execução contendo apenas arquivos iguais pode terminar sem pausar. O botão **Retomar** remove `STOP` automaticamente; pela linha de comando, remova-o antes de usar `--resume`.
+`thor-backup` é um nome reservado. Nomes de origem que colidam após normalização, inclusive diferenças apenas de maiúsculas e minúsculas, são recusados. Origem e destino não podem estar contidos um no outro. Destinos da estrutura anterior não são convertidos automaticamente: escolha um novo destino para iniciar nesse formato, mantendo o backup existente preservado.
 
-Com `--progress` (ativado pela interface), as etapas de geração de manifesto de origem e aplicação incremental registram progresso em marcos de 5%, com quantidade restante e resumo de duração.
+O marcador `STOP` é consultado após cada arquivo processado, inclusive os classificados como iguais. A rotina salva os manifestos e o checkpoint e encerra como `PAUSED`. A geração dos manifestos de origem não é interrompida por `STOP`. Pela linha de comando, remova o marcador antes de usar `--resume`; a interface faz essa remoção no botão **Retomar**.
 
-Exemplo por linha de comando:
+Com `--progress` (ativado pela interface), a geração dos manifestos de origem e a aplicação incremental registram progresso em marcos de 5%, quantidade restante e duração.
+
+Exemplos por linha de comando:
 
 ```bash
 python scripts/backup_plan.py --config "D:/planos/backup.json" --progress
 python scripts/backup_plan.py --resume --config "D:/planos/backup.json"
 python scripts/backup_verify.py --destino "E:/Backup" --progress
-# Para um plano configurado com SHA-512, com registro PREMIS da verificação:
+# Filtrar a verificação por algoritmo e registrar PREMIS:
 python scripts/backup_verify.py --destino "E:/Backup" --algo sha512 --premis-log "E:/Backup/thor-backup/logs/premis_events.jsonl" --progress
 ```
 
-Na execução direta, `backup_plan.py` registra eventos PREMIS em `thor-backup/logs/premis_events.jsonl` por padrão; `--premis-log` permite escolher outro caminho. Já `backup_verify.py` só registra `FIXITY_CHECK` quando recebe `--premis-log`. Pela interface, o Worker fornece o caminho de log PREMIS configurado na aplicação para as duas rotinas.
+Na execução direta, `backup_plan.py` registra PREMIS em `thor-backup/logs/premis_events.jsonl` por padrão; `--premis-log` altera o caminho. `backup_verify.py` registra um `FIXITY_CHECK` por manifesto somente quando recebe `--premis-log`. Pela interface, o Worker fornece o log PREMIS configurado na aplicação para as duas rotinas. Os relatórios da verificação ficam em `thor-backup/relatorios/verificacao_<execucao>/`, fora das pastas de arquivos das origens.
 
-Estrutura criada no destino com o algoritmo padrão SHA-256 (os manifestos da raiz usam o algoritmo do plano):
+Estrutura para um plano com origens `documentos` e `imagens`, usando SHA-256:
 
 ```text
 Backup/
-  data/
-  manifest-sha256.txt
-  tagmanifest-sha256.txt
-  bag-info.txt
-  bagit.txt
+  documentos/
+    documento.pdf
+    contratos/contrato.pdf
+  imagens/
+    fotografia.jpg
   thor-backup/
-    configs/
-    manifests/origem/
-    manifests/destino/
-    manifests/historico/
-    checkpoints/
-    relatorios/
-    logs/
+    configs/acervo_institucional_<execucao>.json
+    manifests/
+      documentos/manifest-sha256.txt
+      imagens/manifest-sha256.txt
+    historico/<execucao>/
+      documentos/manifest-sha256.txt
+      imagens/manifest-sha256.txt
+      alteracoes.json
+    checkpoints/acervo_institucional.state.json
+    relatorios/acervo_institucional_<execucao>_relatorio.txt
+    logs/premis_events.jsonl
     versoes/
 ```
+
+Os arquivos do acervo mostrados acima são exemplos. O manifesto de `documentos` contém caminhos relativos a `Backup/documentos/`, sem incluir o nome da origem:
+
+```text
+<hash_sha256>  documento.pdf
+<hash_sha256>  contratos/contrato.pdf
+```
+
+O algoritmo padrão é `sha256`; para `sha512` ou `md5`, o nome do manifesto acompanha o algoritmo. `ignore_hidden` exclui nomes iniciados por ponto; `follow_symlinks: false` ignora links simbólicos. No primeiro backup para um destino vazio, `versoes/` fica vazia.
+
+Relatório final:
+
+O relatório TXT em UTF-8 segue a organização da verificação de fixidez: identificação da execução, origens e manifestos, contagens, listas detalhadas por resultado e resumo final. Cada registro apresenta o caminho do arquivo e, quando disponíveis, origem, destino, hashes completos e detalhes da versão preservada. Seções vazias mostram `Nenhum`.
+
+Exemplo do resumo apresentado no log do Worker:
+
+```text
+=== Resumo final do backup ===
+Total de arquivos no relatório: 4
+Arquivos novos copiados: 1
+Arquivos alterados copiados: 1
+Cópias com hash conferido: 2
+Arquivos iguais ao manifesto (sem nova cópia): 1
+Arquivos ausentes na origem e preservados no destino: 1
+Arquivos com falha: 0
+Tempo total de execução: 12.34s
+Relatório completo: E:/Backup/thor-backup/relatorios/acervo_institucional_<execucao>_relatorio.txt
+```
+
+As listas completas ficam no TXT, sem ampliar o log do Worker com todos os arquivos. As contagens descrevem a execução atual; em uma retomada, arquivos copiados antes da pausa podem aparecer como iguais. O relatório final é emitido ao concluir o backup.
+
+Veja o [exemplo completo do relatório e as opções dos scripts](scripts/README.md#backup_planpy). Os relatórios CSV de execuções anteriores continuam disponíveis no histórico; novas execuções geram o TXT.
 
 ### Tarefas > Backup Incremental por Fixidez
 
