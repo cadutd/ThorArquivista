@@ -21,6 +21,9 @@ def configured(monkeypatch):
     monkeypatch.setattr(settings, "govbr_client_id", "cliente-teste")
     monkeypatch.setattr(settings, "govbr_client_secret", SecretStr("segredo-sintetico"))
     monkeypatch.setattr(settings, "govbr_redirect_uri", CALLBACK)
+    monkeypatch.setattr(settings, "govbr_jwks_url", "")
+    monkeypatch.setattr(settings, "govbr_userinfo_url", "https://cyberark.example/UserInfo/apesp_hml")
+    monkeypatch.setattr(settings, "govbr_token_url", "https://cyberark.example/OAuth2/Token/apesp_hml")
     monkeypatch.setattr(settings, "public_app_url", "https://localhost:8443")
     monkeypatch.setattr(settings, "session_cookie_secure", True)
 
@@ -63,12 +66,9 @@ def test_start_https_retorno_pkce_cookies_e_segredo(configured):
     assert query["response_type"] == ["code"]
     assert query["client_id"] == ["cliente-teste"]
     assert query["scope"] == ["openid email profile"]
-    assert query["code_challenge_method"] == ["S256"]
-    verifier = client.cookies["thor_auth_verifier"]
-    assert 43 <= len(verifier) <= 128
-    assert query["code_challenge"] == [auth_service.code_challenge(verifier)]
+    assert "code_challenge" not in query
+    assert "nonce" not in query
     assert query["state"] == [client.cookies["thor_auth_state"]]
-    assert query["nonce"] == [client.cookies["thor_auth_nonce"]]
     cookie = SimpleCookie()
     cookie.load("thor_auth_return_to=" + client.cookies["thor_auth_return_to"])
     assert cookie["thor_auth_return_to"].value == "/consulta/registro-teste"
@@ -86,12 +86,12 @@ def test_troca_codigo_basic_pkce_callback_e_assinatura(configured, signed, monke
         if str(request.url) == settings.govbr_token_url:
             assert parse_qs(request.content.decode()) == {
                 "grant_type": ["authorization_code"], "code": ["codigo-sintetico"],
-                "redirect_uri": [CALLBACK], "code_verifier": ["verificador-sintetico"]}
-            expected = base64.b64encode(b"cliente-teste:segredo-sintetico").decode()
-            assert request.headers["authorization"] == "Basic " + expected
-            return httpx.Response(200, json={"id_token": token()})
-        assert str(request.url) == settings.govbr_jwks_url
-        return httpx.Response(200, json=jwks)
+                "redirect_uri": [CALLBACK], "client_id": ["cliente-teste"],
+                "client_secret": ["segredo-sintetico"]}
+            return httpx.Response(200, json={"access_token": "token-sintetico"})
+        assert str(request.url) == settings.govbr_userinfo_url
+        assert request.headers["authorization"] == "Bearer token-sintetico"
+        return httpx.Response(200, json={"sub": "52998224725", "preferred_username": "52998224725"})
     transport(monkeypatch, provider)
     claims = asyncio.run(auth_service.exchange_code_for_claims("codigo-sintetico", "verificador-sintetico"))
     assert claims["sub"] == "52998224725"
@@ -109,8 +109,9 @@ def test_fluxo_https_callback_sessao_consultiva(configured, signed, monkeypatch)
     cpf = cpf_teste()
     def provider(request):
         if str(request.url) == settings.govbr_token_url:
-            return httpx.Response(200, json={"id_token": token({"sub": cpf, "nonce": query["nonce"][0]})})
-        return httpx.Response(200, json=jwks)
+            return httpx.Response(200, json={"access_token": "token-sintetico"})
+        assert str(request.url) == settings.govbr_userinfo_url
+        return httpx.Response(200, json={"sub": "uuid-cyberark-sintetico", "preferred_username": cpf})
     transport(monkeypatch, provider)
     response = client.get("/api/v1/auth/govbr/callback", params={
         "state": query["state"][0], "code": "codigo-sintetico"}, follow_redirects=False)
