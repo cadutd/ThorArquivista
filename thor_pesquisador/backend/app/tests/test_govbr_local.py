@@ -61,19 +61,16 @@ def test_start_https_retorno_pkce_cookies_e_segredo(configured):
     client = TestClient(create_app(), base_url="https://localhost:8443")
     response = client.get("/api/v1/auth/govbr/start", params={"next": "/consulta/registro-teste"})
     assert response.status_code == 200
-    query = parse_qs(urlsplit(response.json()["authorization_url"]).query)
-    assert query["redirect_uri"] == [CALLBACK]
-    assert query["response_type"] == ["code"]
-    assert query["client_id"] == ["cliente-teste"]
-    assert query["scope"] == ["openid email profile"]
-    assert "code_challenge" not in query
-    assert "nonce" not in query
-    assert query["state"] == [client.cookies["thor_auth_state"]]
+    assert response.json()["authorization_url"] == (
+        "https://hml-prodesp.id.cyberark.cloud/run"
+        "?appkey=65d8b079-bb7a-4158-b1e2-75731bc5f44d"
+        "&customerId=abc4967&username=user%40idpsp&iwa=false&submitUsername=true"
+    )
+    assert client.cookies["thor_auth_state"]
     cookie = SimpleCookie()
     cookie.load("thor_auth_return_to=" + client.cookies["thor_auth_return_to"])
     assert cookie["thor_auth_return_to"].value == "/consulta/registro-teste"
     assert "segredo-sintetico" not in response.text
-    assert "client_secret" not in query
     for value in response.headers.get_list("set-cookie"):
         assert "HttpOnly" in value and "Secure" in value and "SameSite=lax" in value
 
@@ -105,7 +102,6 @@ def test_fluxo_https_callback_sessao_consultiva(configured, signed, monkeypatch)
     token, jwks = signed
     client = TestClient(create_app(), base_url="https://localhost:8443")
     response = client.get("/api/v1/auth/govbr/start", params={"next": "/consulta/registro-teste"})
-    query = parse_qs(urlsplit(response.json()["authorization_url"]).query)
     cpf = cpf_teste()
     def provider(request):
         if str(request.url) == settings.govbr_token_url:
@@ -114,7 +110,7 @@ def test_fluxo_https_callback_sessao_consultiva(configured, signed, monkeypatch)
         return httpx.Response(200, json={"sub": "uuid-cyberark-sintetico", "preferred_username": cpf})
     transport(monkeypatch, provider)
     response = client.get("/api/v1/auth/govbr/callback", params={
-        "state": query["state"][0], "code": "codigo-sintetico"}, follow_redirects=False)
+        "state": client.cookies["thor_auth_state"], "code": "codigo-sintetico"}, follow_redirects=False)
     assert response.status_code == 307
     assert response.headers["location"] == "https://localhost:8443/consulta/registro-teste"
     assert any(settings.session_cookie_name in value and "Secure" in value and "HttpOnly" in value

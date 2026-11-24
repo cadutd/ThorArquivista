@@ -13,7 +13,6 @@ from app.core.config import settings
 from app.models.user import Usuario
 from app.schemas.auth import AuthStartOut, UsuarioOut
 from app.services.auth_service import (
-    build_authorization_url,
     build_authentication_url,
     create_dev_user_session,
     create_session,
@@ -47,14 +46,6 @@ def govbr_start(response: Response, next_path: str = Query(default="/dashboard",
                         httponly=True, secure=settings.session_cookie_secure, samesite="lax")
     state = random_urlsafe()
     response.set_cookie("thor_auth_state", state, max_age=600, httponly=True, secure=settings.session_cookie_secure, samesite="lax")
-    return AuthStartOut(authorization_url=build_authorization_url(state, "", ""))
-
-
-@router.get("/cyberark/portal-start", response_model=AuthStartOut)
-def cyberark_portal_start(response: Response) -> AuthStartOut:
-    state = random_urlsafe()
-    response.set_cookie("thor_auth_state", state, max_age=600, httponly=True,
-                        secure=settings.session_cookie_secure, samesite="lax")
     return AuthStartOut(authorization_url=build_authentication_url())
 
 

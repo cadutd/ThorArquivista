@@ -79,7 +79,7 @@ services:
       cors_origins: ${CORS_ORIGINS:-["http://localhost:3000"]}
       public_app_url: ${PUBLIC_APP_URL:-http://localhost:3000}
       govbr_redirect_uri: ${GOVBR_REDIRECT_URI:-http://10.6.40.57:8000/api/v1/auth/govbr/callback}
-      govbr_authorize_url: ${GOVBR_AUTHORIZE_URL:-https://hml-prodesp.id.cyberark.cloud/OAuth2/Authorize/apesp_hml}
+      govbr_authorize_url: ${GOVBR_AUTHORIZE_URL:-https://hml-prodesp.id.cyberark.cloud}
       govbr_token_url: ${GOVBR_TOKEN_URL:-https://hml-prodesp.id.cyberark.cloud/OAuth2/Token/apesp_hml}
       govbr_jwks_url: ${GOVBR_JWKS_URL:-}
       govbr_userinfo_url: ${GOVBR_USERINFO_URL:-https://hml-prodesp.id.cyberark.cloud/OAuth2/UserInfo/apesp_hml}
