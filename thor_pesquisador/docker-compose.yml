@@ -9,8 +9,8 @@ services:
       MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-thor-minio}
       MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-thor-minio-dev-only}
     ports:
-      - "0.0.0.0:9000:9000"
-      - "0.0.0.0:9001:9001"
+      - "127.0.0.1:${MINIO_API_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
     volumes:
       - thor_pesquisador_minio:/data
 
@@ -18,15 +18,17 @@ services:
     container_name: thor_pesquisador_postgres
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: thor_pesquisador
-      POSTGRES_USER: thor
-      POSTGRES_PASSWORD: thor
+      POSTGRES_DB: ${POSTGRES_DB:-thor_pesquisador}
+      POSTGRES_USER: ${POSTGRES_USER:-thor}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-thor}
     ports:
-      - "0.0.0.0:5434:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5434}:5432"
     volumes:
       - thor_pesquisador_postgres:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U thor -d thor_pesquisador"]
+      test:
+        - CMD-SHELL
+        - pg_isready -U ${POSTGRES_USER:-thor} -d ${POSTGRES_DB:-thor_pesquisador}
       interval: 5s
       timeout: 3s
       retries: 30
@@ -35,7 +37,7 @@ services:
     container_name: thor_pesquisador_mongo
     image: mongo:7
     ports:
-      - "0.0.0.0:27018:27017"
+      - "127.0.0.1:${MONGODB_PORT:-27018}:27017"
     volumes:
       - thor_pesquisador_mongo:/data/db
 
@@ -43,16 +45,16 @@ services:
     container_name: thor_pesquisador_redis
     image: redis:7-alpine
     ports:
-      - "0.0.0.0:6380:6379"
+      - "127.0.0.1:${REDIS_PORT:-6380}:6379"
 
   meilisearch:
     container_name: thor_pesquisador_meilisearch
     image: getmeili/meilisearch:v1.11
     environment:
-      MEILI_ENV: development
-      MEILI_MASTER_KEY: dev-master-key-123
+      MEILI_ENV: ${MEILI_ENV:-development}
+      MEILI_MASTER_KEY: ${MEILISEARCH_API_KEY:-dev-master-key-123}
     ports:
-      - "0.0.0.0:7700:7700"
+      - "127.0.0.1:${MEILISEARCH_PORT:-7700}:7700"
     volumes:
       - thor_pesquisador_meili:/meili_data
 
@@ -70,13 +72,13 @@ services:
       meilisearch:
         condition: service_started
     environment: &app-environment
-      app_env: dev
-      database_url: postgresql+psycopg://thor:thor@postgres:5432/thor_pesquisador
-      mongodb_url: mongodb://mongo:27017/thor_pesquisador
-      mongodb_database: thor_pesquisador
-      cors_origins: ${CORS_ORIGINS:-["http://10.6.40.69","http://10.6.40.69:3000"]}
-      public_app_url: ${PUBLIC_APP_URL:-http://10.6.40.69:3000}
-      govbr_redirect_uri: ${GOVBR_REDIRECT_URI:-http://10.6.40.69:8000/api/v1/auth/govbr/callback}
+      app_env: ${APP_ENV:-dev}
+      database_url: ${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-thor}:${POSTGRES_PASSWORD:-thor}@postgres:5432/${POSTGRES_DB:-thor_pesquisador}}
+      mongodb_url: ${MONGODB_URL:-mongodb://mongo:27017/thor_pesquisador}
+      mongodb_database: ${MONGODB_DATABASE:-thor_pesquisador}
+      cors_origins: ${CORS_ORIGINS:-["http://localhost:3000"]}
+      public_app_url: ${PUBLIC_APP_URL:-http://localhost:3000}
+      govbr_redirect_uri: ${GOVBR_REDIRECT_URI:-http://localhost:8000/api/v1/auth/govbr/callback}
       govbr_authorize_url: ${GOVBR_AUTHORIZE_URL:-https://sso.staging.acesso.gov.br/authorize}
       govbr_token_url: ${GOVBR_TOKEN_URL:-https://sso.staging.acesso.gov.br/token}
       govbr_jwks_url: ${GOVBR_JWKS_URL:-https://sso.staging.acesso.gov.br/jwk}
@@ -86,10 +88,10 @@ services:
       govbr_dev_login: ${GOVBR_DEV_LOGIN:-true}
       dev_admin_enabled: ${DEV_ADMIN_ENABLED:-true}
       session_cookie_secure: ${SESSION_COOKIE_SECURE:-false}
-      redis_url: redis://redis:6379/0
-      indexacao_queue_name: thor_pesquisador:indexacao
-      meilisearch_url: http://meilisearch:7700
-      meilisearch_api_key: dev-master-key-123
+      redis_url: ${REDIS_URL:-redis://redis:6379/0}
+      indexacao_queue_name: ${INDEXACAO_QUEUE_NAME:-thor_pesquisador:indexacao}
+      meilisearch_url: ${MEILISEARCH_URL:-http://meilisearch:7700}
+      meilisearch_api_key: ${MEILISEARCH_API_KEY:-dev-master-key-123}
       indexacao_batch_size: "500"
       importacao_max_bytes: ${IMPORTACAO_MAX_BYTES:-2147483648}
       importacao_max_registros: ${IMPORTACAO_MAX_REGISTROS:-1000000}
@@ -102,11 +104,11 @@ services:
       s3_region: ${S3_REGION:-us-east-1}
       s3_access_key_id: ${S3_ACCESS_KEY_ID:-thor-minio}
       s3_secret_access_key: ${S3_SECRET_ACCESS_KEY:-thor-minio-dev-only}
-      s3_force_path_style: "true"
+      s3_force_path_style: ${S3_FORCE_PATH_STYLE:-true}
       upload_max_bytes: "20971520"
       upload_allowed_mime_types: '["image/jpeg","image/png","image/tiff","image/webp"]'
     ports:
-      - "0.0.0.0:8000:8000"
+      - "${BACKEND_BIND_ADDRESS:-0.0.0.0}:${BACKEND_PORT:-8000}:8000"
     command: >
       sh -c "
       alembic -c alembic.ini upgrade head &&
@@ -127,14 +129,14 @@ services:
       meilisearch:
         condition: service_started
     environment:
-      app_env: dev
-      database_url: postgresql+psycopg://thor:thor@postgres:5432/thor_pesquisador
-      mongodb_url: mongodb://mongo:27017/thor_pesquisador
-      mongodb_database: thor_pesquisador
-      redis_url: redis://redis:6379/0
-      indexacao_queue_name: thor_pesquisador:indexacao
-      meilisearch_url: http://meilisearch:7700
-      meilisearch_api_key: dev-master-key-123
+      app_env: ${APP_ENV:-dev}
+      database_url: ${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-thor}:${POSTGRES_PASSWORD:-thor}@postgres:5432/${POSTGRES_DB:-thor_pesquisador}}
+      mongodb_url: ${MONGODB_URL:-mongodb://mongo:27017/thor_pesquisador}
+      mongodb_database: ${MONGODB_DATABASE:-thor_pesquisador}
+      redis_url: ${REDIS_URL:-redis://redis:6379/0}
+      indexacao_queue_name: ${INDEXACAO_QUEUE_NAME:-thor_pesquisador:indexacao}
+      meilisearch_url: ${MEILISEARCH_URL:-http://meilisearch:7700}
+      meilisearch_api_key: ${MEILISEARCH_API_KEY:-dev-master-key-123}
       indexacao_batch_size: "500"
     command: python -m app.worker
 
@@ -172,13 +174,13 @@ services:
     build:
       context: ./frontend
       args:
-        NEXT_PUBLIC_API_BASE_URL: http://10.6.40.69:8000/api/v1
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-${API_BASE_URL:-http://localhost:8000/api/v1}}
     depends_on:
       - backend
     environment:
-      NEXT_PUBLIC_API_BASE_URL: http://10.6.40.69:8000/api/v1
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-${API_BASE_URL:-http://localhost:8000/api/v1}}
     ports:
-      - "0.0.0.0:3000:3000"
+      - "${FRONTEND_BIND_ADDRESS:-0.0.0.0}:${FRONTEND_PORT:-3000}:3000"
 
 volumes:
   thor_pesquisador_minio:

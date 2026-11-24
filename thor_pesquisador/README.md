@@ -38,6 +38,25 @@ O perfil HTTPS local ja existente deve continuar com seus dois arquivos Compose;
 nao substituir seu `.env` por este inicio rapido. Homolog/prod usam CPF real,
 login gov.br e o Job manual `deploy/jobs/bootstrap-admin.yaml`, sem flags dev.
 
+O Compose le configuracoes por `--env-file`. Para acessar de outra maquina ou
+em homologacao, defina nesse arquivo as URLs publicas (`PUBLIC_APP_URL`,
+`NEXT_PUBLIC_API_BASE_URL` (ou `API_BASE_URL`), `CORS_ORIGINS` e
+`GOVBR_REDIRECT_URI`) para os hosts daquele ambiente. A URL da API e incorporada
+ao frontend no build, portanto reconstrua o frontend depois de altera-la. A
+configuracao gerada para homologacao separa `config.env`, `secrets.env` e
+`frontend.env`; o Docker Compose aceita os tres arquivos com `--env-file`,
+nessa ordem. Use arquivos distintos por ambiente; nao reutilize
+`.local/dev-inicial/.env` em homologacao.
+
+Em homologacao, use `APP_ENV=homolog`, desative `GOVBR_DEV_LOGIN` e
+`DEV_ADMIN_ENABLED`, habilite `SESSION_COOKIE_SECURE` e configure segredos e
+URLs HTTPS validos, alem de `MEILI_ENV=production`; o backend recusa iniciar
+com atalhos dev ou configuracao insegura. Para um proxy HTTPS instalado na
+propria VM, vincule as portas da aplicacao a `127.0.0.1` usando
+`FRONTEND_BIND_ADDRESS` e `BACKEND_BIND_ADDRESS`. Portas dos servicos de dados
+ficam limitadas ao loopback. O procedimento recomendado de homologacao continua
+sendo Kubernetes/OKD abaixo.
+
 ## Gov.br Local - 2026-11-04
 
 Perfil Docker HTTPS em https://localhost:8443, com callback
@@ -254,6 +273,7 @@ Em desenvolvimento, a tela de login oferece `Entrar em desenvolvimento`. Em homo
 - `MONGODB_DATABASE`
 - `CORS_ORIGINS`
 - `PUBLIC_APP_URL`
+- `NEXT_PUBLIC_API_BASE_URL` (URL publica da API, definida no build do frontend)
 - `SESSION_COOKIE_DOMAIN`
 - `SESSION_COOKIE_SECURE`
 - `APP_SESSION_SECRET`
