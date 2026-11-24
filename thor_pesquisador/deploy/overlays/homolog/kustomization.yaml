@@ -9,4 +9,4 @@ configMapGenerator:
       - APP_ENV=homolog
       - GOVBR_DEV_LOGIN=false
       - DEV_ADMIN_ENABLED=false
-      - SESSION_COOKIE_SECURE=true
+      - SESSION_COOKIE_SECURE=false
