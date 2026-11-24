@@ -47,12 +47,22 @@ def build_authorization_url(state: str, nonce: str, code_challenge: str) -> str:
             "scope": "openid email profile",
             "redirect_uri": settings.govbr_redirect_uri,
             "state": state,
-            "nonce": nonce,
-            "code_challenge": code_challenge,
-            "code_challenge_method": "S256",
         }
     )
     return f"{settings.govbr_authorize_url}?{query}"
+
+
+def build_authentication_url() -> str:
+    query = urlencode(
+        {
+            "appkey": settings.govbr_appkey,
+            "customerId": settings.govbr_customer_id,
+            "username": settings.govbr_username,
+            "iwa": "false",
+            "submitUsername": "true",
+        }
+    )
+    return f"{settings.govbr_authentication_url}?{query}"
 
 
 def random_urlsafe(size: int = 32) -> str:
@@ -85,22 +95,35 @@ async def _exchange_code_for_claims(code: str, code_verifier: str) -> dict:
                 "grant_type": "authorization_code",
                 "code": code,
                 "redirect_uri": settings.govbr_redirect_uri,
-                "code_verifier": code_verifier,
+                "client_id": settings.govbr_client_id,
+                "client_secret": settings.govbr_client_secret.get_secret_value(),
             },
-            auth=(settings.govbr_client_id, settings.govbr_client_secret.get_secret_value()),
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
         token_response.raise_for_status()
         payload = token_response.json()
+        access_token = payload.get("access_token")
         id_token = payload.get("id_token")
-        token = id_token
-        if not token:
-            raise HTTPException(status_code=400, detail="gov.br nao retornou token.")
 
-        jwks_response = await client.get(settings.govbr_jwks_url)
-        jwks_response.raise_for_status()
+        if settings.govbr_jwks_url:
+            if not id_token:
+                raise HTTPException(status_code=400, detail="gov.br nao retornou token.")
+            jwks_response = await client.get(settings.govbr_jwks_url)
+            jwks_response.raise_for_status()
+            claims = validate_jwt(id_token, jwks_response.json())
+        else:
+            if not access_token:
+                raise HTTPException(status_code=400, detail="CyberArk nao retornou token de acesso.")
+            userinfo_response = await client.post(
+                settings.govbr_userinfo_url,
+                headers={"Authorization": f"Bearer {access_token}"},
+            )
+            userinfo_response.raise_for_status()
+            claims = userinfo_response.json()
 
-    return validate_jwt(token, jwks_response.json())
+        if not isinstance(claims, dict):
+            raise HTTPException(status_code=400, detail="CyberArk nao retornou dados de identidade.")
+        return claims
 
 
 def validate_jwt(token: str, jwks: dict) -> dict:
@@ -130,10 +153,9 @@ def validate_jwt(token: str, jwks: dict) -> dict:
 
 def usuario_from_claims(db: Session, claims: dict) -> Usuario | Visitante:
     try:
-        sub = normalizar_cpf(str(claims.get("sub") or ""))
-        cpf = normalizar_cpf(str(claims.get("preferred_username") or sub))
-        if sub != cpf:
-            raise ValueError("Identidade inconsistente.")
+        cpf_raw = claims.get("preferred_username") or claims.get("unique_name") or claims.get("cpf")
+        cpf = normalizar_cpf(str(cpf_raw or claims.get("sub") or ""))
+        sub = str(claims.get("sub") or cpf)
     except ValueError as exc:
         raise HTTPException(401, "Identidade gov.br invalida.") from exc
     usuario = db.scalar(select(Usuario).where(Usuario.cpf == cpf).with_for_update())
