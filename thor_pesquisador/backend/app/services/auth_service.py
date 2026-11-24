@@ -39,19 +39,6 @@ def token_hash(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-def build_authorization_url(state: str, nonce: str, code_challenge: str) -> str:
-    query = urlencode(
-        {
-            "response_type": "code",
-            "client_id": settings.govbr_client_id,
-            "scope": "openid email profile",
-            "redirect_uri": settings.govbr_redirect_uri,
-            "state": state,
-        }
-    )
-    return f"{settings.govbr_authorize_url}?{query}"
-
-
 def build_authentication_url() -> str:
     query = urlencode(
         {
