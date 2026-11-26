@@ -49,9 +49,11 @@ nessa ordem. Use arquivos distintos por ambiente; nao reutilize
 `.local/dev-inicial/.env` em homologacao.
 
 Em homologacao, use `APP_ENV=homolog`, desative `GOVBR_DEV_LOGIN` e
-`DEV_ADMIN_ENABLED`, habilite `SESSION_COOKIE_SECURE` e configure segredos e
-URLs HTTPS validos, alem de `MEILI_ENV=production`; o backend recusa iniciar
-com atalhos dev ou configuracao insegura. Para um proxy HTTPS instalado na
+`DEV_ADMIN_ENABLED`, configure segredos e URLs HTTP ou HTTPS conforme a rede,
+alem de `MEILI_ENV=production`; `SESSION_COOKIE_SECURE` deve corresponder ao
+protocolo da API (use HTTPS sempre que possivel). HTTPS e obrigatorio em prod.
+O backend recusa iniciar com atalhos dev ou configuracao insegura. Para um
+proxy HTTPS instalado na
 propria VM, vincule as portas da aplicacao a `127.0.0.1` usando
 `FRONTEND_BIND_ADDRESS` e `BACKEND_BIND_ADDRESS`. Portas dos servicos de dados
 ficam limitadas ao loopback. O procedimento recomendado de homologacao continua

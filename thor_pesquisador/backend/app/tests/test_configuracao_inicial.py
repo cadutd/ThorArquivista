@@ -60,7 +60,6 @@ def test_geracao_nao_sobrescreve_e_nao_rotaciona_segredo(tmp_path):
 
 
 @pytest.mark.parametrize("key,value", [
-    ("PUBLIC_APP_URL", "http://portal.instituicao.gov.br"),
     ("PUBLIC_APP_URL", "https://localhost"),
     ("PUBLIC_APP_URL", "https://portal.instituicao.gov.br/subpasta"),
     ("API_BASE_URL", "https://api.instituicao.gov.br/errado"),
@@ -75,6 +74,25 @@ def test_geracao_nao_sobrescreve_e_nao_rotaciona_segredo(tmp_path):
 def test_config_invalida_nao_cria_arquivos(tmp_path, key, value):
     with pytest.raises(ValueError):
         gerar_config("homolog", {**entrada(), key: value}, tmp_path / "novo")
+    assert not (tmp_path / "novo").exists()
+
+
+def test_homolog_aceita_http_e_ajusta_cookie_conforme_api():
+    data = entrada()
+    data.update(PUBLIC_APP_URL="http://10.6.40.57:3000",
+                API_BASE_URL="http://10.6.40.57:8000/api/v1")
+    config, api_base = preparar_config("homolog", data)
+    assert api_base == "http://10.6.40.57:8000/api/v1"
+    assert config["GOVBR_REDIRECT_URI"] == api_base + "/auth/govbr/callback"
+    assert config["SESSION_COOKIE_SECURE"] == "false"
+
+
+@pytest.mark.parametrize("key", ["PUBLIC_APP_URL", "API_BASE_URL"])
+def test_producao_recusa_http(tmp_path, key):
+    data = entrada("prod")
+    data[key] = "http://portal.instituicao.gov.br" if key == "PUBLIC_APP_URL" else "http://api.instituicao.gov.br/api/v1"
+    with pytest.raises(ValueError):
+        gerar_config("prod", data, tmp_path / "novo")
     assert not (tmp_path / "novo").exists()
 
 

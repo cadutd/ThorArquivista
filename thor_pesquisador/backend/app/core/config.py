@@ -74,11 +74,16 @@ class Settings(BaseSettings):
         if self.app_env in {"prod", "homolog"}:
             if self.govbr_dev_login or self.auth_disabled_for_tests or self.dev_admin_enabled:
                 raise ValueError("Atalhos de autenticacao sao proibidos em homolog/prod.")
-            if not self.session_cookie_secure or len(self.app_session_secret) < 32:
-                raise ValueError("Cookie seguro e segredo de sessao com 32 caracteres sao obrigatorios.")
+            if len(self.app_session_secret) < 32:
+                raise ValueError("Segredo de sessao com 32 caracteres e obrigatorio.")
+            if self.app_env == "prod" and not self.session_cookie_secure:
+                raise ValueError("Cookie seguro e obrigatorio em producao.")
             if not self.govbr_client_id.strip() or self.govbr_client_id == "change-me" or self.govbr_client_secret.get_secret_value() in {"", "change-me"}:
                 raise ValueError("Configure as credenciais gov.br antes do rollout.")
-            if not self.public_app_url.startswith("https://") or not self.govbr_redirect_uri.startswith("https://"):
+            if self.app_env == "prod" and (
+                not self.public_app_url.startswith("https://")
+                or not self.govbr_redirect_uri.startswith("https://")
+            ):
                 raise ValueError("Portal e callback devem usar HTTPS.")
         return self
 

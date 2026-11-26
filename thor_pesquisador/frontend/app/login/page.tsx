@@ -62,7 +62,7 @@ export default function LoginPage() {
               <ShieldCheck size={20} />
             </div>
             <div>
-              <h2 style={{ margin: 0 }}>Acesso autenticado</h2>
+              <h2 style={{ margin: 0 }}>Entre com sua conta</h2>
               <p className="muted" style={{ margin: "8px 0 0" }}>
                 Entre com sua conta gov.br para consultar os registros publicados.
               </p>

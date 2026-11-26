@@ -21,6 +21,23 @@ def test_producao_recusa_configuracoes_inseguras(key,value):
         Settings(_env_file=None,**{**data,key:value})
 
 
+def test_homologacao_aceita_urls_http_em_rede_interna():
+    settings = Settings(
+        _env_file=None,
+        app_env="homolog",
+        govbr_dev_login=False,
+        dev_admin_enabled=False,
+        auth_disabled_for_tests=False,
+        session_cookie_secure=False,
+        app_session_secret="x" * 32,
+        govbr_client_id="configured-id",
+        govbr_client_secret="configured-secret",
+        public_app_url="http://10.6.40.57:3000",
+        govbr_redirect_uri="http://10.6.40.57:8000/api/v1/auth/govbr/callback",
+    )
+    assert settings.public_app_url.startswith("http://")
+
+
 @pytest.mark.parametrize("value",["red","#fff","url(javascript:x)","</style>","", "#GG0000"])
 def test_cores_so_aceitam_hexadecimal(value):
     with pytest.raises(ValidationError):
