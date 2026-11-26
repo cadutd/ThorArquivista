@@ -97,7 +97,7 @@ def preparar_config(ambiente, entrada):
     if len(session_secret) < 32 or not _preenchido(session_secret):
         raise ValueError("Segredo de sessao deve ser aleatorio e ter pelo menos 32 caracteres.")
     api_base = data.pop("API_BASE_URL").rstrip("/")
-    authority = "https://sso.acesso.gov.br" if ambiente == "prod" else "https://sso.staging.acesso.gov.br"
+    authority = "https://prodesp.cyberark.cloud" if ambiente == "prod" else "https://hml-prodesp.id.cyberark.cloud"
     data.update(APP_ENV=ambiente, PUBLIC_APP_URL=data["PUBLIC_APP_URL"].rstrip("/"),
                 CORS_ORIGINS=json.dumps([data["PUBLIC_APP_URL"].rstrip("/")]),
                 GOVBR_REDIRECT_URI=api_base + "/auth/govbr/callback",
@@ -135,7 +135,7 @@ def validar_ambiente(config, ambiente, local=False):
     # Revalidate even when a caller supplies a previously constructed Settings object.
     type(config).model_validate(config.model_dump())
     if ambiente != "dev":
-        authority = "https://sso.acesso.gov.br" if ambiente == "prod" else "https://sso.staging.acesso.gov.br"
+        authority = "https://prodesp.cyberark.cloud" if ambiente == "prod" else "https://hml-prodesp.id.cyberark.cloud"
         if any(getattr(config, key) != authority + suffix for key, suffix in (
                 ("govbr_authorize_url", "/authorize"), ("govbr_token_url", "/token"), ("govbr_jwks_url", "/jwk"))):
             raise ValueError("Endpoints gov.br nao correspondem ao ambiente solicitado.")
