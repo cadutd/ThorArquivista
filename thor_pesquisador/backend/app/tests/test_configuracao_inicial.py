@@ -44,6 +44,28 @@ def test_config_por_ambiente_sem_segredos_em_configmap(tmp_path, environment):
         assert all((p.stat().st_mode & 0o077) == 0 for p in target.iterdir())
 
 
+def test_homolog_aceita_http_e_gera_callback_e_cookie_compativeis():
+    data = entrada("homolog")
+    data.update(PUBLIC_APP_URL="http://10.6.40.57:3000",
+                API_BASE_URL="http://10.6.40.57:8000/api/v1")
+    config, api_base = preparar_config("homolog", data)
+    assert config["GOVBR_REDIRECT_URI"] == "http://10.6.40.57:8000/api/v1/auth/govbr/callback"
+    assert config["SESSION_COOKIE_SECURE"] == "false"
+    assert api_base == "http://10.6.40.57:8000/api/v1"
+
+
+@pytest.mark.parametrize("key,value", [
+    ("PUBLIC_APP_URL", "http://portal.instituicao.gov.br"),
+    ("API_BASE_URL", "http://api.instituicao.gov.br/api/v1"),
+])
+def test_producao_exige_https_para_portal_e_api(tmp_path, key, value):
+    data = entrada("prod")
+    data[key] = value
+    with pytest.raises(ValueError, match="URL invalida"):
+        gerar_config("prod", data, tmp_path / "prod")
+    assert not (tmp_path / "prod").exists()
+
+
 def test_dev_preserva_dolar_aspas_e_barra_no_env_do_compose(tmp_path):
     value = "x" * 35 + "$segredo'barra\\final"
     gerar_config("dev", {"APP_SESSION_SECRET": value}, tmp_path / "dev")

@@ -18,9 +18,15 @@ configMapGenerator:
     literals:
       - APP_ENV=dev
       - PUBLIC_APP_URL=https://thor-pesquisador.apps.example.local
-      - GOVBR_AUTHORIZE_URL=https://sso.staging.acesso.gov.br/authorize
-      - GOVBR_TOKEN_URL=https://sso.staging.acesso.gov.br/token
-      - GOVBR_JWKS_URL=https://sso.staging.acesso.gov.br/jwk
+      - GOVBR_AUTHORIZE_URL=https://hml-prodesp.id.cyberark.cloud/OAuth2/Authorize/apesp_hml
+      - GOVBR_TOKEN_URL=https://hml-prodesp.id.cyberark.cloud/OAuth2/Token/apesp_hml
+      - GOVBR_USERINFO_URL=https://hml-prodesp.id.cyberark.cloud/OAuth2/UserInfo/apesp_hml
+      - GOVBR_AUTHENTICATION_URL=https://hml-prodesp.id.cyberark.cloud/run
+      - GOVBR_APPKEY=65d8b079-bb7a-4158-b1e2-75731bc5f44d
+      - GOVBR_SUFFIX_URLS=apesp_hml
+      - GOVBR_CUSTOMER_ID=abc4967
+      - GOVBR_USERNAME=user@idpsp
+      - GOVBR_JWKS_URL=
       - GOVBR_REDIRECT_URI=https://thor-pesquisador-api.apps.example.local/api/v1/auth/govbr/callback
       - CORS_ORIGINS=["https://thor-pesquisador.apps.example.local"]
       - MONGODB_DATABASE=thor_pesquisador

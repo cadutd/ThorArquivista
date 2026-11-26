@@ -13,8 +13,7 @@ from app.core.config import settings
 from app.models.user import Usuario
 from app.schemas.auth import AuthStartOut, UsuarioOut
 from app.services.auth_service import (
-    build_authorization_url,
-    code_challenge,
+    build_authentication_url,
     create_dev_user_session,
     create_session,
     delete_session,
@@ -46,12 +45,8 @@ def govbr_start(response: Response, next_path: str = Query(default="/dashboard",
     response.set_cookie("thor_auth_return_to", safe_return_path(next_path), max_age=600,
                         httponly=True, secure=settings.session_cookie_secure, samesite="lax")
     state = random_urlsafe()
-    nonce = random_urlsafe()
-    verifier = random_urlsafe(48)
     response.set_cookie("thor_auth_state", state, max_age=600, httponly=True, secure=settings.session_cookie_secure, samesite="lax")
-    response.set_cookie("thor_auth_nonce", nonce, max_age=600, httponly=True, secure=settings.session_cookie_secure, samesite="lax")
-    response.set_cookie("thor_auth_verifier", verifier, max_age=600, httponly=True, secure=settings.session_cookie_secure, samesite="lax")
-    return AuthStartOut(authorization_url=build_authorization_url(state, nonce, code_challenge(verifier)))
+    return AuthStartOut(authorization_url=build_authentication_url())
 
 
 @router.get("/govbr/callback")
@@ -63,15 +58,11 @@ async def govbr_callback(
     db: Session = Depends(db_dep),
 ) -> RedirectResponse:
     expected_state = request.cookies.get("thor_auth_state")
-    verifier = request.cookies.get("thor_auth_verifier")
-    if not expected_state or not secrets.compare_digest(expected_state, state) or not verifier:
+    if not expected_state or not secrets.compare_digest(expected_state, state):
         raise HTTPException(status_code=400, detail="Estado de autenticacao invalido.")
     if error:
         raise HTTPException(400, "Autenticacao gov.br cancelada ou nao autorizada. Reinicie o login.")
-    claims = await exchange_code_for_claims(code, verifier)
-    expected_nonce = request.cookies.get("thor_auth_nonce")
-    if not expected_nonce or not isinstance(claims.get("nonce"), str) or not secrets.compare_digest(expected_nonce, claims["nonce"]):
-        raise HTTPException(401, "Nonce de autenticacao invalido.")
+    claims = await exchange_code_for_claims(code, "")
     usuario = usuario_from_claims(db, claims)
     raw_session = create_session(db, usuario)
     destination = safe_return_path(request.cookies.get("thor_auth_return_to", "/dashboard"))
@@ -86,8 +77,6 @@ async def govbr_callback(
     _set_session_cookie(response, raw_session)
     response.delete_cookie("thor_auth_return_to")
     response.delete_cookie("thor_auth_state")
-    response.delete_cookie("thor_auth_nonce")
-    response.delete_cookie("thor_auth_verifier")
     return response
 
 

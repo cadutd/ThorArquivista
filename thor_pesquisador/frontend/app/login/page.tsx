@@ -50,7 +50,7 @@ export default function LoginPage() {
           <h1>Thor Pesquisador</h1>
           <p>
             Instrumentos de pesquisa dinâmicos, consulta estruturada e gestão de registros
-            em uma interface integrada ao gov.br.
+            em uma interface integrada ao GOV.BR via CyberArk Identity.
           </p>
         </div>
       </section>
@@ -64,7 +64,7 @@ export default function LoginPage() {
             <div>
               <h2 style={{ margin: 0 }}>Entre com sua conta</h2>
               <p className="muted" style={{ margin: "8px 0 0" }}>
-                Entre com sua conta gov.br para consultar os registros publicados.
+                Entre com sua conta GOV.BR para consultar os registros publicados.
               </p>
             </div>
             {error ? <p className="error">{error}</p> : null}

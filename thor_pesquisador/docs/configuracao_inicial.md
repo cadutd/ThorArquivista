@@ -83,7 +83,16 @@ institucional existente (>=32 caracteres), evitando rotacao nao planejada.
 | AUTH_DISABLED_FOR_TESTS | false | false | false |
 | Cookie Secure | conforme HTTPS da API | conforme HTTPS da API | true |
 | Gov.br | staging | staging | producao |
+<<<<<<< HEAD
 | Portal/API | HTTP/HTTPS | HTTP/HTTPS | HTTPS obrigatorio |
+=======
+| Portal/API | HTTP local permitido | HTTP ou HTTPS | HTTPS obrigatorio |
+
+Em homologacao, HTTP e aceito para o portal e a API. Quando a API usar HTTP,
+`SESSION_COOKIE_SECURE=false` e necessario para que o navegador envie o cookie
+de sessao; use HTTPS sempre que disponivel. Producao exige HTTPS no portal e
+callback e cookie Secure.
+>>>>>>> 92335cc23c251ad37c63ce7ba0651807d3f86ff7
 
 Confirme as credenciais do ambiente antes de usar. Endpoints oficiais:
 [discovery homologacao](https://sso.staging.acesso.gov.br/.well-known/openid-configuration)
