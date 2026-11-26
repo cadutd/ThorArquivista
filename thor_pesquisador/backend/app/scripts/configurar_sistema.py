@@ -72,11 +72,7 @@ def preparar_config(ambiente, entrada):
     local = ambiente == "dev"
     if not local and not all(_preenchido(v) for v in data.values()):
         raise ValueError("Substitua todos os exemplos por valores reais do ambiente.")
-<<<<<<< HEAD
     schemes = {"http", "https"} if ambiente in {"dev", "homolog"} else {"https"}
-=======
-    schemes = {"http", "https"} if ambiente != "prod" else {"https"}
->>>>>>> 92335cc23c251ad37c63ce7ba0651807d3f86ff7
     portal = _url(data["PUBLIC_APP_URL"], schemes, publica=not local)
     api = _url(data["API_BASE_URL"], schemes, publica=not local)
     if (portal.path not in {"", "/"} or portal.query or portal.fragment or api.query or api.fragment
@@ -108,11 +104,7 @@ def preparar_config(ambiente, entrada):
                 GOVBR_AUTHORIZE_URL=authority + "/authorize", GOVBR_TOKEN_URL=authority + "/token",
                 GOVBR_JWKS_URL=authority + "/jwk", GOVBR_DEV_LOGIN=str(local).lower(),
                 DEV_ADMIN_ENABLED=str(local).lower(), AUTH_DISABLED_FOR_TESTS="false",
-<<<<<<< HEAD
                 SESSION_COOKIE_SECURE=str(ambiente == "prod" or api.scheme == "https").lower(),
-=======
-                SESSION_COOKIE_SECURE=str(api.scheme == "https").lower(),
->>>>>>> 92335cc23c251ad37c63ce7ba0651807d3f86ff7
                 APP_SESSION_SECRET=session_secret)
     return data, api_base
 
