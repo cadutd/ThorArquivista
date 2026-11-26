@@ -21,7 +21,6 @@ def test_producao_recusa_configuracoes_inseguras(key,value):
         Settings(_env_file=None,**{**data,key:value})
 
 
-<<<<<<< HEAD
 def test_homologacao_aceita_urls_http_em_rede_interna():
     settings = Settings(
         _env_file=None,
@@ -37,14 +36,6 @@ def test_homologacao_aceita_urls_http_em_rede_interna():
         govbr_redirect_uri="http://10.6.40.57:8000/api/v1/auth/govbr/callback",
     )
     assert settings.public_app_url.startswith("http://")
-=======
-def test_homolog_aceita_http_com_cookie_nao_secure():
-    Settings(_env_file=None, app_env="homolog", govbr_dev_login=False, dev_admin_enabled=False,
-             auth_disabled_for_tests=False, session_cookie_secure=False, app_session_secret="x"*32,
-             govbr_client_id="configured-id", govbr_client_secret="configured-secret",
-             public_app_url="http://10.6.40.57:3000",
-             govbr_redirect_uri="http://10.6.40.57:8000/api/v1/auth/govbr/callback")
->>>>>>> 92335cc23c251ad37c63ce7ba0651807d3f86ff7
 
 
 @pytest.mark.parametrize("value",["red","#fff","url(javascript:x)","</style>","", "#GG0000"])

@@ -90,11 +90,7 @@ class Settings(BaseSettings):
                 not self.public_app_url.startswith("https://")
                 or not self.govbr_redirect_uri.startswith("https://")
             ):
-<<<<<<< HEAD
-                raise ValueError("Portal e callback devem usar HTTPS.")
-=======
                 raise ValueError("Portal e callback devem usar HTTPS em producao.")
->>>>>>> 92335cc23c251ad37c63ce7ba0651807d3f86ff7
         return self
 
 
